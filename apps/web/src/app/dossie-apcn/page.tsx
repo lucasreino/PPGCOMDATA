@@ -22,7 +22,14 @@ import {
   buildDossieQuery,
   type FilterState,
 } from "@/components/dossie/DossieFilters";
-import { KpiCard, SimpleBarChart, SimpleLineChart, StackedBarChart } from "@/components/dossie/charts";
+import {
+  ChartPanel,
+  KpiCard,
+  SimpleBarChart,
+  SimpleLineChart,
+  StackedBarChart,
+} from "@/components/dossie/charts";
+import { downloadChartPng } from "@/lib/chartExport";
 import { CatalogPanel, ExportButtons } from "@/components/dossie/CatalogPanel";
 import { RelatorioForm } from "@/components/dossie/RelatorioForm";
 
@@ -262,10 +269,16 @@ export default function DossieApcnPage() {
                   />
                 </div>
                 {prod?.producao_por_ano && Object.keys(prod.producao_por_ano).length > 0 && (
-                  <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-4">Produção por ano</h3>
-                    <SimpleLineChart data={prod.producao_por_ano} />
-                  </div>
+                  <ChartPanel
+                    title="Produção por ano"
+                    exportSpec={{
+                      kind: "line",
+                      title: "Produção por ano",
+                      data: prod.producao_por_ano as Record<string, number>,
+                    }}
+                  >
+                    <SimpleLineChart data={prod.producao_por_ano as Record<string, number>} />
+                  </ChartPanel>
                 )}
                 {demanda && (demanda.por_ano as Record<string, Record<string, number>>) && (
                   <div className="glow-card rounded-xl p-5">
@@ -351,19 +364,38 @@ export default function DossieApcnPage() {
                   ))}
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por docente</h3>
+                  <ChartPanel
+                    title="Por docente"
+                    exportSpec={{
+                      kind: "bar",
+                      title: "Produção por docente",
+                      data: (prod.producao_por_docente as Record<string, number>) || {},
+                    }}
+                  >
                     <SimpleBarChart data={prod.producao_por_docente || {}} />
-                  </div>
-                  <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por tipo</h3>
+                  </ChartPanel>
+                  <ChartPanel
+                    title="Por tipo"
+                    exportSpec={{
+                      kind: "bar",
+                      title: "Produção por tipo",
+                      data: (prod.producao_por_tipo as Record<string, number>) || {},
+                      color: "#a855f7",
+                    }}
+                  >
                     <SimpleBarChart data={prod.producao_por_tipo || {}} color="#a855f7" />
-                  </div>
+                  </ChartPanel>
                 </div>
-                <div className="glow-card rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-slate-300 mb-3">Evolução por ano</h3>
+                <ChartPanel
+                  title="Evolução por ano"
+                  exportSpec={{
+                    kind: "line",
+                    title: "Evolução da produção",
+                    data: (prod.producao_por_ano as Record<string, number>) || {},
+                  }}
+                >
                   <SimpleLineChart data={prod.producao_por_ano || {}} />
-                </div>
+                </ChartPanel>
                 {(prod.producao_por_linha_e_tipo as Record<string, Record<string, number>>) &&
                   Object.keys(prod.producao_por_linha_e_tipo as object).length > 0 && (
                     <div className="glow-card rounded-xl p-5">
@@ -481,16 +513,33 @@ export default function DossieApcnPage() {
                   <KpiCard label="Valor executado" value={fmtBRL(fin.valor_total_executado ?? 0)} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por agência (R$ aprovado)</h3>
+                  <ChartPanel
+                    title="Por agência (R$ aprovado)"
+                    exportSpec={{
+                      kind: "bar",
+                      title: "Financiamento por agência",
+                      data: (fin.financiamentos_por_agencia as Record<string, number>) || {},
+                      color: "#10b981",
+                    }}
+                  >
                     <SimpleBarChart
                       data={fin.financiamentos_por_agencia || {}}
                       valueFormat={fmtBRL}
                       color="#10b981"
                     />
-                  </div>
-                  <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Mencionado vs confirmado</h3>
+                  </ChartPanel>
+                  <ChartPanel
+                    title="Mencionado vs confirmado"
+                    exportSpec={{
+                      kind: "bar",
+                      title: "Financiamento mencionado vs confirmado",
+                      data: {
+                        Mencionados: fin.comparativo?.mencionados ?? 0,
+                        Confirmados: fin.comparativo?.confirmados ?? 0,
+                      },
+                      color: "#f59e0b",
+                    }}
+                  >
                     <SimpleBarChart
                       data={{
                         Mencionados: fin.comparativo?.mencionados ?? 0,
@@ -498,8 +547,25 @@ export default function DossieApcnPage() {
                       }}
                       color="#f59e0b"
                     />
-                  </div>
+                  </ChartPanel>
                 </div>
+                {fin.financiamentos_por_ano &&
+                  Object.keys(fin.financiamentos_por_ano as object).length > 0 && (
+                    <ChartPanel
+                      title="Valor aprovado por ano"
+                      exportSpec={{
+                        kind: "line",
+                        title: "Financiamento por ano",
+                        data: fin.financiamentos_por_ano as Record<string, number>,
+                        color: "#10b981",
+                      }}
+                    >
+                      <SimpleLineChart
+                        data={fin.financiamentos_por_ano as Record<string, number>}
+                        color="#10b981"
+                      />
+                    </ChartPanel>
+                  )}
                 <div className="glow-card rounded-xl overflow-x-auto max-h-[400px]">
                   <table className="w-full text-xs min-w-[800px]">
                     <thead className="sticky top-0 bg-slate-900 text-slate-400 text-[10px] uppercase">
@@ -724,9 +790,67 @@ export default function DossieApcnPage() {
               <section className="glow-card rounded-xl p-8 space-y-6">
                 <h3 className="text-lg font-semibold text-white">Exportações</h3>
                 <p className="text-sm text-slate-400">
-                  Baixe CSVs e o resumo em Markdown para colar na proposta de doutorado.
+                  Baixe CSVs, gráficos PNG e o resumo em Markdown para colar na proposta de doutorado.
                 </p>
                 <ExportButtons query={buildDossieQuery(filters)} />
+                <div className="pt-4 border-t border-slate-800 space-y-2">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold">Gráficos PNG (filtros atuais)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {producao?.producao_por_ano &&
+                      Object.keys(producao.producao_por_ano as object).length > 0 && (
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          onClick={() =>
+                            downloadChartPng({
+                              kind: "line",
+                              title: "Produção por ano",
+                              data: producao.producao_por_ano as Record<string, number>,
+                            })
+                          }
+                        >
+                          producao_por_ano.png
+                        </button>
+                      )}
+                    {financiamento?.financiamentos_por_agencia &&
+                      Object.keys(financiamento.financiamentos_por_agencia as object).length > 0 && (
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          onClick={() =>
+                            downloadChartPng({
+                              kind: "bar",
+                              title: "Financiamento por agência",
+                              data: financiamento.financiamentos_por_agencia as Record<string, number>,
+                              color: "#10b981",
+                            })
+                          }
+                        >
+                          financiamento_agencia.png
+                        </button>
+                      )}
+                    {lacunas?.lacunas_por_tipo &&
+                      Object.keys(lacunas.lacunas_por_tipo as object).length > 0 && (
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          onClick={() =>
+                            downloadChartPng({
+                              kind: "bar",
+                              title: "Lacunas por tipo",
+                              data: lacunas.lacunas_por_tipo as Record<string, number>,
+                              color: "#f59e0b",
+                            })
+                          }
+                        >
+                          lacunas_tipo.png
+                        </button>
+                      )}
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    Também disponível o botão PNG em cada gráfico nas abas do dossiê.
+                  </p>
+                </div>
                 {narrativas && (
                   <div className="space-y-4 pt-4 border-t border-slate-800">
                     <div className="flex items-center justify-between gap-4">

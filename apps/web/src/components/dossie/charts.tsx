@@ -1,5 +1,39 @@
 "use client";
 
+import { ImageDown } from "lucide-react";
+import { downloadChartPng, type ChartExportSpec } from "@/lib/chartExport";
+
+export function ChartPanel({
+  title,
+  exportSpec,
+  children,
+}: {
+  title: string;
+  exportSpec?: ChartExportSpec;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="glow-card rounded-xl p-5">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <h3 className="text-sm font-semibold text-slate-300">{title}</h3>
+        {exportSpec && (
+          <button
+            type="button"
+            title="Exportar PNG"
+            onClick={() =>
+              downloadChartPng(exportSpec, `${exportSpec.title.replace(/\s+/g, "_")}.png`)
+            }
+            className="flex items-center gap-1 text-[10px] px-2 py-1 border border-slate-700 rounded hover:border-indigo-600 text-slate-400"
+          >
+            <ImageDown className="w-3 h-3" /> PNG
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 interface BarChartProps {
   data: Record<string, number>;
   maxBars?: number;

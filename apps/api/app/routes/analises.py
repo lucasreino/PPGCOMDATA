@@ -14,16 +14,10 @@ from app.models.data import (
     Evento,
     Producao,
     Financiamento,
-    AlertaLacuna,
     Orientacao,
-    FormacaoAcademica,
-    Banca,
-    ProducaoTecnica,
-    PremioTitulo,
-    GrupoPesquisaDocente,
 )
-from app.models.enums import StatusValidacao, StatusOrientacao
 from app.auth import require_staff
+from app.services.indicator_service import IndicatorFilters, IndicatorService
 
 logger = logging.getLogger("ppgcomdata")
 
@@ -39,206 +33,17 @@ async def obter_estatisticas(
     _user=Depends(require_staff),
 ):
     """Computes aggregate statistical indicators for publications, projects, funding, and gaps.
-    
+
     Supports filtering by professor, research line, and year range.
     """
     try:
-        # Build base filters for different models
-        # 1. Base query for Professors if line is selected
-        prof_ids = None
-        if linha_pesquisa_id:
-            prof_statement = select(Professor.id).where(Professor.linha_pesquisa_id == linha_pesquisa_id)
-            prof_ids = session.exec(prof_statement).all()
-            if not prof_ids:
-                # Return empty stats if no professors belong to the selected line
-                return {
-                    "total_producoes": 0,
-                    "total_projetos": 0,
-                    "total_eventos": 0,
-                    "fomento_total": {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0},
-                    "producoes_por_tipo": {},
-                    "producoes_por_ano": {},
-                    "projetos_por_situacao": {},
-                    "fomento_por_agencia": {},
-                    "lacunas": {"total": 0, "resolvidas": 0, "pendentes": 0, "por_gravidade": {}},
-                    "total_orientacoes": 0,
-                    "orientacoes_concluidas": 0,
-                    "orientacoes_em_andamento": 0,
-                    "total_bancas": 0,
-                    "total_formacoes": 0,
-                    "producoes_por_qualis": {},
-                    "validacao_pendentes": {},
-                }
-
-        # Helper to apply professor filters
-        def apply_prof_filter(stmt, model):
-            if professor_id:
-                return stmt.where(model.professor_id == professor_id)
-            elif prof_ids is not None:
-                return stmt.where(model.professor_id.in_(prof_ids))
-            return stmt
-
-        # --- 1. PRODUÇÕES STATS ---
-        prod_stmt = select(Producao)
-        prod_stmt = apply_prof_filter(prod_stmt, Producao)
-        if ano_inicio:
-            prod_stmt = prod_stmt.where(Producao.ano >= ano_inicio)
-        if ano_fim:
-            prod_stmt = prod_stmt.where(Producao.ano <= ano_fim)
-        
-        producoes = session.exec(prod_stmt).all()
-        
-        total_producoes = len(producoes)
-        producoes_por_tipo = {}
-        producoes_por_ano = {}
-        producoes_por_qualis = {}
-
-        for p in producoes:
-            producoes_por_tipo[p.tipo] = producoes_por_tipo.get(p.tipo, 0) + 1
-            if p.ano:
-                ano_str = str(p.ano)
-                producoes_por_ano[ano_str] = producoes_por_ano.get(ano_str, 0) + 1
-            if p.qualis:
-                q = p.qualis.upper().strip()
-                producoes_por_qualis[q] = producoes_por_qualis.get(q, 0) + 1
-
-        # --- 2. PROJETOS STATS ---
-        proj_stmt = select(Projeto)
-        proj_stmt = apply_prof_filter(proj_stmt, Projeto)
-        if ano_inicio:
-            proj_stmt = proj_stmt.where(Projeto.ano_inicio >= ano_inicio)
-        if ano_fim:
-            proj_stmt = proj_stmt.where(Projeto.ano_inicio <= ano_fim)
-            
-        projetos = session.exec(proj_stmt).all()
-        total_projetos = len(projetos)
-        projetos_por_situacao = {}
-        
-        for pr in projetos:
-            situacao = pr.situacao or "Não especificada"
-            projetos_por_situacao[situacao] = projetos_por_situacao.get(situacao, 0) + 1
-
-        # --- 3. EVENTOS STATS ---
-        ev_stmt = select(Evento)
-        ev_stmt = apply_prof_filter(ev_stmt, Evento)
-        if ano_inicio:
-            ev_stmt = ev_stmt.where(Evento.ano >= ano_inicio)
-        if ano_fim:
-            ev_stmt = ev_stmt.where(Evento.ano <= ano_fim)
-        eventos = session.exec(ev_stmt).all()
-        total_eventos = len(eventos)
-        eventos_organizados = sum(1 for e in eventos if e.eh_organizacao)
-        eventos_participacao = total_eventos - eventos_organizados
-
-        # --- 4. FINANCIAMENTO / FOMENTO STATS ---
-        fin_stmt = select(Financiamento)
-        fin_stmt = apply_prof_filter(fin_stmt, Financiamento)
-        if ano_inicio:
-            fin_stmt = fin_stmt.where(Financiamento.ano >= ano_inicio)
-        if ano_fim:
-            fin_stmt = fin_stmt.where(Financiamento.ano <= ano_fim)
-            
-        financiamentos = session.exec(fin_stmt).all()
-        
-        fomento_total = {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0}
-        fomento_por_agencia = {}
-        
-        for f in financiamentos:
-            fomento_total["solicitado"] += f.valor_solicitado or 0.0
-            fomento_total["aprovado"] += f.valor_aprovado or 0.0
-            fomento_total["executado"] += f.valor_executado or 0.0
-            
-            agencia = f.agencia or f.fonte or "Outras/Não especificada"
-            agencia = agencia.upper().strip()
-            fomento_por_agencia[agencia] = fomento_por_agencia.get(agencia, 0.0) + (f.valor_aprovado or 0.0)
-
-        # Clean/round floating points
-        fomento_total = {k: round(v, 2) for k, v in fomento_total.items()}
-        fomento_por_agencia = {k: round(v, 2) for k, v in fomento_por_agencia.items()}
-
-        # --- 5. ALERTAS & LACUNAS STATS ---
-        lac_stmt = select(AlertaLacuna)
-        lac_stmt = apply_prof_filter(lac_stmt, AlertaLacuna)
-        lacunas = session.exec(lac_stmt).all()
-        
-        total_lacunas = len(lacunas)
-        resolvidas = sum(1 for l in lacunas if l.resolvido)
-        pendentes = total_lacunas - resolvidas
-        por_gravidade = {}
-        
-        for l in lacunas:
-            grav = l.gravidade.value if hasattr(l.gravidade, "value") else str(l.gravidade)
-            por_gravidade[grav] = por_gravidade.get(grav, 0) + 1
-
-        # --- 6. ORIENTAÇÕES / FORMAÇÃO / BANCAS ---
-        ori_stmt = apply_prof_filter(select(Orientacao), Orientacao)
-        orientacoes = session.exec(ori_stmt).all()
-        total_orientacoes = len(orientacoes)
-        orientacoes_concluidas = sum(
-            1 for o in orientacoes if o.status == StatusOrientacao.CONCLUIDA
+        filters = IndicatorFilters(
+            professor_id=professor_id,
+            linha_pesquisa_id=linha_pesquisa_id,
+            ano_inicio=ano_inicio,
+            ano_fim=ano_fim,
         )
-        orientacoes_em_andamento = sum(
-            1 for o in orientacoes if o.status == StatusOrientacao.EM_ANDAMENTO
-        )
-
-        ban_stmt = apply_prof_filter(select(Banca), Banca)
-        total_bancas = len(session.exec(ban_stmt).all())
-
-        form_stmt = apply_prof_filter(select(FormacaoAcademica), FormacaoAcademica)
-        total_formacoes = len(session.exec(form_stmt).all())
-
-        validacao_pendentes = {}
-        for key, model in (
-            ("projetos", Projeto),
-            ("eventos", Evento),
-            ("producoes", Producao),
-            ("financiamentos", Financiamento),
-            ("orientacoes", Orientacao),
-            ("formacoes_academicas", FormacaoAcademica),
-            ("bancas", Banca),
-            ("producoes_tecnicas", ProducaoTecnica),
-            ("premios", PremioTitulo),
-            ("grupos_pesquisa", GrupoPesquisaDocente),
-        ):
-            stmt = apply_prof_filter(select(model), model).where(
-                model.status_validacao == StatusValidacao.PENDENTE
-            )
-            validacao_pendentes[key] = len(session.exec(stmt).all())
-
-        return {
-            "total_producoes": total_producoes,
-            "total_projetos": total_projetos,
-            "total_eventos": total_eventos,
-            "eventos_organizados": eventos_organizados,
-            "eventos_participacao": eventos_participacao,
-            "total_producoes_tecnicas": len(
-                session.exec(apply_prof_filter(select(ProducaoTecnica), ProducaoTecnica)).all()
-            ),
-            "total_premios": len(
-                session.exec(apply_prof_filter(select(PremioTitulo), PremioTitulo)).all()
-            ),
-            "total_grupos_pesquisa": len(
-                session.exec(apply_prof_filter(select(GrupoPesquisaDocente), GrupoPesquisaDocente)).all()
-            ),
-            "fomento_total": fomento_total,
-            "producoes_por_tipo": producoes_por_tipo,
-            "producoes_por_ano": dict(sorted(producoes_por_ano.items())),
-            "projetos_por_situacao": projetos_por_situacao,
-            "fomento_por_agencia": fomento_por_agencia,
-            "lacunas": {
-                "total": total_lacunas,
-                "resolvidas": resolvidas,
-                "pendentes": pendentes,
-                "por_gravidade": por_gravidade,
-            },
-            "total_orientacoes": total_orientacoes,
-            "orientacoes_concluidas": orientacoes_concluidas,
-            "orientacoes_em_andamento": orientacoes_em_andamento,
-            "total_bancas": total_bancas,
-            "total_formacoes": total_formacoes,
-            "producoes_por_qualis": producoes_por_qualis,
-            "validacao_pendentes": validacao_pendentes,
-        }
+        return IndicatorService(session, filters).get_analytics_stats()
     except Exception as e:
         logger.error(f"Erro ao computar estatísticas: {str(e)}")
         raise HTTPException(
