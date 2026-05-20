@@ -21,7 +21,11 @@ from app.models.data import (
     PremioTitulo,
     GrupoPesquisaDocente,
     RelatorioProjeto,
+    EventoInstitucional,
+    Egresso,
+    ProcessoSeletivo,
 )
+from app.services.proposal_lacuna_service import merge_gaps_with_db
 from app.models.enums import (
     StatusValidacao,
     StatusOrientacao,
@@ -213,9 +217,11 @@ class IndicatorService:
                 "projetos": True,
                 "financiamento": True,
                 "eventos": True,
-                "egressos": False,
-                "selecao": False,
+                "egressos": len(self.session.exec(select(Egresso)).all()) > 0,
+                "selecao": len(self.session.exec(select(ProcessoSeletivo)).all()) > 0,
             },
+            "demanda": self.get_selection_indicators(),
+            "egressos_resumo": self.get_egress_indicators(),
             "filtros": self.filters.query_params(),
         }
 
@@ -599,17 +605,52 @@ class IndicatorService:
                 }
             )
 
+        instit = list(self.session.exec(select(EventoInstitucional)).all())
+        inst_por_ano: Dict[str, int] = {}
+        inscritos_por_edicao: Dict[str, int] = {}
+        inst_tabela: List[Dict[str, Any]] = []
+        total_inscritos = 0
+        total_trabalhos = 0
+        for ie in instit:
+            if ie.ano:
+                inst_por_ano[str(ie.ano)] = inst_por_ano.get(str(ie.ano), 0) + 1
+            label = f"{ie.nome} ({ie.edicao or ie.ano or '?'})"
+            if ie.numero_inscritos:
+                inscritos_por_edicao[label] = ie.numero_inscritos
+                total_inscritos += ie.numero_inscritos
+            if ie.numero_trabalhos:
+                total_trabalhos += ie.numero_trabalhos
+            inst_tabela.append(
+                {
+                    "nome": ie.nome,
+                    "edicao": ie.edicao,
+                    "ano": ie.ano,
+                    "tema": ie.tema,
+                    "abrangencia": ie.abrangencia,
+                    "inscritos": ie.numero_inscritos,
+                    "trabalhos": ie.numero_trabalhos,
+                    "financiamento": bool(ie.valor_aprovado or ie.agencias_financiadoras),
+                    "agencias": ie.agencias_financiadoras,
+                    "local": ie.local,
+                }
+            )
+
         return {
-            "total_eventos": len(eventos),
+            "total_eventos": len(eventos) + len(instit),
+            "eventos_lattes": len(eventos),
+            "eventos_institucionais_count": len(instit),
             "eventos_organizados": organizados,
             "eventos_participacao": len(eventos) - organizados,
             "eventos_nacionais": nacionais,
             "eventos_internacionais": internacionais,
             "eventos_com_financiamento": com_fin,
+            "total_inscritos_institucionais": total_inscritos,
+            "total_trabalhos_institucionais": total_trabalhos,
             "eventos_por_ano": dict(sorted(por_ano.items())),
+            "eventos_institucionais_por_ano": dict(sorted(inst_por_ano.items())),
+            "inscritos_por_edicao": inscritos_por_edicao,
             "eventos_por_docente": por_docente,
-            "eventos_institucionais": [],
-            "nota": "Eventos institucionais (SIMCOM) serão cadastrados na Etapa 6.",
+            "eventos_institucionais_tabela": inst_tabela,
             "tabela": tabela,
             "filtros": self.filters.query_params(),
         }
@@ -617,15 +658,20 @@ class IndicatorService:
     def _empty_events(self) -> Dict[str, Any]:
         return {
             "total_eventos": 0,
+            "eventos_lattes": 0,
+            "eventos_institucionais_count": 0,
             "eventos_organizados": 0,
             "eventos_participacao": 0,
             "eventos_nacionais": 0,
             "eventos_internacionais": 0,
             "eventos_com_financiamento": 0,
+            "total_inscritos_institucionais": 0,
+            "total_trabalhos_institucionais": 0,
             "eventos_por_ano": {},
+            "eventos_institucionais_por_ano": {},
+            "inscritos_por_edicao": {},
             "eventos_por_docente": {},
-            "eventos_institucionais": [],
-            "nota": "Eventos institucionais (SIMCOM) serão cadastrados na Etapa 6.",
+            "eventos_institucionais_tabela": [],
             "tabela": [],
             "filtros": self.filters.query_params(),
         }
@@ -635,48 +681,41 @@ class IndicatorService:
             return self._empty_gaps()
 
         lacunas = self._fetch_lacunas()
-        profs = {p.id: p for p in self._professores()}
+        prof_id = self.filters.professor_id
+        merged = merge_gaps_with_db(self.session, lacunas, prof_id)
 
         por_tipo: Dict[str, int] = {}
         por_gravidade: Dict[str, int] = {}
         por_docente: Dict[str, int] = {}
-        tabela: List[Dict[str, Any]] = []
+        por_secao: Dict[str, int] = {}
 
-        for l in lacunas:
-            por_tipo[l.tipo_lacuna] = por_tipo.get(l.tipo_lacuna, 0) + 1
-            grav = _enum_val(l.gravidade)
+        for row in merged:
+            if row.get("resolvido"):
+                continue
+            por_tipo[row["tipo_lacuna"]] = por_tipo.get(row["tipo_lacuna"], 0) + 1
+            grav = row.get("gravidade", "media")
             por_gravidade[grav] = por_gravidade.get(grav, 0) + 1
-            nome = profs[l.professor_id].nome_completo if l.professor_id in profs else "?"
-            if not l.resolvido:
-                por_docente[nome] = por_docente.get(nome, 0) + 1
-            tabela.append(
-                {
-                    "tipo": l.tipo_lacuna,
-                    "descricao": l.descricao,
-                    "gravidade": grav,
-                    "docente": nome,
-                    "resolvido": l.resolvido,
-                    "acao_recomendada": l.acao_recomendada,
-                }
-            )
+            sec = row.get("secao_documento") or "Geral"
+            por_secao[sec] = por_secao.get(sec, 0) + 1
 
-        abertas = sum(1 for l in lacunas if not l.resolvido)
+        abertas = sum(1 for r in merged if not r.get("resolvido"))
         criticas = sum(
-            1
-            for l in lacunas
-            if not l.resolvido and _enum_val(l.gravidade) == "alta"
+            1 for r in merged if not r.get("resolvido") and r.get("gravidade") == "alta"
         )
+        virtuais = sum(1 for r in merged if r.get("virtual"))
 
         return {
-            "total_lacunas": len(lacunas),
+            "total_lacunas": len(merged),
             "lacunas_abertas": abertas,
             "lacunas_criticas": criticas,
-            "lacunas_resolvidas": len(lacunas) - abertas,
+            "lacunas_resolvidas": len(merged) - abertas,
+            "lacunas_virtuais": virtuais,
             "lacunas_por_tipo": por_tipo,
             "lacunas_por_gravidade": por_gravidade,
+            "lacunas_por_secao": por_secao,
             "lacunas_por_docente": por_docente,
             "dados_pendentes_validacao": self._count_validation_pending(),
-            "tabela": tabela,
+            "tabela": merged,
             "filtros": self.filters.query_params(),
         }
 
@@ -808,5 +847,135 @@ class IndicatorService:
             "total_docentes": len(tabela),
             "docentes_por_linha": por_linha,
             "tabela": sorted(tabela, key=lambda x: x["nome"]),
+            "filtros": self.filters.query_params(),
+        }
+
+    def get_egress_indicators(self) -> Dict[str, Any]:
+        egressos = list(self.session.exec(select(Egresso)).all())
+        por_ano: Dict[str, int] = {}
+        por_setor: Dict[str, int] = {}
+        por_estado: Dict[str, int] = {}
+        por_genero: Dict[str, int] = {}
+        municipios = set()
+        tabela: List[Dict[str, Any]] = []
+
+        em_doutorado = 0
+        ensino_sup = 0
+        publico = 0
+        terceiro = 0
+
+        for e in egressos:
+            if e.ano_conclusao:
+                por_ano[str(e.ano_conclusao)] = por_ano.get(str(e.ano_conclusao), 0) + 1
+            if e.setor_atuacao:
+                por_setor[e.setor_atuacao] = por_setor.get(e.setor_atuacao, 0) + 1
+            if e.estado_atuacao:
+                por_estado[e.estado_atuacao] = por_estado.get(e.estado_atuacao, 0) + 1
+            if e.genero:
+                por_genero[e.genero] = por_genero.get(e.genero, 0) + 1
+            if e.cidade_atuacao:
+                municipios.add(f"{e.cidade_atuacao}/{e.estado_atuacao or ''}")
+            if e.esta_em_doutorado:
+                em_doutorado += 1
+            setor = (e.setor_atuacao or "").lower()
+            if "ensino" in setor or "universidade" in setor:
+                ensino_sup += 1
+            if "público" in setor or "publico" in setor:
+                publico += 1
+            if "terceiro" in setor or "ong" in setor:
+                terceiro += 1
+            tabela.append(
+                {
+                    "id": str(e.id),
+                    "nome": e.nome,
+                    "ano_conclusao": e.ano_conclusao,
+                    "cidade_origem": e.cidade_origem,
+                    "estado_origem": e.estado_origem,
+                    "setor_atuacao": e.setor_atuacao,
+                    "atividade_atual": e.atividade_atual,
+                    "esta_em_doutorado": e.esta_em_doutorado,
+                    "instituicao_doutorado": e.instituicao_doutorado,
+                    "genero": e.genero,
+                }
+            )
+
+        return {
+            "total_egressos": len(egressos),
+            "egressos_em_doutorado": em_doutorado,
+            "egressos_ensino_superior": ensino_sup,
+            "egressos_setor_publico": publico,
+            "egressos_terceiro_setor": terceiro,
+            "municipios_alcancados": len(municipios),
+            "egressos_por_ano": dict(sorted(por_ano.items())),
+            "egressos_por_setor": por_setor,
+            "egressos_por_estado": por_estado,
+            "perfil_genero": por_genero,
+            "tabela": tabela,
+            "filtros": self.filters.query_params(),
+        }
+
+    def get_selection_indicators(self) -> Dict[str, Any]:
+        processos = list(self.session.exec(select(ProcessoSeletivo)).all())
+        por_ano: Dict[str, Dict[str, int]] = {}
+        total_inscritos = 0
+        total_vagas = 0
+        total_aprovados = 0
+        total_matriculados = 0
+        total_cotistas = 0
+        relacoes: List[float] = []
+
+        for p in processos:
+            total_inscritos += p.inscritos
+            total_vagas += p.vagas
+            total_aprovados += p.aprovados or 0
+            total_matriculados += p.matriculados or 0
+            total_cotistas += p.cotistas or 0
+            if p.vagas > 0:
+                relacoes.append(p.inscritos / p.vagas)
+            ano = str(p.ano)
+            if ano not in por_ano:
+                por_ano[ano] = {"inscritos": 0, "vagas": 0, "aprovados": 0, "matriculados": 0}
+            por_ano[ano]["inscritos"] += p.inscritos
+            por_ano[ano]["vagas"] += p.vagas
+            por_ano[ano]["aprovados"] += p.aprovados or 0
+            por_ano[ano]["matriculados"] += p.matriculados or 0
+
+        relacao_media = sum(relacoes) / len(relacoes) if relacoes else 0.0
+        taxa_aprovacao = (
+            total_aprovados / total_inscritos if total_inscritos else 0.0
+        )
+        taxa_matricula = (
+            total_matriculados / total_aprovados if total_aprovados else 0.0
+        )
+
+        return {
+            "total_processos": len(processos),
+            "total_inscritos": total_inscritos,
+            "total_vagas": total_vagas,
+            "total_aprovados": total_aprovados,
+            "total_matriculados": total_matriculados,
+            "total_cotistas": total_cotistas,
+            "relacao_media_candidato_vaga": round(relacao_media, 2),
+            "taxa_aprovacao": round(taxa_aprovacao, 4),
+            "taxa_matricula": round(taxa_matricula, 4),
+            "percentual_cotistas": round(
+                total_cotistas / total_matriculados if total_matriculados else 0, 4
+            ),
+            "por_ano": por_ano,
+            "tabela": [
+                {
+                    "id": str(p.id),
+                    "ano": p.ano,
+                    "nivel": p.nivel,
+                    "vagas": p.vagas,
+                    "inscritos": p.inscritos,
+                    "aprovados": p.aprovados,
+                    "matriculados": p.matriculados,
+                    "relacao_candidato_vaga": round(p.inscritos / p.vagas, 2)
+                    if p.vagas
+                    else None,
+                }
+                for p in processos
+            ],
             "filtros": self.filters.query_params(),
         }

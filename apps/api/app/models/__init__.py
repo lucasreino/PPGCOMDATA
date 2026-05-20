@@ -10,4 +10,5 @@ from app.models.data import (
     Producao, Financiamento, RelatorioProjeto, Anexo, AlertaLacuna, LogValidacao,
     FormacaoAcademica, Orientacao, Banca, PerfilLattes,
     ProducaoTecnica, PremioTitulo, GrupoPesquisaDocente,
+    EventoInstitucional, Egresso, ProcessoSeletivo,
 )

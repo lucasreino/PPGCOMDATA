@@ -1,11 +1,13 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlmodel import Session
 
 from app.auth import require_staff
 from app.database import get_session
+from app.services.export_service import ExportService
 from app.services.indicator_service import IndicatorFilters, IndicatorService
+from app.services.narrative_service import NarrativeService
 
 router = APIRouter(prefix="/dossie-apcn", tags=["Dossiê APCN"])
 
@@ -117,3 +119,134 @@ async def dossie_linha(
     if data.get("erro"):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=data["erro"])
     return data
+
+
+@router.get("/egressos")
+async def dossie_egressos(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return _svc(session, filters).get_egress_indicators()
+
+
+@router.get("/demanda")
+async def dossie_demanda(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return _svc(session, filters).get_selection_indicators()
+
+
+@router.get("/narrativas")
+async def dossie_narrativas(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return NarrativeService(session, filters).generate_all()
+
+
+def _export_csv(session: Session, filters: IndicatorFilters, kind: str) -> str:
+    exp = ExportService(session, filters)
+    return {
+        "producao": exp.producao_csv,
+        "financiamento": exp.financiamento_csv,
+        "projetos": exp.projetos_csv,
+        "eventos": exp.eventos_csv,
+        "lacunas": exp.lacunas_csv,
+        "egressos": exp.egressos_csv,
+    }[kind]()
+
+
+@router.get("/export/producao.csv")
+async def export_producao_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "producao"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=producao_docente.csv"},
+    )
+
+
+@router.get("/export/financiamento.csv")
+async def export_financiamento_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "financiamento"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=financiamento.csv"},
+    )
+
+
+@router.get("/export/projetos.csv")
+async def export_projetos_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "projetos"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=projetos.csv"},
+    )
+
+
+@router.get("/export/eventos.csv")
+async def export_eventos_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "eventos"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=eventos.csv"},
+    )
+
+
+@router.get("/export/lacunas.csv")
+async def export_lacunas_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "lacunas"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=lacunas.csv"},
+    )
+
+
+@router.get("/export/egressos.csv")
+async def export_egressos_csv(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    return Response(
+        content=_export_csv(session, filters, "egressos"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=egressos.csv"},
+    )
+
+
+@router.get("/export/resumo.md")
+async def export_resumo_md(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    md = ExportService(session, filters).resumo_markdown()
+    return Response(
+        content=md,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=resumo_ppgcom.md"},
+    )

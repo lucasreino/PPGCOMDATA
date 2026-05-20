@@ -23,6 +23,7 @@ import {
   type FilterState,
 } from "@/components/dossie/DossieFilters";
 import { KpiCard, SimpleBarChart, SimpleLineChart } from "@/components/dossie/charts";
+import { CatalogPanel, ExportButtons } from "@/components/dossie/CatalogPanel";
 
 const TABS = [
   { id: "visao", label: "Visão Geral", icon: LayoutDashboard },
@@ -67,6 +68,9 @@ export default function DossieApcnPage() {
   const [financiamento, setFinanciamento] = useState<Record<string, unknown> | null>(null);
   const [eventos, setEventos] = useState<Record<string, unknown> | null>(null);
   const [lacunas, setLacunas] = useState<Record<string, unknown> | null>(null);
+  const [egressos, setEgressos] = useState<Record<string, unknown> | null>(null);
+  const [demanda, setDemanda] = useState<Record<string, unknown> | null>(null);
+  const [narrativas, setNarrativas] = useState<Record<string, string> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -85,7 +89,7 @@ export default function DossieApcnPage() {
     setError(null);
     const q = buildDossieQuery(filters);
     try {
-      const [ov, co, pr, pj, fi, ev, la] = await Promise.all([
+      const [ov, co, pr, pj, fi, ev, la, eg, de, na] = await Promise.all([
         apiFetch(`/dossie-apcn/overview${q}`),
         apiFetch(`/dossie-apcn/corpo-docente${q}`),
         apiFetch(`/dossie-apcn/producao${q}`),
@@ -93,6 +97,9 @@ export default function DossieApcnPage() {
         apiFetch(`/dossie-apcn/financiamento${q}`),
         apiFetch(`/dossie-apcn/eventos${q}`),
         apiFetch(`/dossie-apcn/lacunas${q}`),
+        apiFetch(`/dossie-apcn/egressos${q}`),
+        apiFetch(`/dossie-apcn/demanda${q}`),
+        apiFetch(`/dossie-apcn/narrativas${q}`),
       ]);
       const parse = async (res: Response, name: string) => {
         if (!res.ok) throw new Error(`Falha ao carregar ${name}`);
@@ -105,6 +112,9 @@ export default function DossieApcnPage() {
       setFinanciamento(await parse(fi, "financiamento"));
       setEventos(await parse(ev, "eventos"));
       setLacunas(await parse(la, "lacunas"));
+      setEgressos(await parse(eg, "egressos"));
+      setDemanda(await parse(de, "demanda"));
+      setNarrativas(await parse(na, "narrativas"));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar indicadores");
     } finally {
@@ -256,9 +266,22 @@ export default function DossieApcnPage() {
                     <SimpleLineChart data={prod.producao_por_ano} />
                   </div>
                 )}
-                <p className="text-xs text-slate-500">
-                  Módulos em breve: egressos e processos seletivos (Etapas 7–8 da proposta).
-                </p>
+                {demanda && (demanda.total_processos as number) > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <KpiCard label="Inscritos (seleção)" value={demanda.total_inscritos as number} />
+                    <KpiCard label="Vagas" value={demanda.total_vagas as number} />
+                    <KpiCard
+                      label="Candidato/vaga"
+                      value={demanda.relacao_media_candidato_vaga as number}
+                    />
+                    <KpiCard label="Matriculados" value={demanda.total_matriculados as number} accent="emerald" />
+                  </div>
+                )}
+                {narrativas?.visao_geral && (
+                  <div className="glow-card rounded-xl p-5 text-sm text-slate-300 leading-relaxed">
+                    {narrativas.visao_geral}
+                  </div>
+                )}
               </section>
             )}
 
@@ -451,34 +474,107 @@ export default function DossieApcnPage() {
 
             {tab === "eventos" && eventos && (
               <section className="space-y-6">
+                <CatalogPanel kind="eventos-institucionais" onImported={loadData} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <KpiCard label="Total eventos" value={(eventos.total_eventos as number) ?? 0} />
-                  <KpiCard label="Organizados" value={(eventos.eventos_organizados as number) ?? 0} accent="purple" />
-                  <KpiCard label="Nacionais" value={(eventos.eventos_nacionais as number) ?? 0} />
-                  <KpiCard label="Internacionais" value={(eventos.eventos_internacionais as number) ?? 0} />
+                  <KpiCard
+                    label="Institucionais"
+                    value={(eventos.eventos_institucionais_count as number) ?? 0}
+                    accent="purple"
+                  />
+                  <KpiCard
+                    label="Inscritos (prog.)"
+                    value={(eventos.total_inscritos_institucionais as number) ?? 0}
+                  />
+                  <KpiCard label="Trabalhos apresentados" value={(eventos.total_trabalhos_institucionais as number) ?? 0} />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por ano</h3>
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Lattes — por ano</h3>
                     <SimpleLineChart data={(eventos.eventos_por_ano as Record<string, number>) || {}} color="#a855f7" />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por docente</h3>
-                    <SimpleBarChart data={(eventos.eventos_por_docente as Record<string, number>) || {}} color="#a855f7" />
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Inscritos por edição (SIMCOM…)</h3>
+                    <SimpleBarChart
+                      data={(eventos.inscritos_por_edicao as Record<string, number>) || {}}
+                      color="#a855f7"
+                    />
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">{String(eventos.nota || "")}</p>
+                {(eventos.eventos_institucionais_tabela as Array<Record<string, unknown>>)?.length > 0 && (
+                  <div className="glow-card rounded-xl overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase">
+                        <tr>
+                          <th className="p-2 text-left">Evento</th>
+                          <th className="p-2">Edição</th>
+                          <th className="p-2">Ano</th>
+                          <th className="p-2 text-right">Inscritos</th>
+                          <th className="p-2 text-right">Trabalhos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(eventos.eventos_institucionais_tabela as Array<Record<string, unknown>>).map(
+                          (row, i) => (
+                            <tr key={i} className="border-t border-slate-800">
+                              <td className="p-2">{String(row.nome)}</td>
+                              <td className="p-2 text-center">{String(row.edicao ?? "—")}</td>
+                              <td className="p-2 text-center">{String(row.ano ?? "—")}</td>
+                              <td className="p-2 text-right">{String(row.inscritos ?? "—")}</td>
+                              <td className="p-2 text-right">{String(row.trabalhos ?? "—")}</td>
+                            </tr>
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             )}
 
-            {tab === "egressos" && (
-              <section className="glow-card rounded-xl p-10 text-center space-y-3">
-                <GraduationCap className="w-12 h-12 text-slate-600 mx-auto" />
-                <h3 className="text-lg font-semibold text-slate-300">Egressos e impacto regional</h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Previsto na Etapa 7: cadastro de egressos + importação CSV. Os indicadores do Lattes já
-                  estão disponíveis nas demais abas.
-                </p>
+            {tab === "egressos" && egressos && (
+              <section className="space-y-6">
+                <CatalogPanel kind="egressos" onImported={loadData} />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <KpiCard label="Total egressos" value={(egressos.total_egressos as number) ?? 0} />
+                  <KpiCard label="Em doutorado" value={(egressos.egressos_em_doutorado as number) ?? 0} accent="indigo" />
+                  <KpiCard label="Ensino superior" value={(egressos.egressos_ensino_superior as number) ?? 0} />
+                  <KpiCard label="Municípios" value={(egressos.municipios_alcancados as number) ?? 0} />
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="glow-card rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por ano de conclusão</h3>
+                    <SimpleBarChart data={(egressos.egressos_por_ano as Record<string, number>) || {}} />
+                  </div>
+                  <div className="glow-card rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por setor</h3>
+                    <SimpleBarChart data={(egressos.egressos_por_setor as Record<string, number>) || {}} color="#10b981" />
+                  </div>
+                </div>
+                <CatalogPanel kind="processos-seletivos" onImported={loadData} />
+                {demanda && (
+                  <div className="glow-card rounded-xl p-5 space-y-3">
+                    <h3 className="text-sm font-semibold text-slate-300">Demanda discente (seleção)</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <span className="text-slate-500">Relação candidato/vaga</span>
+                        <p className="text-lg font-bold text-white">{demanda.relacao_media_candidato_vaga as number}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Taxa aprovação</span>
+                        <p className="text-lg font-bold text-white">
+                          {((demanda.taxa_aprovacao as number) * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Taxa matrícula</span>
+                        <p className="text-lg font-bold text-white">
+                          {((demanda.taxa_matricula as number) * 100).toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
             )}
 
@@ -488,7 +584,8 @@ export default function DossieApcnPage() {
                   <KpiCard label="Abertas" value={lac.lacunas_abertas ?? 0} accent="amber" />
                   <KpiCard label="Críticas" value={lac.lacunas_criticas ?? 0} accent="rose" />
                   <KpiCard label="Resolvidas" value={lac.lacunas_resolvidas ?? 0} accent="emerald" />
-                  <KpiCard label="Total" value={(lacunas?.total_lacunas as number) ?? 0} />
+                  <KpiCard label="Total" value={(lac.total_lacunas as number) ?? 0} />
+                  <KpiCard label="Checklist APCN" value={(lac.lacunas_virtuais as number) ?? 0} accent="rose" />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
@@ -496,15 +593,16 @@ export default function DossieApcnPage() {
                     <SimpleBarChart data={lac.lacunas_por_tipo || {}} color="#f59e0b" />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por docente (abertas)</h3>
-                    <SimpleBarChart data={lac.lacunas_por_docente || {}} color="#ef4444" />
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por seção do documento</h3>
+                    <SimpleBarChart data={(lac.lacunas_por_secao as Record<string, number>) || {}} color="#ef4444" />
                   </div>
                 </div>
                 <div className="glow-card rounded-xl overflow-x-auto max-h-[360px]">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs min-w-[700px]">
                     <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase sticky top-0">
                       <tr>
                         <th className="p-2 text-left">Tipo</th>
+                        <th className="p-2 text-left">Seção</th>
                         <th className="p-2 text-left">Descrição</th>
                         <th className="p-2">Gravidade</th>
                         <th className="p-2">Status</th>
@@ -513,12 +611,15 @@ export default function DossieApcnPage() {
                     <tbody>
                       {(lac.tabela || []).slice(0, 80).map((row, i) => (
                         <tr key={i} className="border-t border-slate-800">
-                          <td className="p-2 font-mono text-[10px]">{String(row.tipo)}</td>
-                          <td className="p-2 text-slate-300">{String(row.descricao)}</td>
+                          <td className="p-2 font-mono text-[10px]">{String(row.tipo_lacuna ?? row.tipo)}</td>
+                          <td className="p-2 text-slate-400">{String(row.secao_documento ?? "—")}</td>
+                          <td className="p-2 text-slate-300 max-w-xs truncate">{String(row.descricao)}</td>
                           <td className="p-2 text-center">{String(row.gravidade)}</td>
                           <td className="p-2 text-center">
                             {row.resolvido ? (
                               <span className="text-emerald-400">OK</span>
+                            ) : row.virtual ? (
+                              <span className="text-rose-400">APCN</span>
                             ) : (
                               <span className="text-amber-400">Aberta</span>
                             )}
@@ -532,17 +633,23 @@ export default function DossieApcnPage() {
             )}
 
             {tab === "exportacoes" && (
-              <section className="glow-card rounded-xl p-8 space-y-4">
+              <section className="glow-card rounded-xl p-8 space-y-6">
                 <h3 className="text-lg font-semibold text-white">Exportações</h3>
                 <p className="text-sm text-slate-400">
-                  Etapa 10 da proposta: CSV, Markdown e PNG. Enquanto isso, use os dados desta tela e a aba
-                  &quot;Gerar Relatório com IA&quot; na página principal.
+                  Baixe CSVs e o resumo em Markdown para colar na proposta de doutorado.
                 </p>
-                <ul className="text-xs text-slate-500 space-y-1 list-disc list-inside">
-                  <li>GET /dossie-apcn/producao — JSON para planilhas</li>
-                  <li>GET /dossie-apcn/financiamento — matriz de fomento</li>
-                  <li>GET /dossie-apcn/lacunas — checklist de evidências</li>
-                </ul>
+                <ExportButtons query={buildDossieQuery(filters)} />
+                {narrativas && (
+                  <div className="space-y-4 pt-4 border-t border-slate-800">
+                    <h4 className="text-sm font-semibold text-slate-300">Textos-síntese (narrativas)</h4>
+                    {Object.entries(narrativas).map(([key, text]) => (
+                      <div key={key} className="text-xs text-slate-400 leading-relaxed">
+                        <span className="text-indigo-400 font-bold uppercase block mb-1">{key}</span>
+                        {text}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
           </>

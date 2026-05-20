@@ -8,6 +8,7 @@ from app.models.enums import (
     NivelFormacao, TipoOrientacao, StatusOrientacao, PapelOrientacao,
     TipoBanca, NivelBanca, PapelBanca, EscopoEvento,
     TipoProducaoTecnica, TipoPremio, PapelGrupoPesquisa,
+    StatusTratamentoLacuna, TipoImpactoProjeto,
 )
 from app.models.core import Professor, LinhaPesquisa
 
@@ -232,6 +233,14 @@ class RelatorioProjeto(UUIDModel, TimestampModel, table=True):
     impacto_social: Optional[str] = Field(default=None, nullable=True)
     observacoes: Optional[str] = Field(default=None, nullable=True)
 
+    tema_principal: Optional[str] = Field(default=None, nullable=True)
+    publico_atendido: Optional[str] = Field(default=None, nullable=True)
+    territorio_impactado: Optional[str] = Field(default=None, nullable=True)
+    ods_relacionado: Optional[str] = Field(default=None, nullable=True)
+    produto_gerado: Optional[str] = Field(default=None, nullable=True)
+    tipo_impacto: Optional[TipoImpactoProjeto] = Field(default=None, nullable=True)
+    possui_financiamento_confirmado: Optional[bool] = Field(default=None, nullable=True)
+
     # Relationships
     professor: Professor = Relationship(back_populates="relatorios_projeto")
     linha_pesquisa: Optional[LinhaPesquisa] = Relationship(back_populates="relatorios")
@@ -270,6 +279,17 @@ class AlertaLacuna(UUIDModel, TimestampModel, table=True):
     gravidade: GravidadeLacuna = Field(default=GravidadeLacuna.MEDIA, index=True, nullable=False)
     acao_recomendada: Optional[str] = Field(default=None, nullable=True)
     resolvido: bool = Field(default=False, index=True, nullable=False)
+
+    secao_documento: Optional[str] = Field(default=None, nullable=True, index=True)
+    entidade_relacionada: Optional[str] = Field(default=None, nullable=True)
+    entidade_id: Optional[str] = Field(default=None, nullable=True, index=True)
+    sugestao_de_correcao: Optional[str] = Field(default=None, nullable=True)
+    prioridade: Optional[str] = Field(default=None, nullable=True)
+    responsavel: Optional[str] = Field(default=None, nullable=True)
+    prazo: Optional[date] = Field(default=None, nullable=True)
+    status_tratamento: Optional[StatusTratamentoLacuna] = Field(
+        default=StatusTratamentoLacuna.ABERTA, nullable=True, index=True
+    )
 
     # Relationships
     professor: Professor = Relationship(back_populates="alertas_lacunas")
@@ -451,6 +471,62 @@ class PerfilLattes(UUIDModel, TimestampModel, table=True):
 
     professor: Professor = Relationship(back_populates="perfis_lattes")
     upload: Optional[CurriculoUpload] = Relationship(back_populates="perfis_lattes")
+
+
+class EventoInstitucional(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "eventos_institucionais"
+
+    nome: str = Field(nullable=False, index=True)
+    edicao: Optional[str] = Field(default=None, nullable=True)
+    ano: Optional[int] = Field(default=None, index=True, nullable=True)
+    tema: Optional[str] = Field(default=None, nullable=True)
+    data_inicio: Optional[date] = Field(default=None, nullable=True)
+    data_fim: Optional[date] = Field(default=None, nullable=True)
+    local: Optional[str] = Field(default=None, nullable=True)
+    abrangencia: Optional[str] = Field(default=None, nullable=True)
+    numero_inscritos: Optional[int] = Field(default=None, nullable=True)
+    numero_trabalhos: Optional[int] = Field(default=None, nullable=True)
+    numero_convidados: Optional[int] = Field(default=None, nullable=True)
+    agencias_financiadoras: Optional[str] = Field(default=None, nullable=True)
+    valor_aprovado: Optional[float] = Field(default=None, nullable=True)
+    valor_executado: Optional[float] = Field(default=None, nullable=True)
+    descricao: Optional[str] = Field(default=None, nullable=True)
+
+
+class Egresso(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "egressos"
+
+    nome: str = Field(nullable=False, index=True)
+    ano_ingresso: Optional[int] = Field(default=None, nullable=True)
+    ano_conclusao: Optional[int] = Field(default=None, index=True, nullable=True)
+    cidade_origem: Optional[str] = Field(default=None, nullable=True)
+    estado_origem: Optional[str] = Field(default=None, nullable=True)
+    genero: Optional[str] = Field(default=None, nullable=True)
+    raca_cor: Optional[str] = Field(default=None, nullable=True)
+    escola_origem: Optional[str] = Field(default=None, nullable=True)
+    ingresso_por_cota: bool = Field(default=False, nullable=False)
+    atividade_atual: Optional[str] = Field(default=None, nullable=True)
+    instituicao_atual: Optional[str] = Field(default=None, nullable=True)
+    cidade_atuacao: Optional[str] = Field(default=None, nullable=True)
+    estado_atuacao: Optional[str] = Field(default=None, nullable=True)
+    setor_atuacao: Optional[str] = Field(default=None, nullable=True)
+    esta_em_doutorado: bool = Field(default=False, nullable=False)
+    instituicao_doutorado: Optional[str] = Field(default=None, nullable=True)
+    impacto_social_resumo: Optional[str] = Field(default=None, nullable=True)
+
+
+class ProcessoSeletivo(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "processos_seletivos"
+
+    ano: int = Field(index=True, nullable=False)
+    nivel: str = Field(nullable=False, index=True)
+    vagas: int = Field(nullable=False)
+    inscritos: int = Field(nullable=False)
+    inscricoes_deferidas: Optional[int] = Field(default=None, nullable=True)
+    aprovados: Optional[int] = Field(default=None, nullable=True)
+    matriculados: Optional[int] = Field(default=None, nullable=True)
+    cotistas: Optional[int] = Field(default=None, nullable=True)
+    observacoes: Optional[str] = Field(default=None, nullable=True)
 
 
 class LogValidacao(UUIDModel, table=True):

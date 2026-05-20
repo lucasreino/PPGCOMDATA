@@ -145,3 +145,14 @@ class PapelGrupoPesquisa(str, Enum):
     VICE_LIDER = "vice_lider"
     MEMBRO = "membro"
     OUTRO = "outro"
+
+class StatusTratamentoLacuna(str, Enum):
+    ABERTA = "aberta"
+    EM_ANALISE = "em_analise"
+    RESOLVIDA = "resolvida"
+
+class TipoImpactoProjeto(str, Enum):
+    LOCAL = "local"
+    REGIONAL = "regional"
+    NACIONAL = "nacional"
+    INTERNACIONAL = "internacional"
