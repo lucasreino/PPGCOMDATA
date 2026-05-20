@@ -2,7 +2,7 @@ import httpx
 import json
 import logging
 from datetime import date, datetime
-from typing import Dict, Any, Type
+from typing import Any, Dict, Optional, Type
 
 from pydantic import BaseModel
 from sqlmodel import Session, select
