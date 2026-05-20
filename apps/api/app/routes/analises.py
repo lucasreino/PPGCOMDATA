@@ -11,6 +11,7 @@ from app.config import settings
 from app.models.core import Professor, LinhaPesquisa
 from app.models.data import Projeto, Evento, Producao, Financiamento, AlertaLacuna
 from app.models.enums import StatusValidacao
+from app.auth import require_staff
 
 logger = logging.getLogger("ppgcomdata")
 
@@ -22,7 +23,8 @@ async def obter_estatisticas(
     linha_pesquisa_id: Optional[str] = None,
     ano_inicio: Optional[int] = None,
     ano_fim: Optional[int] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Computes aggregate statistical indicators for publications, projects, funding, and gaps.
     
@@ -169,7 +171,8 @@ async def obter_estatisticas(
 @router.post("/relatorio/gerar")
 async def gerar_relatorio_ia(
     payload: Dict[str, Any],
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Generates an academic synthesis or executive report using the Gemini 2.5 Flash API.
     

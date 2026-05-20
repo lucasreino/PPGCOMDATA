@@ -1,98 +1,28 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { 
   FileText, Upload, Check, Edit2, Trash2, AlertTriangle, 
   HelpCircle, CheckCircle, RefreshCw, BarChart2, Plus, 
-  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info
+  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info, LogOut
 } from "lucide-react";
-
-// Mock types matching the SQLModel schemas
-interface Professor {
-  id: string;
-  nome_completo: string;
-  linha: string;
-  tipo: string;
-  status: "pendente" | "processado" | "validado";
-  ultimo_upload?: string;
-}
-
-interface Projeto {
-  id: string;
-  titulo: string;
-  tipo: string;
-  situacao: string;
-  ano_inicio: number;
-  ano_fim: number | null;
-  descricao: string;
-  papel_docente: string;
-  instituicoes: string;
-  financiamento_mencionado: boolean;
-  agencia_fomento: string | null;
-  confianca_ia: "alta" | "media" | "baixa";
-  trecho_original: string;
-  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
-}
-
-interface Evento {
-  id: string;
-  nome_evento: string;
-  ano: number;
-  cidade: string;
-  pais: string;
-  tipo_participacao: string;
-  titulo_trabalho: string;
-  financiamento_mencionado: boolean;
-  fonte_financiamento: string | null;
-  confianca_ia: "alta" | "media" | "baixa";
-  trecho_original: string;
-  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
-}
-
-interface Producao {
-  id: string;
-  tipo: string;
-  titulo: string;
-  ano: number;
-  veiculo: string;
-  doi: string | null;
-  issn: string | null;
-  confianca_ia: "alta" | "media" | "baixa";
-  trecho_original: string;
-  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
-}
-
-interface Financiamento {
-  id: string;
-  tipo: string;
-  fonte: string;
-  agencia: string;
-  edital: string | null;
-  numero_processo: string | null;
-  valor: string;
-  ano: number;
-  confianca: "alta" | "media" | "baixa";
-  trecho_original: string;
-  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
-}
-
-interface AlertaLacuna {
-  id: string;
-  tipo_lacuna: string;
-  descricao: string;
-  gravidade: "alta" | "media" | "baixa";
-  acao_recomendada: string;
-  resolvido: boolean;
-}
-
-interface LogAudit {
-  id: string;
-  acao: string;
-  mensagem: string;
-  timestamp: string;
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import type {
+  Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab
+} from "@/lib/types";
+import {
+  ActionPanel,
+  ConfidenceBadge,
+  EmptyState,
+  OriginalFragment,
+  SimpleMarkdownRenderer,
+} from "@/components/ui/validation-ui";
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { user, loading: authLoading, logout } = useAuth();
   // Connection state
   const [apiConnected, setApiConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -100,11 +30,9 @@ export default function Dashboard() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Dynamic API URL detection
-  const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000/api/v1");
+  const apiUrl = getApiBaseUrl();
 
-  // Navigation Tabs state
-  const [mainTab, setMainTab] = useState<"validacao" | "estatisticas" | "relatorios">("validacao");
+  const [mainTab, setMainTab] = useState<MainTab>("validacao");
 
   // Research Lines state
   const [linhasPesquisa, setLinhasPesquisa] = useState<any[]>([]);
@@ -135,7 +63,21 @@ export default function Dashboard() {
     { id: "3", nome_completo: "Prof. Dr. Carlos Alberto", linha: "Tecnologias, Audiovisual e Processos Regionais de Comunicação", tipo: "Colaborador", status: "processado" },
   ]);
   const [selectedProfId, setSelectedProfId] = useState<string>("1");
-  const [activeTab, setActiveTab] = useState<"projetos" | "eventos" | "producoes" | "financiamentos">("projetos");
+  const [activeTab, setActiveTab] = useState<EntityTab>("projetos");
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+        Carregando sessão...
+      </div>
+    );
+  }
 
   // Selection for edit
   const [editingItem, setEditingItem] = useState<{ type: string; item: any } | null>(null);
@@ -152,19 +94,15 @@ export default function Dashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize and check API
   useEffect(() => {
     const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const detectedUrl = `http://${host}:8000/api/v1`;
     const checkUrl = `http://${host}:8000/`;
-    setApiUrl(detectedUrl);
 
     fetch(checkUrl)
       .then(res => res.json())
       .then(() => {
         setApiConnected(true);
-        // Load research lines when API is active
-        fetch(`${detectedUrl}/linhas-pesquisa/`)
+        apiFetch("/linhas-pesquisa/")
           .then(res => res.json())
           .then(data => {
             if (data && data.length > 0) {
@@ -187,7 +125,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!apiConnected) return;
 
-    fetch(`${apiUrl}/professores/`)
+    apiFetch("/professores/")
       .then(res => {
         if (!res.ok) throw new Error("Erro ao carregar docentes");
         return res.json();
@@ -220,7 +158,7 @@ export default function Dashboard() {
 
     if (apiConnected) {
       setLoading(true);
-      fetch(`${apiUrl}/validacao/pendentes?professor_id=${selectedProfId}`)
+      apiFetch(`/validacao/pendentes?professor_id=${selectedProfId}`)
         .then(res => {
           if (!res.ok) throw new Error("Erro ao carregar dados do docente");
           return res.json();
@@ -437,7 +375,7 @@ export default function Dashboard() {
     }
 
     if (apiConnected) {
-      fetch(`${apiUrl}/validacao/${type}/${id}/confirmar`, { method: "POST" })
+      apiFetch(`/validacao/${type}/${id}/confirmar`, { method: "POST" })
         .then(res => {
           if (!res.ok) throw new Error("Falha ao salvar confirmação");
           addAuditLog("confirmar", `[Real DB] Confirmou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
@@ -489,7 +427,7 @@ export default function Dashboard() {
     }
 
     if (apiConnected) {
-      fetch(`${apiUrl}/validacao/${type}/${id}/descartar`, { method: "POST" })
+      apiFetch(`/validacao/${type}/${id}/descartar`, { method: "POST" })
         .then(res => {
           if (!res.ok) throw new Error("Falha ao descartar registro");
           addAuditLog("descartar", `[Real DB] Descartou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
@@ -515,7 +453,7 @@ export default function Dashboard() {
 
     if (apiConnected) {
       const { id: _, created_at: __, updated_at: ___, ...updates } = item;
-      fetch(`${apiUrl}/validacao/${type}/${item.id}/editar`, {
+      apiFetch(`/validacao/${type}/${item.id}/editar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates)
@@ -572,7 +510,7 @@ export default function Dashboard() {
   // Resolve specific gap
   const handleResolveGap = (gapId: string) => {
     if (apiConnected) {
-      fetch(`${apiUrl}/validacao/lacunas/${gapId}/resolver`, { method: "POST" })
+      apiFetch(`/validacao/lacunas/${gapId}/resolver`, { method: "POST" })
         .then(res => {
           if (!res.ok) throw new Error("Falha ao resolver lacuna");
           setLacunas(prev => prev.map(l => l.id === gapId ? { ...l, resolvido: true } : l));
@@ -631,7 +569,7 @@ export default function Dashboard() {
     if (statsAnoInicio) query += `ano_inicio=${statsAnoInicio}&`;
     if (statsAnoFim) query += `ano_fim=${statsAnoFim}&`;
 
-    fetch(`${apiUrl}/analises/estatisticas${query}`)
+    apiFetch(`/analises/estatisticas${query}`)
       .then(res => {
         if (!res.ok) throw new Error("Erro ao carregar estatísticas");
         return res.json();
@@ -666,7 +604,7 @@ export default function Dashboard() {
 
     if (apiConnected) {
       try {
-        const response = await fetch(`${apiUrl}/analises/relatorio/gerar`, {
+        const response = await apiFetch(`/analises/relatorio/gerar`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -790,7 +728,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       formData.append("file", selectedFile);
 
       try {
-        const uploadRes = await fetch(`${apiUrl}/uploads/`, {
+        const uploadRes = await apiFetch(`/uploads/`, {
           method: "POST",
           body: formData
         });
@@ -800,7 +738,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         setUploadProgress(50);
         setProcessingStep("Processando e extraindo dados com IA...");
 
-        const processRes = await fetch(`${apiUrl}/uploads/${uploadData.id}/processar`, {
+        const processRes = await apiFetch(`/uploads/${uploadData.id}/processar`, {
           method: "POST"
         });
         if (!processRes.ok) throw new Error("Erro no processamento do arquivo.");
@@ -813,7 +751,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         addAuditLog("processamento", `[Real DB] Lattes processado! Extraídos: ${processData.extração_ia?.projetos_extraidos || 0} projetos, ${processData.extração_ia?.producoes_extraidas || 0} produções.`);
         
         // Reload teacher data to show the new items
-        fetch(`${apiUrl}/validacao/pendentes?professor_id=${selectedProfId}`)
+        apiFetch(`/validacao/pendentes?professor_id=${selectedProfId}`)
           .then(res => res.json())
           .then(data => {
             setProjetos(data.projetos || []);
@@ -930,9 +868,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             </span>
           </div>
 
-          <div className="text-xs text-slate-400">
-            {new Date().toLocaleDateString("pt-BR", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <div className="text-xs text-slate-400 hidden sm:block">
+            {user.name} · {user.role}
           </div>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-900/60 px-3 py-1.5 rounded-lg transition-colors"
+            title="Sair"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            Sair
+          </button>
         </div>
       </header>
 
@@ -2354,306 +2300,3 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
   );
 }
 
-// Subcomponent: Confidence Badge
-function ConfidenceBadge({ level }: { level: "alta" | "media" | "baixa" }) {
-  const styles = {
-    alta: "bg-emerald-950/60 text-emerald-400 border-emerald-900/60",
-    media: "bg-amber-950/60 text-amber-400 border-amber-900/60",
-    baixa: "bg-purple-950/60 text-purple-400 border-purple-900/60"
-  };
-
-  return (
-    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border shadow-sm ${styles[level]}`}>
-      IA: {level}
-    </span>
-  );
-}
-
-// Subcomponent: Collapsible Original Fragment block
-function OriginalFragment({ text }: { text: string }) {
-  const [show, setShow] = useState<boolean>(false);
-
-  return (
-    <div className="mt-4 pt-3.5 border-t border-slate-900/80">
-      <button 
-        onClick={() => setShow(!show)}
-        className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-indigo-400 font-semibold transition-colors outline-none"
-      >
-        {show ? (
-          <>
-            <EyeOff className="w-3.5 h-3.5" />
-            Ocultar fragmento original do PDF
-          </>
-        ) : (
-          <>
-            <Eye className="w-3.5 h-3.5" />
-            Visualizar fragmento original do PDF
-          </>
-        )}
-      </button>
-
-      {show && (
-        <blockquote className="mt-2.5 p-3 rounded bg-slate-950 border-l-2 border-slate-800 text-[10.5px] italic text-slate-500 leading-relaxed font-mono">
-          "{text}"
-        </blockquote>
-      )}
-    </div>
-  );
-}
-
-// Subcomponent: Action Buttons panel
-function ActionPanel({ 
-  status, onConfirm, onEdit, onDiscard 
-}: { 
-  status: "pendente" | "confirmado" | "editado" | "descartado";
-  onConfirm: () => void;
-  onEdit: () => void;
-  onDiscard: () => void;
-}) {
-  return (
-    <div className="mt-5 pt-3.5 border-t border-slate-900/80 flex flex-wrap justify-between items-center gap-3">
-      <div className="text-[10px] flex items-center gap-1 text-slate-500">
-        <Info className="w-3.5 h-3.5" />
-        Status da Validação: 
-        <span className={`font-bold capitalize ml-0.5 px-1 rounded ${
-          status === "confirmado" ? "text-emerald-400 bg-emerald-950/30" :
-          status === "editado" ? "text-indigo-400 bg-indigo-950/30" :
-          status === "descartado" ? "text-rose-400 bg-rose-950/30" : "text-amber-400 bg-amber-950/30"
-        }`}>
-          {status}
-        </span>
-      </div>
-
-      <div className="flex gap-2">
-        {status !== "descartado" && (
-          <button 
-            onClick={onDiscard}
-            className="py-1 px-2.5 bg-slate-900/60 hover:bg-rose-950/20 border border-slate-800 hover:border-rose-900/60 text-[10px] text-slate-400 hover:text-rose-400 font-semibold rounded-lg transition-all flex items-center gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Descartar
-          </button>
-        )}
-        
-        <button 
-          onClick={onEdit}
-          className="py-1 px-2.5 bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-900/60 text-[10px] text-slate-400 hover:text-indigo-400 font-semibold rounded-lg transition-all flex items-center gap-1.5"
-        >
-          <Edit2 className="w-3.5 h-3.5" />
-          Corrigir
-        </button>
-
-        {status === "pendente" && (
-          <button 
-            onClick={onConfirm}
-            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white rounded-lg shadow-md shadow-emerald-950/20 transition-all flex items-center gap-1.5"
-          >
-            <Check className="w-3.5 h-3.5" />
-            Confirmar
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Subcomponent: Empty State
-function EmptyState({ tab }: { tab: string }) {
-  return (
-    <div className="glow-card rounded-xl p-8 text-center text-slate-500 text-xs">
-      <FileText className="w-10 h-10 text-slate-600/80 mx-auto mb-3" />
-      Nenhum {tab} cadastrado ou processado ainda para este docente.
-    </div>
-  );
-}
-
-// Subcomponent: Pure React Simple Markdown Renderer
-function SimpleMarkdownRenderer({ content }: { content: string }) {
-  if (!content) return null;
-
-  // Simple line-by-line block parser
-  const lines = content.split("\n");
-  
-  const parseInline = (text: string) => {
-    const parts = [];
-    let currentIdx = 0;
-    
-    // Regex for bold **text** and inline `code`
-    const regex = /(\*\*.*?\*\*|`.*?`)/g;
-    let match;
-    
-    while ((match = regex.exec(text)) !== null) {
-      const matchText = match[0];
-      const matchIndex = match.index;
-      
-      // Push plain text before match
-      if (matchIndex > currentIdx) {
-        parts.push(text.slice(currentIdx, matchIndex));
-      }
-      
-      if (matchText.startsWith("**") && matchText.endsWith("**")) {
-        parts.push(
-          <strong key={matchIndex} className="text-white font-extrabold">
-            {matchText.slice(2, -2)}
-          </strong>
-        );
-      } else if (matchText.startsWith("`") && matchText.endsWith("`")) {
-        parts.push(
-          <code key={matchIndex} className="bg-slate-900 border border-slate-800 text-indigo-300 font-mono px-1 rounded text-[11px]">
-            {matchText.slice(1, -1)}
-          </code>
-        );
-      }
-      
-      currentIdx = regex.lastIndex;
-    }
-    
-    if (currentIdx < text.length) {
-      parts.push(text.slice(currentIdx));
-    }
-    
-    return parts.length > 0 ? parts : text;
-  };
-
-  let inList = false;
-  let listItems: React.ReactNode[] = [];
-  let inTable = false;
-  let tableHeaders: string[] = [];
-  let tableRows: string[][] = [];
-
-  const renderedBlocks: React.ReactNode[] = [];
-
-  const flushList = (key: string) => {
-    if (inList && listItems.length > 0) {
-      renderedBlocks.push(
-        <ul key={`ul-${key}`} className="list-disc pl-5 my-3 space-y-1.5 text-slate-350">
-          {listItems}
-        </ul>
-      );
-      listItems = [];
-      inList = false;
-    }
-  };
-
-  const flushTable = (key: string) => {
-    if (inTable && (tableHeaders.length > 0 || tableRows.length > 0)) {
-      renderedBlocks.push(
-        <div key={`table-wrapper-${key}`} className="overflow-x-auto my-4 rounded-lg border border-slate-850">
-          <table className="min-w-full divide-y divide-slate-850 text-xs">
-            <thead className="bg-slate-900/60">
-              <tr>
-                {tableHeaders.map((h, i) => (
-                  <th key={i} className="px-4 py-2 text-left font-bold text-slate-300 uppercase tracking-wider border-r border-slate-850 last:border-r-0">
-                    {parseInline(h)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-900 bg-slate-950/20">
-              {tableRows.map((row, ri) => (
-                <tr key={ri} className="hover:bg-slate-900/20 transition-colors">
-                  {row.map((cell, ci) => (
-                    <td key={ci} className="px-4 py-2.5 text-slate-300 border-r border-slate-900 last:border-r-0">
-                      {parseInline(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-      tableHeaders = [];
-      tableRows = [];
-      inTable = false;
-    }
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Handle Table line | cell 1 | cell 2 |
-    if (line.startsWith("|") && line.endsWith("|")) {
-      flushList(String(i));
-      
-      const cells = line.split("|").slice(1, -1).map(c => c.trim());
-      const isSeparator = cells.every(c => c.match(/^:?-+:?$/));
-      
-      if (isSeparator) {
-        inTable = true;
-        continue;
-      }
-
-      if (!inTable) {
-        tableHeaders = cells;
-        inTable = true;
-      } else {
-        tableRows.push(cells);
-      }
-      continue;
-    } else {
-      flushTable(String(i));
-    }
-
-    // Handle list item: * or -
-    if (line.startsWith("* ") || line.startsWith("- ")) {
-      inList = true;
-      const text = line.substring(2);
-      listItems.push(
-        <li key={`li-${i}-${text.slice(0, 10)}`} className="leading-relaxed">
-          {parseInline(text)}
-        </li>
-      );
-      continue;
-    } else {
-      flushList(String(i));
-    }
-
-    // Handle Headings
-    if (line.startsWith("# ")) {
-      renderedBlocks.push(
-        <h1 key={`h1-${i}`} className="text-lg font-extrabold text-white mt-5 mb-3 pb-1.5 border-b border-slate-900 uppercase tracking-wide">
-          {parseInline(line.substring(2))}
-        </h1>
-      );
-    } else if (line.startsWith("## ")) {
-      renderedBlocks.push(
-        <h2 key={`h2-${i}`} className="text-sm font-extrabold text-indigo-400 mt-4 mb-2 uppercase tracking-wider flex items-center gap-2">
-          {parseInline(line.substring(3))}
-        </h2>
-      );
-    } else if (line.startsWith("### ")) {
-      renderedBlocks.push(
-        <h3 key={`h3-${i}`} className="text-xs font-bold text-slate-300 mt-3 mb-1.5 uppercase tracking-widest">
-          {parseInline(line.substring(4))}
-        </h3>
-      );
-    } 
-    // Handle Blockquotes
-    else if (line.startsWith("> ")) {
-      renderedBlocks.push(
-        <blockquote key={`bq-${i}`} className="my-3 p-3 bg-slate-900/40 border-l-2 border-indigo-600 rounded-r-lg text-slate-400 italic text-[11px] leading-relaxed">
-          {parseInline(line.substring(2))}
-        </blockquote>
-      );
-    }
-    // Handle Horizontal Rule
-    else if (line === "---") {
-      renderedBlocks.push(<hr key={`hr-${i}`} className="my-4 border-slate-900" />);
-    }
-    // Handle Paragraph
-    else if (line.length > 0) {
-      renderedBlocks.push(
-        <p key={`p-${i}`} className="my-2.5 text-slate-350 leading-relaxed">
-          {parseInline(line)}
-        </p>
-      );
-    }
-  }
-
-  // Flush remaining elements
-  flushList("end");
-  flushTable("end");
-
-  return <div className="space-y-1">{renderedBlocks}</div>;
-}

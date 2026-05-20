@@ -3,12 +3,14 @@ from sqlmodel import Session, select
 from typing import List
 from app.database import get_session
 from app.models.core import LinhaPesquisa
+from app.auth import require_staff, get_current_user
 
 router = APIRouter(prefix="/linhas-pesquisa", tags=["Linhas de Pesquisa"])
 
 @router.get("/", response_model=List[LinhaPesquisa])
 async def list_linhas(
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
 ):
     """List all research lines."""
     statement = select(LinhaPesquisa)
@@ -18,7 +20,8 @@ async def list_linhas(
 @router.post("/", response_model=LinhaPesquisa, status_code=status.HTTP_201_CREATED)
 async def create_linha(
     linha: LinhaPesquisa,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Create a new research line."""
     session.add(linha)
@@ -29,7 +32,8 @@ async def create_linha(
 @router.get("/{linha_id}", response_model=LinhaPesquisa)
 async def get_linha(
     linha_id: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
 ):
     """Get a single research line by ID."""
     linha = session.get(LinhaPesquisa, linha_id)
@@ -44,7 +48,8 @@ async def get_linha(
 async def update_linha(
     linha_id: str,
     updated_data: LinhaPesquisa,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Update an existing research line."""
     db_linha = session.get(LinhaPesquisa, linha_id)

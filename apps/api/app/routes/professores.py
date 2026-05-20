@@ -3,12 +3,14 @@ from sqlmodel import Session, select
 from typing import List
 from app.database import get_session
 from app.models.core import Professor
+from app.auth import require_staff, get_current_user
 
 router = APIRouter(prefix="/professores", tags=["Professores"])
 
 @router.get("/", response_model=List[Professor])
 async def list_professores(
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
 ):
     """List all professors in the postgraduate program."""
     statement = select(Professor)
@@ -18,7 +20,8 @@ async def list_professores(
 @router.post("/", response_model=Professor, status_code=status.HTTP_201_CREATED)
 async def create_professor(
     professor: Professor,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Register a new professor in the system."""
     session.add(professor)
@@ -29,7 +32,8 @@ async def create_professor(
 @router.get("/{prof_id}", response_model=Professor)
 async def get_professor(
     prof_id: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
 ):
     """Get detailed profile of a specific professor by ID."""
     professor = session.get(Professor, prof_id)
@@ -44,7 +48,8 @@ async def get_professor(
 async def update_professor(
     prof_id: str,
     updated_data: Professor,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Update general details of a professor's registry."""
     db_professor = session.get(Professor, prof_id)

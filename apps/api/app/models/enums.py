@@ -18,6 +18,7 @@ class StatusProcessamento(str, Enum):
     PROCESSADO_COM_SUCESSO = "processado_com_sucesso"
     PROCESSADO_COM_ALERTAS = "processado_com_alertas"
     ERRO_NO_PROCESSAMENTO = "erro_no_processamento"
+    AGUARDANDO_VALIDACAO = "aguardando_validacao"
     VALIDADO = "validado"
 
 class StatusValidacao(str, Enum):

@@ -29,6 +29,7 @@ services:
       - JWT_SECRET=super_secret_jwt_sign_key_for_ppgcomdata_jwt_auth
       - AI_API_KEY=
       - AI_MODEL=gemini-1.5-flash
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
       - STORAGE_PROVIDER=local
       - STORAGE_BUCKET=ppgcomdata-uploads
     volumes:

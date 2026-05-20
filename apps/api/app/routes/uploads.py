@@ -11,6 +11,8 @@ from app.models.enums import StatusProcessamento
 from app.services.pdf_processor import process_curriculo_pdf
 from app.services.section_detector import split_and_save_sections
 from app.services.ai_extractor import extract_and_save_section_data
+from app.services.upload_status import refresh_upload_validation_status
+from app.auth import require_staff
 
 router = APIRouter(prefix="/uploads", tags=["Uploads & Processing"])
 
@@ -20,7 +22,8 @@ async def upload_curriculo(
     ano_inicio: Optional[int] = Form(None),
     ano_fim: Optional[int] = Form(None),
     file: UploadFile = File(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Uploads a digital Currículo Lattes PDF and creates the upload record."""
     if not file.filename.lower().endswith(".pdf"):
@@ -63,7 +66,8 @@ async def upload_curriculo(
 @router.post("/{upload_id}/processar")
 async def processar_upload(
     upload_id: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
 ):
     """Orchestrates the full extraction pipeline: text extraction, section splitting, and AI processing."""
     # 1. Page extraction & density checking
@@ -91,9 +95,12 @@ async def processar_upload(
         )
         
     if not sections:
+        upload.status = StatusProcessamento.PROCESSADO_COM_ALERTAS
+        session.add(upload)
+        session.commit()
         return {
             "status": "sucesso_com_alertas",
-            "mensagem": "Texto extraído, mas nenhuma seção relevante do Lattes foi identificada."
+            "mensagem": "Texto extraído, mas nenhuma seção relevante do Lattes foi identificada.",
         }
         
     # 3. AI structured extraction for each section
@@ -114,13 +121,12 @@ async def processar_upload(
             # We log the error but continue extracting other sections
             print(f"Erro ao processar seção '{section.nome_secao}' via IA: {str(e)}")
             
-    # Update upload status to show validation ready
-    upload.status = StatusProcessamento.VALIDADO
-    session.add(upload)
-    session.commit()
-    
+    refresh_upload_validation_status(session, upload_id)
+    session.refresh(upload)
+
     return {
         "status": "sucesso",
+        "upload_status": upload.status.value,
         "secoes_detectadas": len(sections),
-        "extração_ia": ai_metrics
+        "extração_ia": ai_metrics,
     }

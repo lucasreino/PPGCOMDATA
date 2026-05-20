@@ -1,24 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
+
+from app.auth import authenticate_user, create_access_token, get_current_user
 from app.database import get_session
+from app.schemas.auth import TokenResponse, UserPublic
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-@router.post("/login")
-async def login():
-    """Placeholder login endpoint."""
-    return {"access_token": "mock_jwt_token_here", "token_type": "bearer"}
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    session: Session = Depends(get_session),
+):
+    user = authenticate_user(session, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha incorretos.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_access_token(str(user.id), user.role)
+    return TokenResponse(access_token=token)
+
 
 @router.post("/logout")
-async def logout():
-    return {"message": "Logged out successfully"}
+async def logout(_=Depends(get_current_user)):
+    return {"message": "Logout realizado com sucesso."}
 
-@router.get("/me")
-async def get_me():
-    return {
-        "id": "admin_uuid_placeholder",
-        "name": "Coordenador PPGCOM",
-        "email": "coordenacao@ppgcom.edu",
-        "role": "administrador"
-    }
+
+@router.get("/me", response_model=UserPublic)
+async def get_me(current_user=Depends(get_current_user)):
+    return UserPublic.from_user(current_user)

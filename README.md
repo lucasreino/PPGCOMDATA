@@ -62,8 +62,8 @@ Para criar o banco inicial e o primeiro usuário administrativo, execute:
 # Executar as migrations do banco
 docker compose exec api alembic upgrade head
 
-# Executar script para criar o administrador padrão
-docker compose exec api python -m app.create_admin
+# Criar o administrador padrão (informe a senha quando solicitado)
+docker compose exec api python -m app.create_admin --email admin@ppgcom.edu --password "SuaSenhaSegura123"
 ```
 
 ---
@@ -81,4 +81,14 @@ docker compose exec api python -m app.create_admin
 ## 📝 Licença
 
 Este projeto é de uso restrito e confidencial para fins institucionais de pós-graduação.
+
+---
+
+## Testes (API)
+
+```bash
+cd apps/api
+pip install -r requirements.txt
+pytest
+```
 # PPGCOMDATA
