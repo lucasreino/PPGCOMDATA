@@ -26,7 +26,7 @@ class Settings:
     
     # AI Config
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
-    AI_MODEL: str = os.getenv("AI_MODEL", "gemini-1.5-flash")
+    AI_MODEL: str = os.getenv("AI_MODEL", "gemini-2.5-flash")
     
     # Storage Config
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")
