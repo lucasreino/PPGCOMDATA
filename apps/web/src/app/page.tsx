@@ -65,34 +65,21 @@ export default function Dashboard() {
   const [selectedProfId, setSelectedProfId] = useState<string>("1");
   const [activeTab, setActiveTab] = useState<EntityTab>("projetos");
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace("/login");
-    }
-  }, [authLoading, user, router]);
-
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
-        Carregando sessão...
-      </div>
-    );
-  }
-
-  // Selection for edit
   const [editingItem, setEditingItem] = useState<{ type: string; item: any } | null>(null);
-
-  // Core Data Lists (loaded from selected professor)
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [producoes, setProducoes] = useState<Producao[]>([]);
   const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([]);
   const [lacunas, setLacunas] = useState<AlertaLacuna[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogAudit[]>([]);
-
-  // Form states
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [authLoading, user, router]);
 
   useEffect(() => {
     const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
@@ -808,6 +795,14 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       }
     }, 6000);
   };
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+        Carregando sessão...
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
