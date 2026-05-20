@@ -20,11 +20,19 @@ LATTES_SECTIONS_PATTERNS = {
     "Livros publicados/organizados": r"(?:^|\n)Livros publicados/organizados(?:\n|$)",
     "Capítulos de livros publicados": r"(?:^|\n)Cap[íi]tulos de livros publicados(?:\n|$)",
     "Trabalhos completos publicados em anais de congressos": r"(?:^|\n)Trabalhos completos publicados em anais(?:\n|$)",
-    "Participação em eventos": r"(?:^|\n)Participa[cç]ã[o] em eventos(?:\n|$)",
-    "Organização de eventos": r"(?:^|\n)Organiza[cç]ã[o] de eventos(?:\n|$)",
-    "Produção técnica": r"(?:^|\n)Produ[cç]ã[o] t[ée]cnica(?:\n|$)",
-    "Orientações e supervisões": r"(?:^|\n)Orienta[cç]õ[e]s e supervisõ[e]s(?:\n|$)",
-    "Bancas": r"(?:^|\n)Bancas(?:\n|$)",
+    "Participação em eventos": r"(?:^|\n)Participa[cç]ã[o] em eventos(?:\s|/|$|\n)",
+    "Organização de eventos": r"(?:^|\n)Organiza[cç]ã[o] de eventos(?:\s|/|$|\n)",
+    "Produção técnica": r"(?:^|\n)Produ[cç]ã[o] t[ée]cnica(?:\s|$|\n)",
+    "Orientações e supervisões em andamento": (
+        r"(?:^|\n)Orienta[cç]õ[e]s e supervisõ[e]s em andamento"
+    ),
+    "Orientações e supervisões concluídas": (
+        r"(?:^|\n)Orienta[cç]õ[e]s e supervisõ[e]s conclu[ií]das"
+    ),
+    "Orientações e supervisões": (
+        r"(?:^|\n)Orienta[cç]õ[e]s e supervisõ[e]s(?!\s+(?:em andamento|conclu))"
+    ),
+    "Bancas": r"(?:^|\n)Bancas(?:\s|$|\n)",
     "Prêmios e títulos": r"(?:^|\n)Pr[êe]mios e t[íi]tulos(?:\n|$)"
 }
 
@@ -45,9 +53,17 @@ def detect_sections(full_text: str) -> List[Dict[str, Any]]:
                 "end_idx": match.end()
             })
             
-    # Sort boundaries based on their index in the text
     boundaries.sort(key=lambda x: x["start_idx"])
-    return boundaries
+
+    # Same start index: keep the more specific (longer) section title
+    deduped: List[Dict[str, Any]] = []
+    for boundary in boundaries:
+        if deduped and deduped[-1]["start_idx"] == boundary["start_idx"]:
+            if len(boundary["nome_secao"]) > len(deduped[-1]["nome_secao"]):
+                deduped[-1] = boundary
+        else:
+            deduped.append(boundary)
+    return deduped
 
 def split_text_by_sections(full_text: str, boundaries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Splits full text into chunks representing each detected section."""

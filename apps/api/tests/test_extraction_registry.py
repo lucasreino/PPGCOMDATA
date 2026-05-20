@@ -3,6 +3,10 @@ from app.services.extraction_registry import resolve_extraction_profile
 
 def test_resolve_orientacoes():
     assert resolve_extraction_profile("Orientações e supervisões") == "orientacoes"
+    assert (
+        resolve_extraction_profile("Orientações e supervisões concluídas")
+        == "orientacoes"
+    )
 
 
 def test_resolve_bancas():

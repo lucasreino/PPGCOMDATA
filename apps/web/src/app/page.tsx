@@ -178,22 +178,41 @@ export default function Dashboard() {
   const reloadProfessorData = (profId: string) => {
     if (!apiConnected) return;
     setLoading(true);
-    apiFetch(`/validacao/pendentes?professor_id=${profId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Erro ao carregar dados do docente");
-        return res.json();
-      })
-      .then((data: any) => {
+    Promise.all([
+      apiFetch(`/validacao/pendentes?professor_id=${profId}`),
+      apiFetch(`/professores/${profId}/orientacoes`),
+      apiFetch(`/professores/${profId}/formacoes`),
+    ])
+      .then(async ([pendentesRes, orientRes, formRes]) => {
+        if (!pendentesRes.ok) throw new Error("Erro ao carregar dados do docente");
+        const data = await pendentesRes.json();
         setProjetos(data.projetos || []);
         setEventos(data.eventos || []);
         setProducoes(data.producoes || []);
         setFinanciamentos(data.financiamentos || []);
-        setOrientacoes(data.orientacoes || []);
-        setFormacoes(data.formacoes_academicas || []);
         setProducoesTecnicas(data.producoes_tecnicas || []);
         setPremios(data.premios || []);
         setGruposPesquisa(data.grupos_pesquisa || []);
         setLacunas(data.lacunas || []);
+
+        if (orientRes.ok) {
+          const orientData = await orientRes.json();
+          setOrientacoes(
+            orientData.length > 0 ? orientData : data.orientacoes || []
+          );
+        } else {
+          setOrientacoes(data.orientacoes || []);
+        }
+
+        if (formRes.ok) {
+          const formData = await formRes.json();
+          setFormacoes(
+            formData.length > 0 ? formData : data.formacoes_academicas || []
+          );
+        } else {
+          setFormacoes(data.formacoes_academicas || []);
+        }
+
         setLoading(false);
       })
       .catch((err) => {
