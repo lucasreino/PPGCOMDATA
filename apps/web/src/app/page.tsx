@@ -1057,7 +1057,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               PPGCOM<span className="text-indigo-400">DATA</span>
               <span className="text-xs px-2 py-0.5 bg-indigo-950 border border-indigo-800 text-indigo-300 font-medium rounded-full">
-                v1.0.0
+                v1.1.0
               </span>
             </h1>
             <p className="text-xs text-slate-400">Gestão e Análise de Indicadores Docentes</p>

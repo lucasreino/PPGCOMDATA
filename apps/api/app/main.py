@@ -17,7 +17,7 @@ from app.routes import (
 app = FastAPI(
     title="PPGCOMDATA API",
     description="API para o Sistema Web de Gestão e Análise de Indicadores Docentes (PPGCOM)",
-    version="1.0.0"
+    version="1.1.0"
 )
 
 # CORS middleware configuration
@@ -40,8 +40,9 @@ async def read_root():
     return {
         "status": "healthy",
         "service": "PPGCOMDATA Backend API",
-        "version": "1.0.0",
-        "ai_model": settings.AI_MODEL
+        "version": "1.1.0",
+        "ai_provider": settings.AI_PROVIDER if settings.AI_API_KEY else None,
+        "ai_model": settings.AI_MODEL if settings.AI_API_KEY else None,
     }
 
 # Create base API router
@@ -50,6 +51,7 @@ api_router = APIRouter(prefix="/api/v1")
 @api_router.get("/status", tags=["Status"])
 async def get_status():
     return {
+        "version": "1.1.0",
         "database": "configured",
         "storage": settings.STORAGE_PROVIDER,
         "ai_provider": settings.AI_PROVIDER if settings.AI_API_KEY else "not_configured",
