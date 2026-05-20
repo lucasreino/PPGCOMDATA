@@ -1,6 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
+from app.routes import auth, professores, linhas_pesquisa
 
 app = FastAPI(
     title="PPGCOMDATA API",
@@ -38,4 +39,10 @@ async def get_status():
         "ai_provider": "available" if settings.AI_API_KEY else "not_configured"
     }
 
+# Mount sub-routers
+api_router.include_router(auth.router)
+api_router.include_router(professores.router)
+api_router.include_router(linhas_pesquisa.router)
+
 app.include_router(api_router)
+
