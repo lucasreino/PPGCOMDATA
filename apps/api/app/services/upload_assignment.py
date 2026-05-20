@@ -25,6 +25,8 @@ _FILENAME_RULES: list[tuple[str, str]] = [
     ("marcelli", "marcelli.alves@ufma.br"),
     ("domingos", "domingos.almeida@ufma.br"),
     ("odlinari", "odlinari.silva@ufma.br"),
+    ("ramon nascimento", "odlinari.silva@ufma.br"),
+    ("nascimento da silva", "odlinari.silva@ufma.br"),
     ("gislene", "maria.gcf@ufma.br"),
     ("gisa", "maria.gcf@ufma.br"),
     ("leila", "sousa.leila@ufma.br"),

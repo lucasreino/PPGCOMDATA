@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, status
 from sqlmodel import Session, select
 import os
 import shutil
@@ -6,13 +6,9 @@ import uuid
 from typing import List, Optional
 from app.database import get_session
 from app.config import settings
-from app.models.data import CurriculoUpload, PdfSection
+from app.models.data import CurriculoUpload
 from app.models.enums import StatusProcessamento
-from app.services.pdf_processor import process_curriculo_pdf
-from app.services.section_detector import split_and_save_sections
-from app.services.ai_extractor import extract_and_save_section_data
-from app.services.upload_status import refresh_upload_validation_status
-from app.services.upload_cleanup import clear_upload_extraction_data
+from app.services.upload_pipeline import run_full_pipeline, run_full_pipeline_background
 from app.auth import require_staff
 
 router = APIRouter(prefix="/uploads", tags=["Uploads & Processing"])
@@ -64,82 +60,58 @@ async def upload_curriculo(
     
     return db_upload
 
-@router.post("/{upload_id}/processar")
-async def processar_upload(
+@router.get("/{upload_id}", response_model=CurriculoUpload)
+async def obter_upload(
     upload_id: str,
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Orchestrates the full extraction pipeline: text extraction, section splitting, and AI processing."""
-    # 1. Page extraction & density checking
-    try:
-        upload = process_curriculo_pdf(session, upload_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha na extração de texto do PDF: {str(e)}"
-        )
-        
-    if upload.status == StatusProcessamento.ERRO_NO_PROCESSAMENTO:
+    """Retorna status e metadados do upload (para polling no frontend)."""
+    upload = session.get(CurriculoUpload, upload_id)
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload não encontrado.")
+    return upload
+
+
+@router.post("/{upload_id}/processar")
+async def processar_upload(
+    upload_id: str,
+    background_tasks: BackgroundTasks,
+    background: bool = True,
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
+):
+    """Inicia extração + IA. Por padrão roda em background e retorna imediatamente."""
+    upload = session.get(CurriculoUpload, upload_id)
+    if not upload:
+        raise HTTPException(status_code=404, detail="Upload não encontrado.")
+
+    if upload.status == StatusProcessamento.PROCESSANDO:
         return {
-            "status": "erro",
-            "mensagem": upload.mensagem_erro
+            "status": "processando",
+            "upload_id": upload_id,
+            "mensagem": "Processamento já em andamento.",
         }
-        
-    # 2. Section detection & partitioning
-    try:
-        sections = split_and_save_sections(session, upload_id)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha ao particionar seções do currículo: {str(e)}"
-        )
-        
-    if not sections:
-        upload.status = StatusProcessamento.PROCESSADO_COM_ALERTAS
+
+    if background:
+        upload.status = StatusProcessamento.PROCESSANDO
+        upload.mensagem_erro = None
         session.add(upload)
         session.commit()
+        background_tasks.add_task(run_full_pipeline_background, upload_id)
         return {
-            "status": "sucesso_com_alertas",
-            "mensagem": "Texto extraído, mas nenhuma seção relevante do Lattes foi identificada.",
+            "status": "processando",
+            "upload_id": upload_id,
+            "mensagem": "Processamento iniciado. Acompanhe o status pelo polling.",
         }
-        
-    clear_upload_extraction_data(session, upload_id)
 
-    # 3. AI structured extraction for each section
-    ai_metrics = {
-        "projetos_extraidos": 0,
-        "eventos_extraidos": 0,
-        "producoes_extraidas": 0,
-        "financiamentos_extraidos": 0,
-        "formacoes_extraidas": 0,
-        "orientacoes_extraidas": 0,
-        "bancas_extraidas": 0,
-        "perfis_extraidos": 0,
-        "producoes_tecnicas_extraidas": 0,
-        "premios_extraidos": 0,
-        "grupos_extraidos": 0,
-        "lacunas_extraidas": 0,
-    }
-    
-    for section in sections:
-        try:
-            metrics = extract_and_save_section_data(session, section.id)
-            for key in ai_metrics:
-                ai_metrics[key] += metrics.get(key, 0)
-        except Exception as e:
-            # We log the error but continue extracting other sections
-            print(f"Erro ao processar seção '{section.nome_secao}' via IA: {str(e)}")
-            
-    refresh_upload_validation_status(session, upload_id)
-    session.refresh(upload)
-
-    return {
-        "status": "sucesso",
-        "upload_status": upload.status.value,
-        "secoes_detectadas": len(sections),
-        "extração_ia": ai_metrics,
-    }
+    try:
+        return run_full_pipeline(session, upload_id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha no processamento: {str(e)}",
+        )
 
 
 @router.get("/professor/{professor_id}/latest")
@@ -173,4 +145,10 @@ async def reprocessar_ultimo_curriculo(
     ).first()
     if not upload:
         raise HTTPException(status_code=404, detail="Nenhum currículo para reprocessar.")
-    return await processar_upload(upload.id, session, _user)
+    try:
+        return run_full_pipeline(session, upload.id)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha no reprocessamento: {str(e)}",
+        )

@@ -92,6 +92,12 @@ def main() -> None:
         default=10.0,
         help="Pausa entre docentes",
     )
+    parser.add_argument(
+        "--email",
+        type=str,
+        default=None,
+        help="Processar apenas o docente com este e-mail",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -102,9 +108,13 @@ def main() -> None:
     ok = skip = fail = 0
 
     with Session(engine) as session:
-        profs = session.exec(
-            select(Professor).order_by(Professor.nome_completo)
-        ).all()
+        stmt = select(Professor).order_by(Professor.nome_completo)
+        if args.email:
+            stmt = stmt.where(Professor.email == args.email)
+        profs = session.exec(stmt).all()
+        if not profs:
+            print(f"Nenhum docente com e-mail {args.email}")
+            return
 
         for i, prof in enumerate(profs, start=1):
             upload = session.exec(

@@ -948,20 +948,48 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         const uploadData = await uploadRes.json();
         
         setUploadProgress(50);
-        setProcessingStep("Processando e extraindo dados com IA...");
+        setProcessingStep("Processamento iniciado (IA pode levar 5–15 min)...");
 
         const processRes = await apiFetch(`/uploads/${uploadData.id}/processar`, {
-          method: "POST"
+          method: "POST",
         });
-        if (!processRes.ok) throw new Error("Erro no processamento do arquivo.");
-        const processData = await processRes.json();
+        if (!processRes.ok) throw new Error("Erro ao iniciar processamento do arquivo.");
+        const startData = await processRes.json();
+
+        const pollUntilDone = async () => {
+          const maxAttempts = 200;
+          for (let i = 0; i < maxAttempts; i++) {
+            await new Promise((r) => setTimeout(r, 3000));
+            const statusRes = await apiFetch(`/uploads/${uploadData.id}`);
+            if (!statusRes.ok) continue;
+            const uploadStatus = await statusRes.json();
+            const st = uploadStatus.status as string;
+            setUploadProgress(Math.min(95, 50 + Math.floor((i / maxAttempts) * 45)));
+            setProcessingStep(
+              `Processando… status: ${st.replace(/_/g, " ")} (${Math.floor((i * 3) / 60)} min)`
+            );
+            if (st === "processando") continue;
+            if (st === "erro_no_processamento") {
+              throw new Error(uploadStatus.mensagem_erro || "Erro no processamento do PDF.");
+            }
+            return uploadStatus;
+          }
+          throw new Error(
+            "Processamento demorou demais. Verifique os logs da API ou use Reprocessar depois."
+          );
+        };
+
+        await pollUntilDone();
 
         setUploadProgress(100);
         setIsProcessing(false);
         setProcessingStep("");
         setSelectedFile(null);
-        addAuditLog("processamento", `[Real DB] Lattes processado! Extraídos: ${processData.extração_ia?.projetos_extraidos || 0} projetos, ${processData.extração_ia?.producoes_extraidas || 0} produções.`);
-        
+        addAuditLog(
+          "processamento",
+          `[Real DB] Lattes processado (${startData.status || "ok"}). Docente: ${selectedProfId}.`
+        );
+
         reloadProfessorData(selectedProfId);
       } catch (err: any) {
         console.error("Erro no processamento real:", err);
