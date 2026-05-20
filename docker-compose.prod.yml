@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ppgcomdata-db-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-ppgcomdata}
+    ports:
+      - "127.0.0.1:5432:5432" # Keep DB internal to the VPS
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: ppgcomdata-api-prod
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000" # Bind to localhost, secure through proxy
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-ppgcomdata}
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_sign_key_for_ppgcomdata_jwt_auth}
+      - AI_API_KEY=${AI_API_KEY}
+      - AI_MODEL=${AI_MODEL:-gemini-1.5-flash}
+      - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
+      - STORAGE_BUCKET=${STORAGE_BUCKET:-ppgcomdata-uploads}
+    volumes:
+      - prod_uploads:/workspace/uploads
+    depends_on:
+      - postgres
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: ppgcomdata-web-prod
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000" # Bind to localhost, expose via Nginx or Caddy reverse proxy
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+    depends_on:
+      - api
+
+volumes:
+  pgdata_prod:
+    driver: local
+  prod_uploads:
+    driver: local

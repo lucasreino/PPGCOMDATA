@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ppgcomdata-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ppgcomdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: ppgcomdata-api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/ppgcomdata
+      - JWT_SECRET=super_secret_jwt_sign_key_for_ppgcomdata_jwt_auth
+      - AI_API_KEY=
+      - AI_MODEL=gemini-1.5-flash
+      - STORAGE_PROVIDER=local
+      - STORAGE_BUCKET=ppgcomdata-uploads
+    volumes:
+      - ./apps/api:/workspace
+      - /workspace/venv
+      - /workspace/__pycache__
+    depends_on:
+      - postgres
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: ppgcomdata-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    volumes:
+      - ./apps/web:/workspace
+      - /workspace/node_modules
+      - /workspace/.next
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+    driver: local
