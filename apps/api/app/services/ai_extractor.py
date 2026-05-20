@@ -27,6 +27,19 @@ Regras Cruciais:
 - Formate a resposta RIGOROSAMENTE de acordo com o esquema JSON fornecido.
 """
 
+def inline_refs(schema: Any, defs: Dict[str, Any]) -> Any:
+    """Recursively inlines JSON schemas references ($ref) because Gemini API does not support $defs."""
+    if isinstance(schema, dict):
+        if "$ref" in schema:
+            ref_path = schema["$ref"]
+            ref_key = ref_path.split("/")[-1]
+            ref_schema = defs[ref_key]
+            return inline_refs(ref_schema, defs)
+        return {k: inline_refs(v, defs) for k, v in schema.items() if k != "$defs"}
+    elif isinstance(schema, list):
+        return [inline_refs(item, defs) for item in schema]
+    return schema
+
 def get_gemini_structured_output(section_name: str, section_text: str) -> Dict[str, Any]:
     """Calls Google Gemini API with JSON Schema structure enforcement.
     
@@ -46,6 +59,7 @@ def get_gemini_structured_output(section_name: str, section_text: str) -> Dict[s
     
     # Get JSON schema of the target Pydantic model
     schema_dict = LattesExtractionResultSchema.model_json_schema()
+    schema_dict = inline_refs(schema_dict, schema_dict.get("$defs", {}))
     
     headers = {"Content-Type": "application/json"}
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"

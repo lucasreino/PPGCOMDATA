@@ -27,10 +27,11 @@ def extract_text_by_page(file_path: str) -> List[Dict[str, Any]]:
     try:
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
-            text = page.get_text()
+            text = page.get_text() or ""
+            text = text.replace("\x00", "")
             pages_data.append({
                 "numero_pagina": page_num + 1,
-                "texto": text or ""
+                "texto": text
             })
     finally:
         doc.close()

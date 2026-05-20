@@ -104,6 +104,7 @@ def bootstrap():
                 shutil.copy2(src_path, dest_path)
             except Exception as e:
                 print(f"❌ Erro ao copiar o arquivo para a pasta uploads: {e}")
+                session.rollback()
                 continue
                 
             # Create upload database entry
@@ -125,9 +126,11 @@ def bootstrap():
                 upload = process_curriculo_pdf(session, upload.id)
                 if upload.status == StatusProcessamento.ERRO_NO_PROCESSAMENTO:
                     print(f"   ❌ Falha na extração de texto: {upload.mensagem_erro}")
+                    session.rollback()
                     continue
             except Exception as e:
                 print(f"   ❌ Falha catastrófica ao processar PDF: {e}")
+                session.rollback()
                 continue
                 
             # Step B: Section Splitting
@@ -136,10 +139,12 @@ def bootstrap():
                 sections = split_and_save_sections(session, upload.id)
                 if not sections:
                     print("   ⚠️ Nenhuma seção do Lattes reconhecida.")
+                    session.rollback()
                     continue
                 print(f"   ✓ {len(sections)} seções detectadas com sucesso.")
             except Exception as e:
                 print(f"   ❌ Falha ao particionar seções: {e}")
+                session.rollback()
                 continue
                 
             # Step C: AI Extraction for each section
@@ -172,6 +177,7 @@ def bootstrap():
                 
             except Exception as e:
                 print(f"   ❌ Erro durante extração de IA: {e}")
+                session.rollback()
                 continue
                 
     print("\n" + "=" * 60)
