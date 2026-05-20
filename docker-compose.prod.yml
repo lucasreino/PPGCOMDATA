@@ -21,7 +21,7 @@ services:
     container_name: ppgcomdata-api-prod
     restart: always
     ports:
-      - "127.0.0.1:8000:8000" # Bind to localhost, secure through proxy
+      - "8000:8000" # Expose for testing, secure later if needed
     environment:
       - PORT=8000
       - HOST=0.0.0.0
@@ -43,7 +43,7 @@ services:
     container_name: ppgcomdata-web-prod
     restart: always
     ports:
-      - "127.0.0.1:3000:3000" # Bind to localhost, expose via Nginx or Caddy reverse proxy
+      - "3000:3000" # Expose for testing, proxy later if needed
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     depends_on:
