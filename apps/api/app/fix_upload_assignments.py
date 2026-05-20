@@ -17,7 +17,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.config import settings
 from app.database import engine
 from app.models.core import Professor
-from app.models.data import CurriculoUpload
+from app.models.data import CurriculoUpload, PdfPage, PdfSection
+from app.services.upload_cleanup import clear_upload_extraction_data
 from app.models.enums import StatusProcessamento
 from app.services.upload_assignment import (
     _FILENAME_RULES,
@@ -32,6 +33,19 @@ if os.path.exists("/workspace/data/lattes"):
 else:
     ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     LATTES_SRC_DIR = os.path.join(ROOT, "data", "lattes")
+
+
+def _delete_upload_cascade(session: Session, upload: CurriculoUpload) -> None:
+    clear_upload_extraction_data(session, upload.id)
+    for section in session.exec(
+        select(PdfSection).where(PdfSection.curriculo_upload_id == upload.id)
+    ).all():
+        session.delete(section)
+    for page in session.exec(
+        select(PdfPage).where(PdfPage.curriculo_upload_id == upload.id)
+    ).all():
+        session.delete(page)
+    session.delete(upload)
 
 
 def _expected_filename_hint(email: str) -> str:
@@ -83,7 +97,7 @@ def fix_existing_uploads(session: Session) -> dict:
         ranked = sorted(prof_uploads, key=score_upload, reverse=True)
         keep = ranked[0]
         for extra in ranked[1:]:
-            session.delete(extra)
+            _delete_upload_cascade(session, extra)
             deleted += 1
             print(f"  ✕ Removido duplicata de {prof.nome_completo}: {extra.arquivo_nome}")
 
