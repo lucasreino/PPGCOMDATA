@@ -34,7 +34,9 @@ LINE2_DESC = (
     "processos de construção e negociação da cidadania em contextos contemporâneos."
 )
 
-# Cadastro oficial PPGCOM (linha 1 = tecnologias/audiovisual; linha 2 = cidadania/identidades)
+# Cadastro oficial PPGCOM — vínculo no PPGCOM Imperatriz (conforme texto institucional)
+# PERMANENTE: texto cita "professor(a) permanente do Programa" ou "docente permanente do PPGCOM"
+# COLABORADOR: texto cita "colaborador(a)" ou docente sem vínculo permanente no PPGCOM Imperatriz
 PROFESSOR_DATA = [
     {
         "nome_completo": "Izani Pibernat Mustafá",
@@ -92,7 +94,7 @@ PROFESSOR_DATA = [
         "link_lattes": "https://lattes.cnpq.br/4303555424897191",
         "id_lattes": "4303555424897191",
         "linha": "linha1",
-        "tipo_docente": TipoDocente.PERMANENTE,
+        "tipo_docente": TipoDocente.COLABORADOR,
         "grupo_pesquisa": "Comunicação e Religiões e Teorias da Comunicação / GMIC",
         "tematicas": "Midiatização da religião; mídia e política; plataformização; epistemologia da Comunicação",
     },
@@ -102,7 +104,7 @@ PROFESSOR_DATA = [
         "link_lattes": "http://lattes.cnpq.br/1766143822703684",
         "id_lattes": "1766143822703684",
         "linha": "linha2",
-        "tipo_docente": TipoDocente.COLABORADOR,
+        "tipo_docente": TipoDocente.PERMANENTE,
         "grupo_pesquisa": "Grupo de Pesquisa em Comunicação, Política e Sociedade (COPS)",
         "tematicas": "Comunicação política, jornalismo e desinformação",
     },
@@ -142,7 +144,7 @@ PROFESSOR_DATA = [
         "link_lattes": "http://lattes.cnpq.br/4061348210902950",
         "id_lattes": "4061348210902950",
         "linha": "linha2",
-        "tipo_docente": TipoDocente.PERMANENTE,
+        "tipo_docente": TipoDocente.COLABORADOR,
         "grupo_pesquisa": "EsTreMa / Laborejo",
         "tematicas": "Gêneros, sexualidades, corpos, Epistemologias da Comunicação",
     },

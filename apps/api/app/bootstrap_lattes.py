@@ -15,6 +15,7 @@ from app.models.enums import StatusProcessamento, StatusValidacao
 from app.services.pdf_processor import process_curriculo_pdf
 from app.services.section_detector import split_and_save_sections
 from app.services.ai_extractor import extract_and_save_section_data
+from app.services.upload_cleanup import clear_upload_extraction_data
 
 # Root levels directories
 if os.path.exists("/workspace/data/lattes"):
@@ -194,9 +195,14 @@ def bootstrap():
                     "eventos_extraidos": 0,
                     "producoes_extraidas": 0,
                     "financiamentos_extraidos": 0,
-                    "lacunas_extraidas": 0
+                    "formacoes_extraidas": 0,
+                    "orientacoes_extraidas": 0,
+                    "bancas_extraidas": 0,
+                    "perfis_extraidos": 0,
+                    "lacunas_extraidas": 0,
                 }
                 
+                clear_upload_extraction_data(session, upload.id)
                 for section in sections:
                     metrics = extract_and_save_section_data(session, section.id)
                     for key in ai_metrics:
@@ -212,6 +218,9 @@ def bootstrap():
                 print(f"      - Eventos: {ai_metrics['eventos_extraidos']}")
                 print(f"      - Produções: {ai_metrics['producoes_extraidas']}")
                 print(f"      - Financiamentos: {ai_metrics['financiamentos_extraidos']}")
+                print(f"      - Formações: {ai_metrics['formacoes_extraidas']}")
+                print(f"      - Orientações: {ai_metrics['orientacoes_extraidas']}")
+                print(f"      - Bancas: {ai_metrics['bancas_extraidas']}")
                 print(f"      - Lacunas: {ai_metrics['lacunas_extraidas']}")
                 
             except Exception as e:

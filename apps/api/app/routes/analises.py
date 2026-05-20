@@ -9,8 +9,20 @@ import httpx
 from app.database import get_session
 from app.config import settings
 from app.models.core import Professor, LinhaPesquisa
-from app.models.data import Projeto, Evento, Producao, Financiamento, AlertaLacuna
-from app.models.enums import StatusValidacao
+from app.models.data import (
+    Projeto,
+    Evento,
+    Producao,
+    Financiamento,
+    AlertaLacuna,
+    Orientacao,
+    FormacaoAcademica,
+    Banca,
+    ProducaoTecnica,
+    PremioTitulo,
+    GrupoPesquisaDocente,
+)
+from app.models.enums import StatusValidacao, StatusOrientacao
 from app.auth import require_staff
 
 logger = logging.getLogger("ppgcomdata")
@@ -48,7 +60,14 @@ async def obter_estatisticas(
                     "producoes_por_ano": {},
                     "projetos_por_situacao": {},
                     "fomento_por_agencia": {},
-                    "lacunas": {"total": 0, "resolvidas": 0, "pendentes": 0, "por_gravidade": {}}
+                    "lacunas": {"total": 0, "resolvidas": 0, "pendentes": 0, "por_gravidade": {}},
+                    "total_orientacoes": 0,
+                    "orientacoes_concluidas": 0,
+                    "orientacoes_em_andamento": 0,
+                    "total_bancas": 0,
+                    "total_formacoes": 0,
+                    "producoes_por_qualis": {},
+                    "validacao_pendentes": {},
                 }
 
         # Helper to apply professor filters
@@ -72,12 +91,16 @@ async def obter_estatisticas(
         total_producoes = len(producoes)
         producoes_por_tipo = {}
         producoes_por_ano = {}
-        
+        producoes_por_qualis = {}
+
         for p in producoes:
             producoes_por_tipo[p.tipo] = producoes_por_tipo.get(p.tipo, 0) + 1
             if p.ano:
                 ano_str = str(p.ano)
                 producoes_por_ano[ano_str] = producoes_por_ano.get(ano_str, 0) + 1
+            if p.qualis:
+                q = p.qualis.upper().strip()
+                producoes_por_qualis[q] = producoes_por_qualis.get(q, 0) + 1
 
         # --- 2. PROJETOS STATS ---
         proj_stmt = select(Projeto)
@@ -104,6 +127,8 @@ async def obter_estatisticas(
             ev_stmt = ev_stmt.where(Evento.ano <= ano_fim)
         eventos = session.exec(ev_stmt).all()
         total_eventos = len(eventos)
+        eventos_organizados = sum(1 for e in eventos if e.eh_organizacao)
+        eventos_participacao = total_eventos - eventos_organizados
 
         # --- 4. FINANCIAMENTO / FOMENTO STATS ---
         fin_stmt = select(Financiamento)
@@ -145,10 +170,56 @@ async def obter_estatisticas(
             grav = l.gravidade.value if hasattr(l.gravidade, "value") else str(l.gravidade)
             por_gravidade[grav] = por_gravidade.get(grav, 0) + 1
 
+        # --- 6. ORIENTAÇÕES / FORMAÇÃO / BANCAS ---
+        ori_stmt = apply_prof_filter(select(Orientacao), Orientacao)
+        orientacoes = session.exec(ori_stmt).all()
+        total_orientacoes = len(orientacoes)
+        orientacoes_concluidas = sum(
+            1 for o in orientacoes if o.status == StatusOrientacao.CONCLUIDA
+        )
+        orientacoes_em_andamento = sum(
+            1 for o in orientacoes if o.status == StatusOrientacao.EM_ANDAMENTO
+        )
+
+        ban_stmt = apply_prof_filter(select(Banca), Banca)
+        total_bancas = len(session.exec(ban_stmt).all())
+
+        form_stmt = apply_prof_filter(select(FormacaoAcademica), FormacaoAcademica)
+        total_formacoes = len(session.exec(form_stmt).all())
+
+        validacao_pendentes = {}
+        for key, model in (
+            ("projetos", Projeto),
+            ("eventos", Evento),
+            ("producoes", Producao),
+            ("financiamentos", Financiamento),
+            ("orientacoes", Orientacao),
+            ("formacoes_academicas", FormacaoAcademica),
+            ("bancas", Banca),
+            ("producoes_tecnicas", ProducaoTecnica),
+            ("premios", PremioTitulo),
+            ("grupos_pesquisa", GrupoPesquisaDocente),
+        ):
+            stmt = apply_prof_filter(select(model), model).where(
+                model.status_validacao == StatusValidacao.PENDENTE
+            )
+            validacao_pendentes[key] = len(session.exec(stmt).all())
+
         return {
             "total_producoes": total_producoes,
             "total_projetos": total_projetos,
             "total_eventos": total_eventos,
+            "eventos_organizados": eventos_organizados,
+            "eventos_participacao": eventos_participacao,
+            "total_producoes_tecnicas": len(
+                session.exec(apply_prof_filter(select(ProducaoTecnica), ProducaoTecnica)).all()
+            ),
+            "total_premios": len(
+                session.exec(apply_prof_filter(select(PremioTitulo), PremioTitulo)).all()
+            ),
+            "total_grupos_pesquisa": len(
+                session.exec(apply_prof_filter(select(GrupoPesquisaDocente), GrupoPesquisaDocente)).all()
+            ),
             "fomento_total": fomento_total,
             "producoes_por_tipo": producoes_por_tipo,
             "producoes_por_ano": dict(sorted(producoes_por_ano.items())),
@@ -158,8 +229,15 @@ async def obter_estatisticas(
                 "total": total_lacunas,
                 "resolvidas": resolvidas,
                 "pendentes": pendentes,
-                "por_gravidade": por_gravidade
-            }
+                "por_gravidade": por_gravidade,
+            },
+            "total_orientacoes": total_orientacoes,
+            "orientacoes_concluidas": orientacoes_concluidas,
+            "orientacoes_em_andamento": orientacoes_em_andamento,
+            "total_bancas": total_bancas,
+            "total_formacoes": total_formacoes,
+            "producoes_por_qualis": producoes_por_qualis,
+            "validacao_pendentes": validacao_pendentes,
         }
     except Exception as e:
         logger.error(f"Erro ao computar estatísticas: {str(e)}")
@@ -209,12 +287,14 @@ async def gerar_relatorio_ia(
     for prof in professores:
         context_lines.append(f"## Docente: {prof.nome_completo}")
         context_lines.append(f"- Tipo: {prof.tipo_docente.upper() if prof.tipo_docente else 'Permanente'}")
-        
+        if prof.titulacao_maxima:
+            context_lines.append(f"- Titulação máxima: {prof.titulacao_maxima}")
+
         # Research Line
         if prof.linha_pesquisa_id:
             linha = session.get(LinhaPesquisa, prof.linha_pesquisa_id)
             if linha:
-                context_lines.append(f"- Linha de Pesquisa: {linha.nome} (Código: {linha.codigo})")
+                context_lines.append(f"- Linha de Pesquisa: {linha.nome}")
                 
         # 1. Projects
         proj_stmt = select(Projeto).where(Projeto.professor_id == prof.id)
@@ -241,7 +321,19 @@ async def gerar_relatorio_ia(
         
         context_lines.append(f"### Produções Acadêmicas ({len(producoes)}):")
         for p in producoes:
-            context_lines.append(f"  * [{p.tipo.upper()}] \"{p.titulo}\" ({p.ano}) | Veículo/Periódico: {p.veiculo or 'N/A'}")
+            qualis_str = f" | Qualis: {p.qualis}" if p.qualis else ""
+            context_lines.append(
+                f"  * [{p.tipo.upper()}] \"{p.titulo}\" ({p.ano}) | "
+                f"Veículo: {p.veiculo or 'N/A'}{qualis_str}"
+            )
+
+        orientacoes = session.exec(select(Orientacao).where(Orientacao.professor_id == prof.id)).all()
+        context_lines.append(f"### Orientações ({len(orientacoes)}):")
+        for o in orientacoes[:15]:
+            context_lines.append(
+                f"  * [{o.tipo.value}] {o.nome_orientando or 'N/I'} — "
+                f"{o.status.value} ({o.ano_inicio or '?'}-{o.ano_conclusao or '?'})"
+            )
 
         # 3. Gaps/Lacunas
         lac_stmt = select(AlertaLacuna).where(AlertaLacuna.professor_id == prof.id, AlertaLacuna.resolvido == False)

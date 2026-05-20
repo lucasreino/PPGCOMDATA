@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation";
 import { 
   FileText, Upload, Check, Edit2, Trash2, AlertTriangle, 
   HelpCircle, CheckCircle, RefreshCw, BarChart2, Plus, 
-  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info, LogOut
+  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info, LogOut,
+  Users, GraduationCap
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiBaseUrl } from "@/lib/api";
 import type {
-  Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab
+  Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab,
+  Orientacao, FormacaoAcademica, ProfessorResumo,
 } from "@/lib/types";
+import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 import {
   ActionPanel,
   ConfidenceBadge,
@@ -70,6 +73,9 @@ export default function Dashboard() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [producoes, setProducoes] = useState<Producao[]>([]);
   const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([]);
+  const [orientacoes, setOrientacoes] = useState<Orientacao[]>([]);
+  const [formacoes, setFormacoes] = useState<FormacaoAcademica[]>([]);
+  const [resumoAcademico, setResumoAcademico] = useState<ProfessorResumo | null>(null);
   const [lacunas, setLacunas] = useState<AlertaLacuna[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogAudit[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -125,7 +131,9 @@ export default function Dashboard() {
             p.linha_pesquisa?.nome ??
             linhasPesquisa.find((l) => l.id === p.linha_pesquisa_id)?.nome ??
             "Não especificada",
-          tipo: p.tipo_docente || "Permanente",
+          tipo: p.tipo_docente
+            ? p.tipo_docente.charAt(0).toUpperCase() + p.tipo_docente.slice(1)
+            : "Permanente",
           status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
         }));
         
@@ -142,29 +150,40 @@ export default function Dashboard() {
       });
   }, [apiConnected, apiUrl, linhasPesquisa]);
 
+  const reloadProfessorData = (profId: string) => {
+    if (!apiConnected) return;
+    setLoading(true);
+    apiFetch(`/validacao/pendentes?professor_id=${profId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Erro ao carregar dados do docente");
+        return res.json();
+      })
+      .then((data: any) => {
+        setProjetos(data.projetos || []);
+        setEventos(data.eventos || []);
+        setProducoes(data.producoes || []);
+        setFinanciamentos(data.financiamentos || []);
+        setOrientacoes(data.orientacoes || []);
+        setFormacoes(data.formacoes_academicas || []);
+        setLacunas(data.lacunas || []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Falha ao buscar dados do docente:", err);
+        setLoading(false);
+      });
+    apiFetch(`/professores/${profId}/resumo-academico`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((r) => setResumoAcademico(r))
+      .catch(() => setResumoAcademico(null));
+  };
+
   // Load teacher specific data on select (API or Mock fallback)
   useEffect(() => {
     if (!selectedProfId) return;
 
     if (apiConnected) {
-      setLoading(true);
-      apiFetch(`/validacao/pendentes?professor_id=${selectedProfId}`)
-        .then(res => {
-          if (!res.ok) throw new Error("Erro ao carregar dados do docente");
-          return res.json();
-        })
-        .then((data: any) => {
-          setProjetos(data.projetos || []);
-          setEventos(data.eventos || []);
-          setProducoes(data.producoes || []);
-          setFinanciamentos(data.financiamentos || []);
-          setLacunas(data.lacunas || []);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error("Falha ao buscar dados do docente:", err);
-          setLoading(false);
-        });
+      reloadProfessorData(selectedProfId);
       return;
     }
 
@@ -362,6 +381,22 @@ export default function Dashboard() {
         }
         return f;
       }));
+    } else if (type === "orientacoes") {
+      setOrientacoes(prev => prev.map(o => {
+        if (o.id === id) {
+          itemTitle = o.nome_orientando || o.titulo_trabalho || "orientação";
+          return { ...o, status_validacao: "confirmado" };
+        }
+        return o;
+      }));
+    } else if (type === "formacoes_academicas") {
+      setFormacoes(prev => prev.map(f => {
+        if (f.id === id) {
+          itemTitle = `${f.nivel} — ${f.instituicao || ""}`;
+          return { ...f, status_validacao: "confirmado" };
+        }
+        return f;
+      }));
     }
 
     if (apiConnected) {
@@ -414,6 +449,22 @@ export default function Dashboard() {
         }
         return f;
       }));
+    } else if (type === "orientacoes") {
+      setOrientacoes(prev => prev.map(o => {
+        if (o.id === id) {
+          itemTitle = o.nome_orientando || "orientação";
+          return { ...o, status_validacao: "descartado" };
+        }
+        return o;
+      }));
+    } else if (type === "formacoes_academicas") {
+      setFormacoes(prev => prev.map(f => {
+        if (f.id === id) {
+          itemTitle = f.nivel;
+          return { ...f, status_validacao: "descartado" };
+        }
+        return f;
+      }));
     }
 
     if (apiConnected) {
@@ -461,8 +512,13 @@ export default function Dashboard() {
             setProducoes(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
           } else if (type === "financiamentos") {
             setFinanciamentos(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
+          } else if (type === "orientacoes") {
+            setOrientacoes(prev => prev.map(o => o.id === item.id ? { ...item, status_validacao: "editado" } : o));
+          } else if (type === "formacoes_academicas") {
+            setFormacoes(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
           }
-          addAuditLog("editar", `[Real DB] Editou e Validou ${type.slice(0, -2)}: "${(item.titulo || item.nome_evento || item.fonte).slice(0, 45)}..."`);
+          const label = item.titulo || item.nome_evento || item.fonte || item.nome_orientando || item.nivel || "registro";
+          addAuditLog("editar", `[Real DB] Editou e Validou ${type}: "${String(label).slice(0, 45)}..."`);
           setEditingItem(null);
         })
         .catch(err => {
@@ -539,7 +595,14 @@ export default function Dashboard() {
         resolvidas: 14,
         pendentes: 8,
         por_gravidade: { "alta": 2, "media": 4, "baixa": 2 }
-      }
+      },
+      total_orientacoes: 34,
+      orientacoes_concluidas: 28,
+      orientacoes_em_andamento: 6,
+      total_bancas: 12,
+      total_formacoes: 39,
+      producoes_por_qualis: { "A1": 8, "A2": 12, "B1": 6 },
+      validacao_pendentes: { projetos: 2, orientacoes: 5, producoes: 3 },
     };
   };
 
@@ -705,6 +768,35 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
     }
   };
 
+  const handleReprocessCurriculo = async () => {
+    if (!apiConnected || !selectedProfId) return;
+    setIsProcessing(true);
+    setUploadProgress(20);
+    setProcessingStep("Reprocessando último PDF do docente...");
+    try {
+      const res = await apiFetch(`/uploads/professor/${selectedProfId}/reprocessar`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Nenhum currículo encontrado para reprocessar.");
+      }
+      const data = await res.json();
+      setUploadProgress(100);
+      addAuditLog(
+        "reprocessamento",
+        `[Real DB] Currículo reprocessado. Seções: ${data.secoes_detectadas || 0}.`
+      );
+      reloadProfessorData(selectedProfId);
+    } catch (err: any) {
+      alert(err.message || "Erro ao reprocessar.");
+    } finally {
+      setIsProcessing(false);
+      setProcessingStep("");
+      setUploadProgress(0);
+    }
+  };
+
   const handleUploadAndProcess = async () => {
     if (!selectedFile) return;
 
@@ -740,16 +832,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         setSelectedFile(null);
         addAuditLog("processamento", `[Real DB] Lattes processado! Extraídos: ${processData.extração_ia?.projetos_extraidos || 0} projetos, ${processData.extração_ia?.producoes_extraidas || 0} produções.`);
         
-        // Reload teacher data to show the new items
-        apiFetch(`/validacao/pendentes?professor_id=${selectedProfId}`)
-          .then(res => res.json())
-          .then(data => {
-            setProjetos(data.projetos || []);
-            setEventos(data.eventos || []);
-            setProducoes(data.producoes || []);
-            setFinanciamentos(data.financiamentos || []);
-            setLacunas(data.lacunas || []);
-          });
+        reloadProfessorData(selectedProfId);
       } catch (err: any) {
         console.error("Erro no processamento real:", err);
         setIsProcessing(false);
@@ -999,26 +1082,46 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   </>
                 )}
               </button>
+
+              <button
+                type="button"
+                disabled={!apiConnected || isProcessing}
+                onClick={handleReprocessCurriculo}
+                className={`w-full py-2 px-4 rounded-lg font-semibold text-xs border transition-all flex items-center justify-center gap-2 ${
+                  apiConnected && !isProcessing
+                    ? "border-slate-600 text-slate-300 hover:border-indigo-700 hover:bg-slate-900"
+                    : "border-slate-800 text-slate-600 cursor-not-allowed"
+                }`}
+                title="Reextrai dados do último PDF enviado deste docente (sem novo upload)"
+              >
+                <RefreshCw className={`w-4 h-4 ${isProcessing ? "animate-spin" : ""}`} />
+                Reprocessar último Lattes
+              </button>
             </div>
           </div>
         </div>
 
         {/* Center Panel: Human-in-the-Loop Validation View (6 Cols) */}
         <div className="lg:col-span-6 space-y-6">
+
+          <ResumoAcademicoCard resumo={resumoAcademico} />
           
           {/* Tabs navigation */}
-          <div className="bg-[#0f172a]/50 p-1 border border-[#1e293b] rounded-xl flex">
-            {(["projetos", "eventos", "producoes", "financiamentos"] as const).map((tab) => {
+          <div className="bg-[#0f172a]/50 p-1 border border-[#1e293b] rounded-xl flex flex-wrap gap-1">
+            {(["projetos", "eventos", "producoes", "financiamentos", "orientacoes", "formacoes_academicas"] as const).map((tab) => {
               const count = tab === "projetos" ? projetos.length 
                           : tab === "eventos" ? eventos.length 
                           : tab === "producoes" ? producoes.length 
-                          : financiamentos.length;
+                          : tab === "financiamentos" ? financiamentos.length
+                          : tab === "orientacoes" ? orientacoes.length
+                          : formacoes.length;
+              const label = tab === "formacoes_academicas" ? "formação" : tab === "orientacoes" ? "orientações" : tab;
 
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg capitalize transition-all duration-200 flex items-center justify-center gap-2 ${
+                  className={`flex-1 min-w-[90px] py-2 px-2 text-[11px] font-semibold rounded-lg capitalize transition-all duration-200 flex items-center justify-center gap-1.5 ${
                     activeTab === tab 
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10" 
                       : "text-slate-400 hover:text-slate-200"
@@ -1028,7 +1131,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   {tab === "eventos" && <Calendar className="w-3.5 h-3.5" />}
                   {tab === "producoes" && <FileText className="w-3.5 h-3.5" />}
                   {tab === "financiamentos" && <DollarSign className="w-3.5 h-3.5" />}
-                  {tab}
+                  {tab === "orientacoes" && <Users className="w-3.5 h-3.5" />}
+                  {tab === "formacoes_academicas" && <GraduationCap className="w-3.5 h-3.5" />}
+                  {label}
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     activeTab === tab ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400"
                   }`}>
@@ -1047,6 +1152,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             {activeTab === "eventos" && eventos.length === 0 && <EmptyState tab="eventos" />}
             {activeTab === "producoes" && producoes.length === 0 && <EmptyState tab="producoes" />}
             {activeTab === "financiamentos" && financiamentos.length === 0 && <EmptyState tab="financiamentos" />}
+            {activeTab === "orientacoes" && orientacoes.length === 0 && <EmptyState tab="orientacoes" />}
+            {activeTab === "formacoes_academicas" && formacoes.length === 0 && <EmptyState tab="formacoes_academicas" />}
 
             {/* PROJECTS VIEW */}
             {activeTab === "projetos" && projetos.map((item) => (
@@ -1133,7 +1240,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
                     <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
-                      {item.tipo_participacao}
+                      {item.eh_organizacao ? "organização" : item.tipo_participacao}
                     </span>
                     <h3 className="text-sm font-bold text-slate-200 mt-1">{item.nome_evento}</h3>
                   </div>
@@ -1220,6 +1327,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     <span className="text-[9px] text-slate-500 block">ISSN / ISBN</span>
                     <span className="font-semibold font-mono text-[10px] truncate block">{item.issn || "N/D"}</span>
                   </div>
+                  {item.qualis && (
+                    <div className="bg-indigo-950/40 p-2 rounded border border-indigo-900">
+                      <span className="text-[9px] text-indigo-400 block font-bold">Qualis</span>
+                      <span className="font-bold text-indigo-300">{item.qualis}</span>
+                    </div>
+                  )}
                 </div>
 
                 <OriginalFragment text={item.trecho_original} />
@@ -1229,6 +1342,94 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   onConfirm={() => handleConfirm("producoes", item.id)}
                   onEdit={() => handleOpenEdit("producoes", item)}
                   onDiscard={() => handleDiscard("producoes", item.id)}
+                />
+              </div>
+            ))}
+
+            {/* ORIENTAÇÕES */}
+            {activeTab === "orientacoes" && orientacoes.map((item) => (
+              <div
+                key={item.id}
+                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                      {item.tipo} · {item.status}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-200 mt-2">
+                      {item.nome_orientando || "Orientando não identificado"}
+                    </h3>
+                    {item.titulo_trabalho && (
+                      <p className="text-[11px] text-slate-400 mt-1">{item.titulo_trabalho}</p>
+                    )}
+                  </div>
+                  <ConfidenceBadge level={item.confianca_ia} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Início</span>
+                    {item.ano_inicio ?? "—"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Conclusão</span>
+                    {item.ano_conclusao ?? "—"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Papel</span>
+                    {item.papel}
+                  </div>
+                </div>
+                <OriginalFragment text={item.trecho_original} />
+                <ActionPanel
+                  status={item.status_validacao}
+                  onConfirm={() => handleConfirm("orientacoes", item.id)}
+                  onEdit={() => handleOpenEdit("orientacoes", item)}
+                  onDiscard={() => handleDiscard("orientacoes", item.id)}
+                />
+              </div>
+            ))}
+
+            {/* FORMAÇÃO */}
+            {activeTab === "formacoes_academicas" && formacoes.map((item) => (
+              <div
+                key={item.id}
+                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                      {item.nivel}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.curso || "Curso não informado"}</h3>
+                    <p className="text-[11px] text-slate-400">{item.instituicao}</p>
+                  </div>
+                  <ConfidenceBadge level={item.confianca_ia} />
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Período</span>
+                    {item.ano_inicio ?? "?"} — {item.ano_fim ?? "?"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Área</span>
+                    {item.area_conhecimento || "—"}
+                  </div>
+                </div>
+                <OriginalFragment text={item.trecho_original} />
+                <ActionPanel
+                  status={item.status_validacao}
+                  onConfirm={() => handleConfirm("formacoes_academicas", item.id)}
+                  onEdit={() => handleOpenEdit("formacoes_academicas", item)}
+                  onDiscard={() => handleDiscard("formacoes_academicas", item.id)}
                 />
               </div>
             ))}
@@ -1527,6 +1728,34 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   </div>
                 </div>
               </div>
+
+              {(statsData.total_orientacoes != null) && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Orientações</span>
+                    <p className="text-xl font-bold text-white mt-1">{statsData.total_orientacoes}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {statsData.orientacoes_concluidas} concluídas · {statsData.orientacoes_em_andamento} em andamento
+                    </p>
+                  </div>
+                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Qualis (artigos)</span>
+                    <p className="text-xl font-bold text-indigo-300 mt-1">
+                      {Object.keys(statsData.producoes_por_qualis || {}).length} estratos
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      {Object.entries(statsData.producoes_por_qualis || {}).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Sem dados"}
+                    </p>
+                  </div>
+                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                    <span className="text-[10px] text-slate-500 uppercase font-bold">Validação pendente</span>
+                    <p className="text-xl font-bold text-amber-300 mt-1">
+                      {Object.values(statsData.validacao_pendentes || {}).reduce((a: number, b) => a + (b as number), 0)}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1">itens aguardando revisão humana</p>
+                  </div>
+                </div>
+              )}
 
               {/* Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

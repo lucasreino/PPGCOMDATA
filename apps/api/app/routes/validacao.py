@@ -6,7 +6,21 @@ import json
 
 from app.database import get_session
 from app.models.core import User
-from app.models.data import Projeto, Evento, Producao, Financiamento, LogValidacao, AlertaLacuna
+from app.models.data import (
+    Projeto,
+    Evento,
+    Producao,
+    Financiamento,
+    LogValidacao,
+    AlertaLacuna,
+    FormacaoAcademica,
+    Orientacao,
+    Banca,
+    PerfilLattes,
+    ProducaoTecnica,
+    PremioTitulo,
+    GrupoPesquisaDocente,
+)
 from app.models.enums import StatusValidacao
 from app.auth import require_staff, get_current_user
 from app.services.upload_status import refresh_upload_validation_status
@@ -18,6 +32,13 @@ ENTIDADES_MAP = {
     "eventos": Evento,
     "producoes": Producao,
     "financiamentos": Financiamento,
+    "formacoes_academicas": FormacaoAcademica,
+    "orientacoes": Orientacao,
+    "bancas": Banca,
+    "perfis_lattes": PerfilLattes,
+    "producoes_tecnicas": ProducaoTecnica,
+    "premios": PremioTitulo,
+    "grupos_pesquisa": GrupoPesquisaDocente,
 }
 
 

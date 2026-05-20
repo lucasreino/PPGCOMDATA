@@ -79,3 +79,69 @@ class FonteDado(str, Enum):
     RELATORIO_MANUAL = "relatorio_manual"
     ANEXO = "anexo"
     EDICAO_COORDENACAO = "edicao_coordenacao"
+
+class NivelFormacao(str, Enum):
+    GRADUACAO = "graduacao"
+    ESPECIALIZACAO = "especializacao"
+    MESTRADO = "mestrado"
+    DOUTORADO = "doutorado"
+    POS_DOUTORADO = "pos_doutorado"
+    OUTRA = "outra"
+
+class TipoOrientacao(str, Enum):
+    MESTRADO = "mestrado"
+    DOUTORADO = "doutorado"
+    IC = "ic"
+    TCC = "tcc"
+    POS_DOUTORADO = "pos_doutorado"
+    OUTRA = "outra"
+
+class StatusOrientacao(str, Enum):
+    EM_ANDAMENTO = "em_andamento"
+    CONCLUIDA = "concluida"
+
+class PapelOrientacao(str, Enum):
+    ORIENTADOR = "orientador"
+    COORIENTADOR = "coorientador"
+
+class TipoBanca(str, Enum):
+    QUALIFICACAO = "qualificacao"
+    DEFESA = "defesa"
+    EXAME = "exame"
+    OUTRA = "outra"
+
+class NivelBanca(str, Enum):
+    MESTRADO = "mestrado"
+    DOUTORADO = "doutorado"
+    OUTRO = "outro"
+
+class PapelBanca(str, Enum):
+    PRESIDENTE = "presidente"
+    MEMBRO = "membro"
+    SUPLENTE = "suplente"
+    OUTRO = "outro"
+
+class EscopoEvento(str, Enum):
+    NACIONAL = "nacional"
+    INTERNACIONAL = "internacional"
+    OUTRO = "outro"
+
+class TipoProducaoTecnica(str, Enum):
+    AUDIOVISUAL = "audiovisual"
+    SOFTWARE = "software"
+    MATERIAL_DIDATICO = "material_didatico"
+    TRADUCAO = "traducao"
+    PATENTE = "patente"
+    OUTRA = "outra"
+
+class TipoPremio(str, Enum):
+    PREMIO = "premio"
+    BOLSA_PRODUTIVIDADE = "bolsa_produtividade"
+    TITULO_HONORIFICO = "titulo_honorifico"
+    OUTRO = "outro"
+
+class PapelGrupoPesquisa(str, Enum):
+    LIDER = "lider"
+    VICE_LIDER = "vice_lider"
+    MEMBRO = "membro"
+    OUTRO = "outro"

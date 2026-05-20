@@ -10,6 +10,12 @@ def sample_lattes_text() -> str:
 Dados gerais
 Nome: Prof. Dr. Exemplo
 
+Formação acadêmica/titulação
+Doutorado em Comunicação pela UFF (2018 - 2022).
+
+Orientações e supervisões
+Orientação de mestrado em andamento desde 2023.
+
 Projetos de pesquisa
 Projeto de pesquisa em andamento (2024 - Atual) intitulado Comunicação Digital,
 financiado pela FAPEMA sob processo U-12345/23.

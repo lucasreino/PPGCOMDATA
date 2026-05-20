@@ -12,6 +12,7 @@ from app.services.pdf_processor import process_curriculo_pdf
 from app.services.section_detector import split_and_save_sections
 from app.services.ai_extractor import extract_and_save_section_data
 from app.services.upload_status import refresh_upload_validation_status
+from app.services.upload_cleanup import clear_upload_extraction_data
 from app.auth import require_staff
 
 router = APIRouter(prefix="/uploads", tags=["Uploads & Processing"])
@@ -103,13 +104,22 @@ async def processar_upload(
             "mensagem": "Texto extraído, mas nenhuma seção relevante do Lattes foi identificada.",
         }
         
+    clear_upload_extraction_data(session, upload_id)
+
     # 3. AI structured extraction for each section
     ai_metrics = {
         "projetos_extraidos": 0,
         "eventos_extraidos": 0,
         "producoes_extraidas": 0,
         "financiamentos_extraidos": 0,
-        "lacunas_extraidas": 0
+        "formacoes_extraidas": 0,
+        "orientacoes_extraidas": 0,
+        "bancas_extraidas": 0,
+        "perfis_extraidos": 0,
+        "producoes_tecnicas_extraidas": 0,
+        "premios_extraidos": 0,
+        "grupos_extraidos": 0,
+        "lacunas_extraidas": 0,
     }
     
     for section in sections:
@@ -130,3 +140,37 @@ async def processar_upload(
         "secoes_detectadas": len(sections),
         "extração_ia": ai_metrics,
     }
+
+
+@router.get("/professor/{professor_id}/latest")
+async def ultimo_upload_professor(
+    professor_id: str,
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
+):
+    """Retorna o upload de currículo mais recente do docente."""
+    upload = session.exec(
+        select(CurriculoUpload)
+        .where(CurriculoUpload.professor_id == professor_id)
+        .order_by(CurriculoUpload.data_upload.desc())
+    ).first()
+    if not upload:
+        raise HTTPException(status_code=404, detail="Nenhum currículo enviado para este docente.")
+    return upload
+
+
+@router.post("/professor/{professor_id}/reprocessar")
+async def reprocessar_ultimo_curriculo(
+    professor_id: str,
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
+):
+    """Reprocessa o PDF Lattes mais recente do docente (útil após correções no pipeline)."""
+    upload = session.exec(
+        select(CurriculoUpload)
+        .where(CurriculoUpload.professor_id == professor_id)
+        .order_by(CurriculoUpload.data_upload.desc())
+    ).first()
+    if not upload:
+        raise HTTPException(status_code=404, detail="Nenhum currículo para reprocessar.")
+    return await processar_upload(upload.id, session, _user)

@@ -32,6 +32,8 @@ export interface Evento {
   pais: string;
   tipo_participacao: string;
   titulo_trabalho: string;
+  eh_organizacao?: boolean;
+  escopo?: string | null;
   financiamento_mencionado: boolean;
   fonte_financiamento: string | null;
   confianca_ia: "alta" | "media" | "baixa";
@@ -47,6 +49,11 @@ export interface Producao {
   veiculo: string;
   doi: string | null;
   issn: string | null;
+  qualis?: string | null;
+  autores?: string | null;
+  idioma?: string | null;
+  volume?: string | null;
+  paginas?: string | null;
   confianca_ia: "alta" | "media" | "baixa";
   trecho_original: string;
   status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
@@ -64,6 +71,46 @@ export interface Financiamento {
   confianca: "alta" | "media" | "baixa";
   trecho_original: string;
   status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
+export interface Orientacao {
+  id: string;
+  tipo: string;
+  status: string;
+  nome_orientando: string | null;
+  titulo_trabalho: string | null;
+  instituicao: string | null;
+  ano_inicio: number | null;
+  ano_conclusao: number | null;
+  papel: string;
+  confianca_ia: "alta" | "media" | "baixa";
+  trecho_original: string;
+  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
+export interface FormacaoAcademica {
+  id: string;
+  nivel: string;
+  curso: string | null;
+  instituicao: string | null;
+  ano_inicio: number | null;
+  ano_fim: number | null;
+  area_conhecimento: string | null;
+  periodo_sanduiche: boolean;
+  confianca_ia: "alta" | "media" | "baixa";
+  trecho_original: string;
+  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
+export interface ProfessorResumo {
+  titulacao_maxima?: string | null;
+  data_ultima_atualizacao_lattes?: string | null;
+  total_orientacoes: number;
+  orientacoes_concluidas: number;
+  orientacoes_em_andamento: number;
+  orientacoes_ultimos_5_anos: number;
+  total_bancas: number;
+  total_formacoes: number;
 }
 
 export interface AlertaLacuna {
@@ -90,4 +137,12 @@ export interface AuthUser {
 }
 
 export type MainTab = "validacao" | "estatisticas" | "relatorios";
-export type EntityTab = "projetos" | "eventos" | "producoes" | "financiamentos";
+export type EntityTab =
+  | "projetos"
+  | "eventos"
+  | "producoes"
+  | "financiamentos"
+  | "orientacoes"
+  | "formacoes_academicas";
+
+export type ValidationEntityType = EntityTab;

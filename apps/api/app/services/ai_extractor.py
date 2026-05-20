@@ -1,112 +1,253 @@
 import httpx
 import json
 import logging
-from typing import Dict, Any, List, Optional
-from sqlmodel import Session
+from datetime import date, datetime
+from typing import Dict, Any, Type
+
+from pydantic import BaseModel
+from sqlmodel import Session, select
+
 from app.config import settings
-from app.schemas.ai import LattesExtractionResultSchema
-from app.models.data import CurriculoUpload, PdfSection, Projeto, Evento, Producao, Financiamento, AlertaLacuna
-from app.models.enums import StatusValidacao, FonteDado
+from app.schemas.ai import (
+    LattesExtractionResultSchema,
+    FormacaoExtractionSchema,
+    OrientacaoExtractionSchema,
+    BancaExtractionSchema,
+    PerfilExtractionSchema,
+    EventosExtractionSchema,
+    ProducaoTecnicaExtractionSchema,
+    PremiosExtractionSchema,
+    GruposPesquisaExtractionSchema,
+    AIEventoSchema,
+)
+from app.models.data import (
+    PdfSection,
+    Projeto,
+    Evento,
+    Producao,
+    Financiamento,
+    AlertaLacuna,
+    FormacaoAcademica,
+    Orientacao,
+    Banca,
+    PerfilLattes,
+    ProducaoTecnica,
+    PremioTitulo,
+    GrupoPesquisaDocente,
+)
+from app.models.core import Professor
+from app.models.enums import StatusValidacao, FonteDado, NivelFormacao, EscopoEvento
+from app.services.extraction_registry import (
+    resolve_extraction_profile,
+    profile_extra_prompt,
+    should_extract_producoes,
+    should_extract_eventos_padrao,
+    is_bibliographic_parent_section,
+    ExtractionProfile,
+)
+from app.services.dedupe import (
+    producao_already_exists,
+    projeto_already_exists,
+    orientacao_already_exists,
+    evento_already_exists,
+)
+from app.services.lacuna_detector import detect_orientacao_lacunas, detect_producao_lacunas
 
 logger = logging.getLogger("ppgcomdata.ai_extractor")
 
-SYSTEM_PROMPT = """
-Você é um extrator de dados acadêmicos especializado em analisar Currículos Lattes.
-Sua tarefa é ler o texto de uma seção do currículo Lattes e extrair dados altamente estruturados sobre:
-1. Projetos (de pesquisa, extensão, desenvolvimento ou ensino)
-2. Eventos científicos
-3. Produções bibliográficas (artigos, livros, capítulos, anais, etc.)
-4. Financiamentos e auxílios financeiros mencionados (bolsas, verbas de edital, etc.)
-5. Lacunas de informação (como projetos sem ano de fim, eventos sem local, fomento sem valor explicitado, currículo visivelmente desatualizado, etc.)
-
-Regras Cruciais:
-- NÃO invente dados. Se uma informação não for explícita, deixe o campo correspondente vazio/nulo.
-- Extraia trechos originais do texto que comprovem a extração para todos os itens.
-- Defina a confiança (alta, media ou baixa) com base na clareza das informações contidas no texto.
-- Valores financeiros devem ser extraídos literalmente como strings do texto.
-- Formate a resposta RIGOROSAMENTE de acordo com o esquema JSON fornecido.
+SYSTEM_PROMPT_BASE = """
+Você é um extrator de dados acadêmicos especializado em analisar Currículos Lattes em PDF.
+Regras:
+- NÃO invente dados. Campos sem evidência explícita devem ficar vazios/nulos.
+- Inclua trecho_original que comprove cada item extraído.
+- Use confiança alta, media ou baixa conforme a clareza do texto.
+- Responda RIGOROSAMENTE no JSON do esquema fornecido.
 """
 
+_PROFILE_SCHEMA: Dict[ExtractionProfile, Type[BaseModel]] = {
+    "padrao": LattesExtractionResultSchema,
+    "formacao": FormacaoExtractionSchema,
+    "orientacoes": OrientacaoExtractionSchema,
+    "bancas": BancaExtractionSchema,
+    "perfil": PerfilExtractionSchema,
+    "eventos_participacao": EventosExtractionSchema,
+    "eventos_organizacao": EventosExtractionSchema,
+    "producao_tecnica": ProducaoTecnicaExtractionSchema,
+    "premios": PremiosExtractionSchema,
+    "grupos_pesquisa": GruposPesquisaExtractionSchema,
+}
+
+_NIVEL_RANK = {
+    NivelFormacao.GRADUACAO: 1,
+    NivelFormacao.ESPECIALIZACAO: 2,
+    NivelFormacao.MESTRADO: 3,
+    NivelFormacao.DOUTORADO: 4,
+    NivelFormacao.POS_DOUTORADO: 5,
+    NivelFormacao.OUTRA: 0,
+}
+
+
 def inline_refs(schema: Any, defs: Dict[str, Any]) -> Any:
-    """Recursively inlines JSON schemas references ($ref) because Gemini API does not support $defs."""
     if isinstance(schema, dict):
         if "$ref" in schema:
-            ref_path = schema["$ref"]
-            ref_key = ref_path.split("/")[-1]
-            ref_schema = defs[ref_key]
-            return inline_refs(ref_schema, defs)
+            ref_key = schema["$ref"].split("/")[-1]
+            return inline_refs(defs[ref_key], defs)
         return {k: inline_refs(v, defs) for k, v in schema.items() if k != "$defs"}
-    elif isinstance(schema, list):
+    if isinstance(schema, list):
         return [inline_refs(item, defs) for item in schema]
     return schema
 
-def get_gemini_structured_output(section_name: str, section_text: str) -> Dict[str, Any]:
-    """Calls Google Gemini API with JSON Schema structure enforcement.
-    
-    If no API key is configured, falls back to realistic mock parsing data for development.
-    """
+
+def _parse_optional_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value.strip()[:10], fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def get_gemini_structured_output(
+    section_name: str,
+    section_text: str,
+    profile: ExtractionProfile,
+) -> Dict[str, Any]:
+    schema_model = _PROFILE_SCHEMA[profile]
     if not settings.AI_API_KEY:
-        logger.warning("AI_API_KEY não configurada. Usando mock generator para testes locais.")
-        return generate_mock_extraction(section_name, section_text)
-        
+        logger.warning("AI_API_KEY não configurada. Usando mock generator.")
+        return generate_mock_extraction(section_name, section_text, profile)
+
+    extra = profile_extra_prompt(profile) or ""
+    producao_hint = ""
+    if profile == "padrao" and is_bibliographic_parent_section(section_name):
+        producao_hint = (
+            "\nIMPORTANTE: Esta seção é apenas o cabeçalho 'Produção bibliográfica'. "
+            "NÃO liste artigos, livros ou capítulos aqui (eles estão em subseções). "
+            "Retorne producoes como lista vazia.\n"
+        )
     prompt = f"""
-    Analise a seção a seguir do Currículo Lattes:
-    
-    Nome da Seção: {section_name}
-    Texto da Seção:
-    {section_text}
-    """
-    
-    # Get JSON schema of the target Pydantic model
-    schema_dict = LattesExtractionResultSchema.model_json_schema()
+Analise a seção do Currículo Lattes:
+
+Nome da Seção: {section_name}
+{extra}{producao_hint}
+
+Texto da Seção:
+{section_text}
+"""
+    schema_dict = schema_model.model_json_schema()
     schema_dict = inline_refs(schema_dict, schema_dict.get("$defs", {}))
-    
-    headers = {"Content-Type": "application/json"}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"
-    
-    # Gemini API payload structuring for JSON structured output
+    url = (
+        f"https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"
+    )
     payload = {
-        "contents": [{
-            "parts": [
-                {"text": SYSTEM_PROMPT},
-                {"text": prompt}
-            ]
-        }],
+        "contents": [{"parts": [{"text": SYSTEM_PROMPT_BASE}, {"text": prompt}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
-            "responseSchema": schema_dict
-        }
+            "responseSchema": schema_dict,
+        },
     }
-    
     try:
-        with httpx.Client(timeout=45.0) as client:
-            response = client.post(url, json=payload, headers=headers)
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(url, json=payload)
             response.raise_for_status()
-            res_data = response.json()
-            
-            # Extract content from Gemini response structure
-            content_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-            logger.info("Retorno da API de IA decodificado com sucesso.")
+            content_text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(content_text)
-            
     except Exception as e:
-        logger.error(f"Falha ao chamar a API de IA: {str(e)}")
-        # Graceful fallback to mock data on error so development doesn't block
-        return generate_mock_extraction(section_name, section_text)
+        logger.error(f"Falha na API de IA: {e}")
+        return generate_mock_extraction(section_name, section_text, profile)
 
-def generate_mock_extraction(section_name: str, section_text: str) -> Dict[str, Any]:
-    """Generates realistic mock extraction data based on keywords, ensuring local flow is 100% testable."""
-    result = {
+
+def generate_mock_extraction(
+    section_name: str,
+    section_text: str,
+    profile: ExtractionProfile,
+) -> Dict[str, Any]:
+    section_lower = section_name.lower()
+    snippet = (section_text or "")[:200].strip() or section_name
+
+    if profile == "formacao":
+        return {
+            "formacoes": [
+                {
+                    "nivel": "doutorado",
+                    "curso": "Comunicação",
+                    "instituicao": "Universidade Federal de Exemplo",
+                    "ano_inicio": 2018,
+                    "ano_fim": 2022,
+                    "area_conhecimento": "Comunicação",
+                    "pais": "Brasil",
+                    "periodo_sanduiche": False,
+                    "instituicao_exterior": None,
+                    "confianca_ia": "media",
+                    "trecho_original": snippet,
+                }
+            ],
+            "lacunas": [],
+        }
+
+    if profile == "orientacoes":
+        return {
+            "orientacoes": [
+                {
+                    "tipo": "mestrado",
+                    "status": "concluida",
+                    "nome_orientando": "Aluno Exemplo",
+                    "titulo_trabalho": "Tese de mestrado em comunicação",
+                    "instituicao": "UFMA",
+                    "ano_inicio": 2020,
+                    "ano_conclusao": 2022,
+                    "papel": "orientador",
+                    "confianca_ia": "media",
+                    "trecho_original": snippet,
+                    "observacoes": "Mock local",
+                }
+            ],
+            "lacunas": [],
+        }
+
+    if profile == "bancas":
+        return {
+            "bancas": [
+                {
+                    "tipo": "defesa",
+                    "nivel": "mestrado",
+                    "nome_candidato": "Candidato Exemplo",
+                    "titulo_trabalho": "Dissertação em jornalismo",
+                    "instituicao": "UFMA",
+                    "ano": 2023,
+                    "papel": "presidente",
+                    "confianca_ia": "media",
+                    "trecho_original": snippet,
+                    "observacoes": "Mock local",
+                }
+            ],
+            "lacunas": [],
+        }
+
+    if profile == "perfil":
+        return {
+            "perfil": {
+                "data_ultima_atualizacao": "2025-01-15",
+                "resumo_cv": None,
+                "palavras_chave": ["comunicação", "jornalismo"],
+                "nome_citacao": "EXEMPLO, A.",
+                "link_orcid": None,
+                "confianca_ia": "baixa",
+                "trecho_original": snippet,
+            },
+            "lacunas": [],
+        }
+
+    result: Dict[str, Any] = {
         "projetos": [],
         "eventos": [],
         "producoes": [],
         "financiamentos": [],
-        "lacunas": []
+        "lacunas": [],
     }
-    
-    section_lower = section_name.lower()
-    
-    # Inquire projects
     if "projeto" in section_lower:
         result["projetos"].append({
             "titulo": "Pesquisa em Comunicação Digital e Algoritmos no PPGCOM",
@@ -114,112 +255,177 @@ def generate_mock_extraction(section_name: str, section_text: str) -> Dict[str, 
             "situacao": "em andamento",
             "ano_inicio": 2024,
             "ano_fim": None,
-            "descricao": "Análise da recepção e circulação de informações em redes sociais no Nordeste brasileiro.",
+            "descricao": "Análise da recepção em redes sociais.",
             "papel_docente": "coordenador",
             "instituicoes": ["UFMA", "PPGCOM"],
             "financiamento_mencionado": True,
             "agencia_fomento": "FAPEMA",
             "confianca_ia": "alta",
-            "trecho_original": "Projeto de pesquisa iniciado em 2024 financiado pela FAPEMA sobre algoritmos.",
-            "observacoes": "Extração simulada localmente"
+            "trecho_original": snippet,
+            "observacoes": "Mock local",
         })
-        result["financiamentos"].append({
-            "tipo": "pesquisa",
-            "fonte": "FAPEMA",
-            "agencia": "FAPEMA",
-            "edital": "Edital Universal FAPEMA 2023",
-            "numero_processo": "U-12345/23",
-            "valor": "R$ 45.000,00",
-            "ano": 2024,
-            "vinculo_com": "projeto",
-            "confianca": "alta",
-            "trecho_original": "financiado pela FAPEMA sob processo U-12345/23 valor de R$ 45.000,00",
-            "observacoes": "Extração simulada"
-        })
-        result["lacunas"].append({
-            "tipo_lacuna": "financiamento_incompleto",
-            "descricao": "O valor executado e vigência financeira exata não estão descritos no Lattes.",
-            "gravidade": "baixa",
-            "acao_recomendada": "Cadastrar relatório complementar para informar as vigências financeiras exatas.",
-            "trecho_original": "financiado pela FAPEMA"
-        })
-        
-    # Inquire events
+    if profile in ("eventos_participacao", "eventos_organizacao"):
+        result = {
+            "eventos": [{
+                "nome_evento": "Encontro da Compós 2025",
+                "ano": 2025,
+                "cidade": "São Luís",
+                "pais": "Brasil",
+                "tipo_participacao": "organizador" if profile == "eventos_organizacao" else "apresentacao",
+                "titulo_trabalho": "Comunicação e algoritmos",
+                "eh_organizacao": profile == "eventos_organizacao",
+                "escopo": "nacional",
+                "financiamento_mencionado": False,
+                "confianca_ia": "alta",
+                "trecho_original": snippet,
+            }],
+            "lacunas": [],
+        }
+        return result
+
+    if profile == "producao_tecnica":
+        return {
+            "producoes_tecnicas": [{
+                "tipo": "audiovisual",
+                "titulo": "Documentário regional de comunicação",
+                "ano": 2024,
+                "instituicao": "UFMA",
+                "descricao": "Produção audiovisual acadêmica",
+                "confianca_ia": "media",
+                "trecho_original": snippet,
+            }],
+            "lacunas": [],
+        }
+
+    if profile == "premios":
+        return {
+            "premios": [{
+                "tipo": "premio",
+                "nome": "Prêmio de Artigo Científico",
+                "ano": 2023,
+                "instituicao_concedente": "INTERCOM",
+                "confianca_ia": "media",
+                "trecho_original": snippet,
+            }],
+            "lacunas": [],
+        }
+
+    if profile == "grupos_pesquisa":
+        return {
+            "grupos": [{
+                "nome_grupo": "Grupo de Pesquisa em Comunicação e Sociedade",
+                "papel": "membro",
+                "linha_tematica": "Comunicação política",
+                "instituicao": "UFMA",
+                "confianca_ia": "media",
+                "trecho_original": snippet,
+            }],
+            "lacunas": [],
+        }
+
     if "evento" in section_lower or "participação" in section_lower:
         result["eventos"].append({
-            "nome_evento": "Encontro Anual da Compós (Associação Nacional dos Programas de Pós-Graduação em Comunicação)",
+            "nome_evento": "Encontro da Compós 2025",
             "ano": 2025,
             "cidade": "São Luís",
             "pais": "Brasil",
             "tipo_participacao": "apresentacao",
-            "titulo_trabalho": "Comunicação e Algoritmos de Recomendação: Análise crítica",
+            "titulo_trabalho": "Comunicação e algoritmos",
             "financiamento_mencionado": False,
             "fonte_financiamento": None,
             "confianca_ia": "alta",
-            "trecho_original": "Apresentação do trabalho 'Comunicação e Algoritmos' no Encontro da Compós 2025.",
-            "observacoes": "Extração simulada localmente"
+            "trecho_original": snippet,
+            "observacoes": "Mock local",
         })
-        
-    # Inquire productions
-    if "produção" in section_lower or "artigo" in section_lower or "capítulo" in section_lower or "livro" in section_lower:
+    if should_extract_producoes(section_name):
         result["producoes"].append({
             "tipo": "artigo",
-            "titulo": "As metamorfoses do jornalismo digital: Uma perspectiva crítica no Nordeste",
+            "titulo": "Jornalismo digital no Nordeste",
             "ano": 2024,
             "veiculo": "Revista Brasileira de Ciências da Comunicação",
-            "doi": "10.1234/rbcc.2024.v47",
+            "doi": None,
             "isbn": None,
-            "issn": "1809-5844",
+            "issn": None,
             "evento_relacionado": None,
+            "autores": "Autor Exemplo; Docente do Currículo",
+            "qualis": "A2",
+            "idioma": "pt",
+            "indexadores": None,
+            "volume": "47",
+            "paginas": "12-28",
+            "eh_primeiro_autor": True,
             "confianca_ia": "alta",
-            "trecho_original": "Artigo publicado na Revista Brasileira de Ciências da Comunicação, v. 47, 2024.",
-            "observacoes": "Extração simulada"
+            "trecho_original": snippet,
+            "observacoes": "Mock local",
         })
-        
     return result
 
-def extract_and_save_section_data(
-    session: Session, 
-    pdf_section_id: str
-) -> Dict[str, Any]:
-    """Triggers the AI extraction for a single PDF section, validates it, and saves structured records."""
-    section = session.get(PdfSection, pdf_section_id)
-    if not section:
-        raise ValueError(f"Seção ID {pdf_section_id} não encontrada.")
-        
-    logger.info(f"Iniciando extração assistida por IA para a seção: '{section.nome_secao}' (Upload: {section.curriculo_upload_id})")
-    
-    # 1. Fetch AI structured output
-    raw_result = get_gemini_structured_output(section.nome_secao, section.texto_secao)
-    
-    # 2. Validate against Pydantic schema
-    validated_data = LattesExtractionResultSchema(**raw_result)
-    
-    # 3. Store Projects
-    for proj in validated_data.projetos:
-        db_proj = Projeto(
-            professor_id=section.professor_id,
-            curriculo_upload_id=section.curriculo_upload_id,
-            titulo=proj.titulo,
-            tipo=proj.tipo,
-            situacao=proj.situacao,
-            ano_inicio=proj.ano_inicio,
-            ano_fim=proj.ano_fim,
-            descricao=proj.descricao,
-            papel_docente=proj.papel_docente,
-            instituicoes=", ".join(proj.instituicoes) if proj.instituicoes else None,
-            financiamento_mencionado=proj.financiamento_mencionado,
-            agencia_fomento=proj.agencia_fomento,
-            fonte_dado=FonteDado.PDF_LATTES,
-            confianca_ia=proj.confianca_ia,
-            trecho_original=proj.trecho_original,
-            status_validacao=StatusValidacao.PENDENTE
+
+def _save_lacunas(session: Session, section: PdfSection, lacunas: list) -> int:
+    count = 0
+    for gap in lacunas:
+        session.add(
+            AlertaLacuna(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo_lacuna=gap.tipo_lacuna,
+                descricao=gap.descricao,
+                gravidade=gap.gravidade,
+                acao_recomendada=gap.acao_recomendada,
+                resolvido=False,
+            )
         )
-        session.add(db_proj)
-        
-    # 4. Store Events
-    for ev in validated_data.eventos:
-        db_ev = Evento(
+        count += 1
+    return count
+
+
+def _update_professor_titulacao(session: Session, professor_id: str) -> None:
+    prof = session.get(Professor, professor_id)
+    if not prof:
+        return
+    formacoes = session.exec(
+        select(FormacaoAcademica).where(FormacaoAcademica.professor_id == professor_id)
+    ).all()
+    best: NivelFormacao | None = None
+    for f in formacoes:
+        if best is None or _NIVEL_RANK.get(f.nivel, 0) > _NIVEL_RANK.get(best, 0):
+            best = f.nivel
+    if best:
+        prof.titulacao_maxima = best.value
+        session.add(prof)
+
+
+def _filter_padrao_producoes(section: PdfSection, data: LattesExtractionResultSchema) -> LattesExtractionResultSchema:
+    updates: dict = {}
+    if not should_extract_producoes(section.nome_secao):
+        updates["producoes"] = []
+    if not should_extract_eventos_padrao(section.nome_secao):
+        updates["eventos"] = []
+    if is_bibliographic_parent_section(section.nome_secao):
+        updates["producoes"] = []
+    if updates:
+        return data.model_copy(update=updates)
+    return data
+
+
+def _save_evento(
+    session: Session,
+    section: PdfSection,
+    ev: AIEventoSchema,
+    force_organizacao: Optional[bool] = None,
+) -> bool:
+    eh_org = force_organizacao if force_organizacao is not None else ev.eh_organizacao
+    if evento_already_exists(
+        session,
+        section.professor_id,
+        section.curriculo_upload_id,
+        ev.nome_evento,
+        ev.ano,
+        eh_org,
+    ):
+        return False
+    session.add(
+        Evento(
             professor_id=section.professor_id,
             curriculo_upload_id=section.curriculo_upload_id,
             nome_evento=ev.nome_evento,
@@ -228,79 +434,383 @@ def extract_and_save_section_data(
             pais=ev.pais,
             tipo_participacao=ev.tipo_participacao,
             titulo_trabalho=ev.titulo_trabalho,
+            eh_organizacao=eh_org,
+            escopo=ev.escopo,
+            instituicao_promotora=ev.instituicao_promotora,
             financiamento_mencionado=ev.financiamento_mencionado,
             fonte_financiamento=ev.fonte_financiamento,
             fonte_dado=FonteDado.PDF_LATTES,
             confianca_ia=ev.confianca_ia,
             trecho_original=ev.trecho_original,
-            status_validacao=StatusValidacao.PENDENTE
+            status_validacao=StatusValidacao.PENDENTE,
         )
-        session.add(db_ev)
-        
-    # 5. Store Productions
-    for prod in validated_data.producoes:
-        db_prod = Producao(
-            professor_id=section.professor_id,
-            curriculo_upload_id=section.curriculo_upload_id,
-            tipo=prod.tipo,
-            titulo=prod.titulo,
-            ano=prod.ano,
-            veiculo=prod.veiculo,
-            doi=prod.doi,
-            isbn=prod.isbn,
-            issn=prod.issn,
-            evento_relacionado=prod.evento_relacionado,
-            fonte_dado=FonteDado.PDF_LATTES,
-            confianca_ia=prod.confianca_ia,
-            trecho_original=prod.trecho_original,
-            status_validacao=StatusValidacao.PENDENTE
+    )
+    return True
+
+
+def _persist_padrao(session: Session, section: PdfSection, data: LattesExtractionResultSchema) -> Dict[str, int]:
+    data = _filter_padrao_producoes(section, data)
+    metrics = {
+        "projetos_extraidos": 0,
+        "eventos_extraidos": 0,
+        "producoes_extraidas": 0,
+        "producoes_ignoradas_duplicata": 0,
+        "financiamentos_extraidos": 0,
+        "lacunas_extraidas": 0,
+    }
+    seen_titles: set[str] = set()
+
+    for proj in data.projetos:
+        if projeto_already_exists(
+            session,
+            section.professor_id,
+            section.curriculo_upload_id,
+            proj.titulo,
+            proj.ano_inicio,
+        ):
+            continue
+        session.add(
+            Projeto(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                titulo=proj.titulo,
+                tipo=proj.tipo,
+                situacao=proj.situacao,
+                ano_inicio=proj.ano_inicio,
+                ano_fim=proj.ano_fim,
+                descricao=proj.descricao,
+                papel_docente=proj.papel_docente,
+                instituicoes=", ".join(proj.instituicoes) if proj.instituicoes else None,
+                financiamento_mencionado=proj.financiamento_mencionado,
+                agencia_fomento=proj.agencia_fomento,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=proj.confianca_ia,
+                trecho_original=proj.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
         )
-        session.add(db_prod)
-        
-    # 6. Store Funding mentions
-    for fin in validated_data.financiamentos:
-        db_fin = Financiamento(
-            professor_id=section.professor_id,
-            tipo=fin.tipo,
-            fonte=fin.fonte,
-            agencia=fin.agencia,
-            edital=fin.edital,
-            numero_processo=fin.numero_processo,
-            valor_solicitado=None, # will be populated in validation/manually
-            valor_aprovado=None,
-            valor_executado=None,
-            ano=fin.ano,
-            fonte_dado=FonteDado.PDF_LATTES,
-            confianca=fin.confianca,
-            trecho_original=fin.trecho_original,
-            status_validacao=StatusValidacao.PENDENTE
+        metrics["projetos_extraidos"] += 1
+
+    for ev in data.eventos:
+        if _save_evento(session, section, ev, force_organizacao=False):
+            metrics["eventos_extraidos"] += 1
+
+    for prod in data.producoes:
+        title_key = (prod.titulo or "").strip().lower()
+        batch_key = f"{title_key}|{prod.ano}|{prod.tipo}"
+        if batch_key in seen_titles:
+            metrics["producoes_ignoradas_duplicata"] += 1
+            continue
+        if producao_already_exists(
+            session,
+            section.professor_id,
+            section.curriculo_upload_id,
+            prod.titulo,
+            prod.ano,
+            prod.tipo,
+        ):
+            metrics["producoes_ignoradas_duplicata"] += 1
+            continue
+        seen_titles.add(batch_key)
+        session.add(
+            Producao(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo=prod.tipo,
+                titulo=prod.titulo,
+                ano=prod.ano,
+                veiculo=prod.veiculo,
+                doi=prod.doi,
+                isbn=prod.isbn,
+                issn=prod.issn,
+                evento_relacionado=prod.evento_relacionado,
+                autores=prod.autores,
+                qualis=prod.qualis,
+                idioma=prod.idioma,
+                indexadores=prod.indexadores,
+                volume=prod.volume,
+                paginas=prod.paginas,
+                eh_primeiro_autor=prod.eh_primeiro_autor,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=prod.confianca_ia,
+                trecho_original=prod.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
         )
-        session.add(db_fin)
-        
-    # 7. Store Gaps
-    for gap in validated_data.lacunas:
-        db_gap = AlertaLacuna(
-            professor_id=section.professor_id,
-            curriculo_upload_id=section.curriculo_upload_id,
-            tipo_lacuna=gap.tipo_lacuna,
-            descricao=gap.descricao,
-            gravidade=gap.gravidade,
-            acao_recomendada=gap.acao_recomendada,
-            resolvido=False
+        metrics["producoes_extraidas"] += 1
+
+    prod_lacunas = detect_producao_lacunas(data.producoes)
+    metrics["lacunas_extraidas"] += _save_lacunas(session, section, prod_lacunas)
+
+    for fin in data.financiamentos:
+        session.add(
+            Financiamento(
+                professor_id=section.professor_id,
+                tipo=fin.tipo,
+                fonte=fin.fonte,
+                agencia=fin.agencia,
+                edital=fin.edital,
+                numero_processo=fin.numero_processo,
+                ano=fin.ano,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca=fin.confianca,
+                trecho_original=fin.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
         )
-        session.add(db_gap)
-        
-    # 8. Mark section extraction as completed
+        metrics["financiamentos_extraidos"] += 1
+
+    metrics["lacunas_extraidas"] += _save_lacunas(session, section, data.lacunas)
+    return metrics
+
+
+def _persist_formacao(session: Session, section: PdfSection, data: FormacaoExtractionSchema) -> Dict[str, int]:
+    count = 0
+    for item in data.formacoes:
+        session.add(
+            FormacaoAcademica(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                nivel=item.nivel,
+                curso=item.curso,
+                instituicao=item.instituicao,
+                ano_inicio=item.ano_inicio,
+                ano_fim=item.ano_fim,
+                area_conhecimento=item.area_conhecimento,
+                pais=item.pais,
+                periodo_sanduiche=item.periodo_sanduiche,
+                instituicao_exterior=item.instituicao_exterior,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    _update_professor_titulacao(session, section.professor_id)
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"formacoes_extraidas": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_orientacoes(session: Session, section: PdfSection, data: OrientacaoExtractionSchema) -> Dict[str, int]:
+    count = 0
+    for item in data.orientacoes:
+        if orientacao_already_exists(
+            session,
+            section.professor_id,
+            section.curriculo_upload_id,
+            item.nome_orientando,
+            item.titulo_trabalho,
+            item.ano_inicio,
+        ):
+            continue
+        session.add(
+            Orientacao(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo=item.tipo,
+                status=item.status,
+                nome_orientando=item.nome_orientando,
+                titulo_trabalho=item.titulo_trabalho,
+                instituicao=item.instituicao,
+                ano_inicio=item.ano_inicio,
+                ano_conclusao=item.ano_conclusao,
+                papel=item.papel,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                observacoes=item.observacoes,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    rule_lacunas = detect_orientacao_lacunas(data.orientacoes)
+    lacunas += _save_lacunas(session, section, rule_lacunas)
+    return {"orientacoes_extraidas": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_bancas(session: Session, section: PdfSection, data: BancaExtractionSchema) -> Dict[str, int]:
+    count = 0
+    for item in data.bancas:
+        session.add(
+            Banca(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo=item.tipo,
+                nivel=item.nivel,
+                nome_candidato=item.nome_candidato,
+                titulo_trabalho=item.titulo_trabalho,
+                instituicao=item.instituicao,
+                ano=item.ano,
+                papel=item.papel,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                observacoes=item.observacoes,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"bancas_extraidas": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_perfil(session: Session, section: PdfSection, data: PerfilExtractionSchema) -> Dict[str, int]:
+    count = 0
+    if data.perfil:
+        p = data.perfil
+        kw = ", ".join(p.palavras_chave) if p.palavras_chave else None
+        parsed_date = _parse_optional_date(p.data_ultima_atualizacao)
+        session.add(
+            PerfilLattes(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                data_ultima_atualizacao=parsed_date,
+                resumo_cv=p.resumo_cv,
+                palavras_chave=kw,
+                nome_citacao=p.nome_citacao,
+                link_orcid=p.link_orcid,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=p.confianca_ia,
+                trecho_original=p.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count = 1
+        prof = session.get(Professor, section.professor_id)
+        if prof and parsed_date:
+            prof.data_ultima_atualizacao_lattes = parsed_date
+            if p.nome_citacao:
+                prof.nome_citacao = p.nome_citacao
+            session.add(prof)
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"perfis_extraidos": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_eventos(
+    session: Session,
+    section: PdfSection,
+    data: EventosExtractionSchema,
+    force_organizacao: bool,
+) -> Dict[str, int]:
+    count = 0
+    for ev in data.eventos:
+        if _save_evento(session, section, ev, force_organizacao=force_organizacao):
+            count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"eventos_extraidos": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_producao_tecnica(
+    session: Session, section: PdfSection, data: ProducaoTecnicaExtractionSchema
+) -> Dict[str, int]:
+    count = 0
+    for item in data.producoes_tecnicas:
+        session.add(
+            ProducaoTecnica(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo=item.tipo,
+                titulo=item.titulo,
+                ano=item.ano,
+                instituicao=item.instituicao,
+                descricao=item.descricao,
+                url=item.url,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"producoes_tecnicas_extraidas": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_premios(session: Session, section: PdfSection, data: PremiosExtractionSchema) -> Dict[str, int]:
+    count = 0
+    for item in data.premios:
+        session.add(
+            PremioTitulo(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                tipo=item.tipo,
+                nome=item.nome,
+                ano=item.ano,
+                instituicao_concedente=item.instituicao_concedente,
+                descricao=item.descricao,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"premios_extraidos": count, "lacunas_extraidas": lacunas}
+
+
+def _persist_grupos(session: Session, section: PdfSection, data: GruposPesquisaExtractionSchema) -> Dict[str, int]:
+    count = 0
+    for item in data.grupos:
+        session.add(
+            GrupoPesquisaDocente(
+                professor_id=section.professor_id,
+                curriculo_upload_id=section.curriculo_upload_id,
+                nome_grupo=item.nome_grupo,
+                codigo_dgp=item.codigo_dgp,
+                papel=item.papel,
+                linha_tematica=item.linha_tematica,
+                instituicao=item.instituicao,
+                fonte_dado=FonteDado.PDF_LATTES,
+                confianca_ia=item.confianca_ia,
+                trecho_original=item.trecho_original,
+                status_validacao=StatusValidacao.PENDENTE,
+            )
+        )
+        count += 1
+    lacunas = _save_lacunas(session, section, data.lacunas)
+    return {"grupos_extraidos": count, "lacunas_extraidas": lacunas}
+
+
+def extract_and_save_section_data(session: Session, pdf_section_id: str) -> Dict[str, Any]:
+    section = session.get(PdfSection, pdf_section_id)
+    if not section:
+        raise ValueError(f"Seção ID {pdf_section_id} não encontrada.")
+
+    profile = resolve_extraction_profile(section.nome_secao)
+    logger.info(
+        f"Extração IA — seção '{section.nome_secao}' perfil={profile} upload={section.curriculo_upload_id}"
+    )
+
+    raw = get_gemini_structured_output(section.nome_secao, section.texto_secao, profile)
+    schema_model = _PROFILE_SCHEMA[profile]
+    validated = schema_model(**raw)
+
+    if profile == "padrao":
+        metrics = _persist_padrao(session, section, validated)
+    elif profile == "formacao":
+        metrics = _persist_formacao(session, section, validated)
+    elif profile == "orientacoes":
+        metrics = _persist_orientacoes(session, section, validated)
+    elif profile == "bancas":
+        metrics = _persist_bancas(session, section, validated)
+    elif profile == "eventos_participacao":
+        metrics = _persist_eventos(session, section, validated, force_organizacao=False)
+    elif profile == "eventos_organizacao":
+        metrics = _persist_eventos(session, section, validated, force_organizacao=True)
+    elif profile == "producao_tecnica":
+        metrics = _persist_producao_tecnica(session, section, validated)
+    elif profile == "premios":
+        metrics = _persist_premios(session, section, validated)
+    elif profile == "grupos_pesquisa":
+        metrics = _persist_grupos(session, section, validated)
+    else:
+        metrics = _persist_perfil(session, section, validated)
+
     section.status_extracao = True
     session.add(section)
-    
     session.commit()
-    logger.info(f"Extração concluída e dados salvos no banco de dados para a seção ID: {pdf_section_id}")
-    
-    return {
-        "projetos_extraidos": len(validated_data.projetos),
-        "eventos_extraidos": len(validated_data.eventos),
-        "producoes_extraidas": len(validated_data.producoes),
-        "financiamentos_extraidos": len(validated_data.financiamentos),
-        "lacunas_extraidas": len(validated_data.lacunas)
-    }
+    logger.info(f"Extração concluída seção {pdf_section_id}: {metrics}")
+    return metrics

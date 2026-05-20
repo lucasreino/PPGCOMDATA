@@ -6,8 +6,10 @@ from app.models.enums import UserRole, TipoDocente
 
 if TYPE_CHECKING:
     from app.models.data import (
-        CurriculoUpload, PdfPage, PdfSection, Projeto, Evento, 
-        Producao, Financiamento, RelatorioProjeto, Anexo, AlertaLacuna
+        CurriculoUpload, PdfPage, PdfSection, Projeto, Evento,
+        Producao, Financiamento, RelatorioProjeto, Anexo, AlertaLacuna,
+        FormacaoAcademica, Orientacao, Banca, PerfilLattes,
+        ProducaoTecnica, PremioTitulo, GrupoPesquisaDocente,
     )
 
 class User(UUIDModel, TimestampModel, table=True):
@@ -41,7 +43,9 @@ class Professor(UUIDModel, TimestampModel, table=True):
     data_entrada_programa: Optional[date] = Field(default=None, nullable=True)
     status: bool = Field(default=True, nullable=False)
     observacoes: Optional[str] = Field(default=None, nullable=True)
-    
+    titulacao_maxima: Optional[str] = Field(default=None, nullable=True, index=True)
+    data_ultima_atualizacao_lattes: Optional[date] = Field(default=None, nullable=True)
+
     # Foreign Keys
     linha_pesquisa_id: Optional[str] = Field(
         default=None, 
@@ -62,3 +66,10 @@ class Professor(UUIDModel, TimestampModel, table=True):
     relatorios_projeto: List["RelatorioProjeto"] = Relationship(back_populates="professor")
     anexos: List["Anexo"] = Relationship(back_populates="professor")
     alertas_lacunas: List["AlertaLacuna"] = Relationship(back_populates="professor")
+    formacoes: List["FormacaoAcademica"] = Relationship(back_populates="professor")
+    orientacoes: List["Orientacao"] = Relationship(back_populates="professor")
+    bancas: List["Banca"] = Relationship(back_populates="professor")
+    perfis_lattes: List["PerfilLattes"] = Relationship(back_populates="professor")
+    producoes_tecnicas: List["ProducaoTecnica"] = Relationship(back_populates="professor")
+    premios: List["PremioTitulo"] = Relationship(back_populates="professor")
+    grupos_pesquisa: List["GrupoPesquisaDocente"] = Relationship(back_populates="professor")

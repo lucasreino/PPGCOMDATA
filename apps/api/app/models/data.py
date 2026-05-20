@@ -4,7 +4,10 @@ from sqlmodel import Field, Relationship, SQLModel
 from app.models.base import UUIDModel, TimestampModel
 from app.models.enums import (
     StatusProcessamento, StatusValidacao, TipoProjeto, TipoFinanciamento,
-    ConfiancaIA, GravidadeLacuna, TipoRecurso, FonteDado
+    ConfiancaIA, GravidadeLacuna, TipoRecurso, FonteDado,
+    NivelFormacao, TipoOrientacao, StatusOrientacao, PapelOrientacao,
+    TipoBanca, NivelBanca, PapelBanca, EscopoEvento,
+    TipoProducaoTecnica, TipoPremio, PapelGrupoPesquisa,
 )
 from app.models.core import Professor, LinhaPesquisa
 
@@ -30,6 +33,13 @@ class CurriculoUpload(UUIDModel, TimestampModel, table=True):
     eventos: List["Evento"] = Relationship(back_populates="upload")
     producoes: List["Producao"] = Relationship(back_populates="upload")
     alertas_lacunas: List["AlertaLacuna"] = Relationship(back_populates="upload")
+    formacoes: List["FormacaoAcademica"] = Relationship(back_populates="upload")
+    orientacoes: List["Orientacao"] = Relationship(back_populates="upload")
+    bancas: List["Banca"] = Relationship(back_populates="upload")
+    perfis_lattes: List["PerfilLattes"] = Relationship(back_populates="upload")
+    producoes_tecnicas: List["ProducaoTecnica"] = Relationship(back_populates="upload")
+    premios: List["PremioTitulo"] = Relationship(back_populates="upload")
+    grupos_pesquisa: List["GrupoPesquisaDocente"] = Relationship(back_populates="upload")
 
 class PdfPage(UUIDModel, table=True):
     __tablename__ = "pdf_pages"
@@ -101,6 +111,9 @@ class Evento(UUIDModel, TimestampModel, table=True):
     pais: Optional[str] = Field(default=None, nullable=True)
     tipo_participacao: Optional[str] = Field(default=None, nullable=True)
     titulo_trabalho: Optional[str] = Field(default=None, nullable=True)
+    eh_organizacao: bool = Field(default=False, index=True, nullable=False)
+    escopo: Optional[EscopoEvento] = Field(default=None, nullable=True)
+    instituicao_promotora: Optional[str] = Field(default=None, nullable=True)
 
     # AI Metadata
     financiamento_mencionado: bool = Field(default=False, nullable=False)
@@ -131,6 +144,13 @@ class Producao(UUIDModel, TimestampModel, table=True):
     issn: Optional[str] = Field(default=None, nullable=True)
     evento_relacionado: Optional[str] = Field(default=None, nullable=True)
     projeto_relacionado_id: Optional[str] = Field(default=None, nullable=True)
+    autores: Optional[str] = Field(default=None, nullable=True)
+    qualis: Optional[str] = Field(default=None, nullable=True, index=True)
+    idioma: Optional[str] = Field(default=None, nullable=True)
+    indexadores: Optional[str] = Field(default=None, nullable=True)
+    volume: Optional[str] = Field(default=None, nullable=True)
+    paginas: Optional[str] = Field(default=None, nullable=True)
+    eh_primeiro_autor: Optional[bool] = Field(default=None, nullable=True)
 
     # AI Metadata
     fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
@@ -254,6 +274,184 @@ class AlertaLacuna(UUIDModel, TimestampModel, table=True):
     # Relationships
     professor: Professor = Relationship(back_populates="alertas_lacunas")
     upload: Optional[CurriculoUpload] = Relationship(back_populates="alertas_lacunas")
+
+class FormacaoAcademica(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "formacoes_academicas"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+
+    nivel: NivelFormacao = Field(default=NivelFormacao.OUTRA, index=True, nullable=False)
+    curso: Optional[str] = Field(default=None, nullable=True)
+    instituicao: Optional[str] = Field(default=None, nullable=True)
+    ano_inicio: Optional[int] = Field(default=None, index=True, nullable=True)
+    ano_fim: Optional[int] = Field(default=None, index=True, nullable=True)
+    area_conhecimento: Optional[str] = Field(default=None, nullable=True)
+    pais: Optional[str] = Field(default=None, nullable=True)
+    periodo_sanduiche: bool = Field(default=False, nullable=False)
+    instituicao_exterior: Optional[str] = Field(default=None, nullable=True)
+
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+
+    professor: Professor = Relationship(back_populates="formacoes")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="formacoes")
+
+
+class Orientacao(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "orientacoes"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+
+    tipo: TipoOrientacao = Field(default=TipoOrientacao.OUTRA, index=True, nullable=False)
+    status: StatusOrientacao = Field(default=StatusOrientacao.CONCLUIDA, index=True, nullable=False)
+    nome_orientando: Optional[str] = Field(default=None, nullable=True, index=True)
+    titulo_trabalho: Optional[str] = Field(default=None, nullable=True)
+    instituicao: Optional[str] = Field(default=None, nullable=True)
+    ano_inicio: Optional[int] = Field(default=None, index=True, nullable=True)
+    ano_conclusao: Optional[int] = Field(default=None, index=True, nullable=True)
+    papel: PapelOrientacao = Field(default=PapelOrientacao.ORIENTADOR, nullable=False)
+
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    observacoes: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+
+    professor: Professor = Relationship(back_populates="orientacoes")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="orientacoes")
+
+
+class Banca(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "bancas"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+
+    tipo: TipoBanca = Field(default=TipoBanca.OUTRA, index=True, nullable=False)
+    nivel: NivelBanca = Field(default=NivelBanca.OUTRO, index=True, nullable=False)
+    nome_candidato: Optional[str] = Field(default=None, nullable=True, index=True)
+    titulo_trabalho: Optional[str] = Field(default=None, nullable=True)
+    instituicao: Optional[str] = Field(default=None, nullable=True)
+    ano: Optional[int] = Field(default=None, index=True, nullable=True)
+    papel: PapelBanca = Field(default=PapelBanca.MEMBRO, nullable=False)
+
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    observacoes: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+
+    professor: Professor = Relationship(back_populates="bancas")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="bancas")
+
+
+class ProducaoTecnica(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "producoes_tecnicas"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+    tipo: TipoProducaoTecnica = Field(default=TipoProducaoTecnica.OUTRA, index=True, nullable=False)
+    titulo: str = Field(nullable=False, index=True)
+    ano: Optional[int] = Field(default=None, index=True, nullable=True)
+    instituicao: Optional[str] = Field(default=None, nullable=True)
+    descricao: Optional[str] = Field(default=None, nullable=True)
+    url: Optional[str] = Field(default=None, nullable=True)
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+    professor: Professor = Relationship(back_populates="producoes_tecnicas")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="producoes_tecnicas")
+
+
+class PremioTitulo(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "premios_titulos"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+    tipo: TipoPremio = Field(default=TipoPremio.OUTRO, index=True, nullable=False)
+    nome: str = Field(nullable=False, index=True)
+    ano: Optional[int] = Field(default=None, index=True, nullable=True)
+    instituicao_concedente: Optional[str] = Field(default=None, nullable=True)
+    descricao: Optional[str] = Field(default=None, nullable=True)
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+    professor: Professor = Relationship(back_populates="premios")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="premios")
+
+
+class GrupoPesquisaDocente(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "grupos_pesquisa_docente"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+    nome_grupo: str = Field(nullable=False, index=True)
+    codigo_dgp: Optional[str] = Field(default=None, nullable=True)
+    papel: PapelGrupoPesquisa = Field(default=PapelGrupoPesquisa.MEMBRO, nullable=False)
+    linha_tematica: Optional[str] = Field(default=None, nullable=True)
+    instituicao: Optional[str] = Field(default=None, nullable=True)
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+    professor: Professor = Relationship(back_populates="grupos_pesquisa")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="grupos_pesquisa")
+
+
+class PerfilLattes(UUIDModel, TimestampModel, table=True):
+    __tablename__ = "perfis_lattes"
+
+    professor_id: str = Field(foreign_key="professores.id", index=True, nullable=False)
+    curriculo_upload_id: Optional[str] = Field(
+        default=None, foreign_key="curriculo_uploads.id", index=True, nullable=True
+    )
+
+    data_ultima_atualizacao: Optional[date] = Field(default=None, nullable=True)
+    resumo_cv: Optional[str] = Field(default=None, nullable=True)
+    palavras_chave: Optional[str] = Field(default=None, nullable=True)
+    nome_citacao: Optional[str] = Field(default=None, nullable=True)
+    link_orcid: Optional[str] = Field(default=None, nullable=True)
+
+    fonte_dado: FonteDado = Field(default=FonteDado.PDF_LATTES, nullable=False)
+    confianca_ia: Optional[ConfiancaIA] = Field(default=None, nullable=True)
+    trecho_original: Optional[str] = Field(default=None, nullable=True)
+    status_validacao: StatusValidacao = Field(
+        default=StatusValidacao.PENDENTE, index=True, nullable=False
+    )
+
+    professor: Professor = Relationship(back_populates="perfis_lattes")
+    upload: Optional[CurriculoUpload] = Relationship(back_populates="perfis_lattes")
+
 
 class LogValidacao(UUIDModel, table=True):
     __tablename__ = "logs_validacao"
