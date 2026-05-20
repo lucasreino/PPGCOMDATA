@@ -36,9 +36,10 @@ def clear_upload_extraction_data(session: Session, upload_id: str) -> None:
         GrupoPesquisaDocente,
     )
     for model in models_with_upload:
-        rows = session.exec(
-            select(model).where(model.curriculo_upload_id == upload_id)
-        ).all()
+        upload_col = model.__table__.c.get("curriculo_upload_id")
+        if upload_col is None:
+            continue
+        rows = session.exec(select(model).where(upload_col == upload_id)).all()
         for row in rows:
             session.delete(row)
 

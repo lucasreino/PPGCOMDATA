@@ -886,7 +886,16 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       );
       reloadProfessorData(selectedProfId);
     } catch (err: any) {
-      alert(err.message || "Erro ao reprocessar.");
+      const msg = String(err?.message || "");
+      if (msg.toLowerCase().includes("failed to fetch")) {
+        alert(
+          "Não foi possível contactar a API (rede/CORS ou servidor indisponível). " +
+          "Confira se a API está no ar e se NEXT_PUBLIC_API_URL aponta para " +
+          getApiBaseUrl()
+        );
+      } else {
+        alert(msg || "Erro ao reprocessar.");
+      }
     } finally {
       setIsProcessing(false);
       setProcessingStep("");
