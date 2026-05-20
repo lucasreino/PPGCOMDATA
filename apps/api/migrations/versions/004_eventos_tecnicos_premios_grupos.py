@@ -1,6 +1,6 @@
 """Eventos enriquecidos, produção técnica, prêmios e grupos
 
-Revision ID: 004_eventos_tecnicos_premios_grupos
+Revision ID: 004_eventos_premios_grupos
 Revises: 003_producao_enriquecida
 """
 
@@ -8,7 +8,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-revision: str = "004_eventos_tecnicos_premios_grupos"
+revision: str = "004_eventos_premios_grupos"
 down_revision: Union[str, None] = "003_producao_enriquecida"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
