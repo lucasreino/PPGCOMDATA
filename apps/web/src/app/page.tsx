@@ -134,7 +134,10 @@ export default function Dashboard() {
         const mapped = data.map(p => ({
           id: p.id,
           nome_completo: p.nome_completo,
-          linha: p.linha_pesquisa ? p.linha_pesquisa.nome : "Não especificada",
+          linha:
+            p.linha_pesquisa?.nome ??
+            linhasPesquisa.find((l) => l.id === p.linha_pesquisa_id)?.nome ??
+            "Não especificada",
           tipo: p.tipo_docente || "Permanente",
           status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
         }));
@@ -150,7 +153,7 @@ export default function Dashboard() {
       .catch(err => {
         console.error("Falha ao buscar docentes da API:", err);
       });
-  }, [apiConnected, apiUrl]);
+  }, [apiConnected, apiUrl, linhasPesquisa]);
 
   // Load teacher specific data on select (API or Mock fallback)
   useEffect(() => {
