@@ -6,14 +6,36 @@ import {
   FileText, Upload, Check, Edit2, Trash2, AlertTriangle, 
   HelpCircle, CheckCircle, RefreshCw, BarChart2, Plus, 
   BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info, LogOut,
-  Users, GraduationCap
+  Users, GraduationCap, Wrench, Trophy, Network
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, getApiBaseUrl } from "@/lib/api";
 import type {
   Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab,
   Orientacao, FormacaoAcademica, ProfessorResumo,
+  ProducaoTecnica, Premio, GrupoPesquisa,
 } from "@/lib/types";
+
+const VALIDATION_TABS: EntityTab[] = [
+  "projetos", "eventos", "producoes", "financiamentos",
+  "orientacoes", "formacoes_academicas",
+  "producoes_tecnicas", "premios", "grupos_pesquisa",
+];
+
+function tabLabel(tab: EntityTab): string {
+  const labels: Record<EntityTab, string> = {
+    projetos: "projetos",
+    eventos: "eventos",
+    producoes: "produções",
+    financiamentos: "financiamentos",
+    orientacoes: "orientações",
+    formacoes_academicas: "formação",
+    producoes_tecnicas: "prod. técnica",
+    premios: "prêmios",
+    grupos_pesquisa: "grupos",
+  };
+  return labels[tab];
+}
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 import {
   ActionPanel,
@@ -75,6 +97,9 @@ export default function Dashboard() {
   const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([]);
   const [orientacoes, setOrientacoes] = useState<Orientacao[]>([]);
   const [formacoes, setFormacoes] = useState<FormacaoAcademica[]>([]);
+  const [producoesTecnicas, setProducoesTecnicas] = useState<ProducaoTecnica[]>([]);
+  const [premios, setPremios] = useState<Premio[]>([]);
+  const [gruposPesquisa, setGruposPesquisa] = useState<GrupoPesquisa[]>([]);
   const [resumoAcademico, setResumoAcademico] = useState<ProfessorResumo | null>(null);
   const [lacunas, setLacunas] = useState<AlertaLacuna[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogAudit[]>([]);
@@ -165,6 +190,9 @@ export default function Dashboard() {
         setFinanciamentos(data.financiamentos || []);
         setOrientacoes(data.orientacoes || []);
         setFormacoes(data.formacoes_academicas || []);
+        setProducoesTecnicas(data.producoes_tecnicas || []);
+        setPremios(data.premios || []);
+        setGruposPesquisa(data.grupos_pesquisa || []);
         setLacunas(data.lacunas || []);
         setLoading(false);
       })
@@ -342,6 +370,11 @@ export default function Dashboard() {
       setEventos([]);
       setProducoes([]);
       setFinanciamentos([]);
+      setOrientacoes([]);
+      setFormacoes([]);
+      setProducoesTecnicas([]);
+      setPremios([]);
+      setGruposPesquisa([]);
       setLacunas([]);
     }
   }, [selectedProfId, apiConnected, apiUrl]);
@@ -396,6 +429,30 @@ export default function Dashboard() {
           return { ...f, status_validacao: "confirmado" };
         }
         return f;
+      }));
+    } else if (type === "producoes_tecnicas") {
+      setProducoesTecnicas(prev => prev.map(p => {
+        if (p.id === id) {
+          itemTitle = p.titulo;
+          return { ...p, status_validacao: "confirmado" };
+        }
+        return p;
+      }));
+    } else if (type === "premios") {
+      setPremios(prev => prev.map(p => {
+        if (p.id === id) {
+          itemTitle = p.nome;
+          return { ...p, status_validacao: "confirmado" };
+        }
+        return p;
+      }));
+    } else if (type === "grupos_pesquisa") {
+      setGruposPesquisa(prev => prev.map(g => {
+        if (g.id === id) {
+          itemTitle = g.nome_grupo;
+          return { ...g, status_validacao: "confirmado" };
+        }
+        return g;
       }));
     }
 
@@ -465,6 +522,30 @@ export default function Dashboard() {
         }
         return f;
       }));
+    } else if (type === "producoes_tecnicas") {
+      setProducoesTecnicas(prev => prev.map(p => {
+        if (p.id === id) {
+          itemTitle = p.titulo;
+          return { ...p, status_validacao: "descartado" };
+        }
+        return p;
+      }));
+    } else if (type === "premios") {
+      setPremios(prev => prev.map(p => {
+        if (p.id === id) {
+          itemTitle = p.nome;
+          return { ...p, status_validacao: "descartado" };
+        }
+        return p;
+      }));
+    } else if (type === "grupos_pesquisa") {
+      setGruposPesquisa(prev => prev.map(g => {
+        if (g.id === id) {
+          itemTitle = g.nome_grupo;
+          return { ...g, status_validacao: "descartado" };
+        }
+        return g;
+      }));
     }
 
     if (apiConnected) {
@@ -516,8 +597,14 @@ export default function Dashboard() {
             setOrientacoes(prev => prev.map(o => o.id === item.id ? { ...item, status_validacao: "editado" } : o));
           } else if (type === "formacoes_academicas") {
             setFormacoes(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
+          } else if (type === "producoes_tecnicas") {
+            setProducoesTecnicas(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+          } else if (type === "premios") {
+            setPremios(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+          } else if (type === "grupos_pesquisa") {
+            setGruposPesquisa(prev => prev.map(g => g.id === item.id ? { ...item, status_validacao: "editado" } : g));
           }
-          const label = item.titulo || item.nome_evento || item.fonte || item.nome_orientando || item.nivel || "registro";
+          const label = item.titulo || item.nome || item.nome_grupo || item.nome_evento || item.fonte || item.nome_orientando || item.nivel || "registro";
           addAuditLog("editar", `[Real DB] Editou e Validou ${type}: "${String(label).slice(0, 45)}..."`);
           setEditingItem(null);
         })
@@ -536,9 +623,19 @@ export default function Dashboard() {
       setProducoes(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
     } else if (type === "financiamentos") {
       setFinanciamentos(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
+    } else if (type === "orientacoes") {
+      setOrientacoes(prev => prev.map(o => o.id === item.id ? { ...item, status_validacao: "editado" } : o));
+    } else if (type === "formacoes_academicas") {
+      setFormacoes(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
+    } else if (type === "producoes_tecnicas") {
+      setProducoesTecnicas(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+    } else if (type === "premios") {
+      setPremios(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+    } else if (type === "grupos_pesquisa") {
+      setGruposPesquisa(prev => prev.map(g => g.id === item.id ? { ...item, status_validacao: "editado" } : g));
     }
 
-    addAuditLog("editar", `Editou e Validou ${type.slice(0, -2)}: "${(item.titulo || item.nome_evento || item.fonte).slice(0, 45)}..."`);
+    addAuditLog("editar", `Editou e Validou ${type}: "${String(item.titulo || item.nome || item.nome_grupo || item.nome_evento || item.fonte || "").slice(0, 45)}..."`);
     setEditingItem(null);
     checkProfUpdate(selectedProfId);
   };
@@ -1108,22 +1205,25 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           
           {/* Tabs navigation */}
           <div className="bg-[#0f172a]/50 p-1 border border-[#1e293b] rounded-xl flex flex-wrap gap-1">
-            {(["projetos", "eventos", "producoes", "financiamentos", "orientacoes", "formacoes_academicas"] as const).map((tab) => {
-              const count = tab === "projetos" ? projetos.length 
-                          : tab === "eventos" ? eventos.length 
-                          : tab === "producoes" ? producoes.length 
-                          : tab === "financiamentos" ? financiamentos.length
-                          : tab === "orientacoes" ? orientacoes.length
-                          : formacoes.length;
-              const label = tab === "formacoes_academicas" ? "formação" : tab === "orientacoes" ? "orientações" : tab;
+            {VALIDATION_TABS.map((tab) => {
+              const count =
+                tab === "projetos" ? projetos.length
+                : tab === "eventos" ? eventos.length
+                : tab === "producoes" ? producoes.length
+                : tab === "financiamentos" ? financiamentos.length
+                : tab === "orientacoes" ? orientacoes.length
+                : tab === "formacoes_academicas" ? formacoes.length
+                : tab === "producoes_tecnicas" ? producoesTecnicas.length
+                : tab === "premios" ? premios.length
+                : gruposPesquisa.length;
 
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 min-w-[90px] py-2 px-2 text-[11px] font-semibold rounded-lg capitalize transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                    activeTab === tab 
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10" 
+                  className={`flex-1 min-w-[88px] py-2 px-2 text-[11px] font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${
+                    activeTab === tab
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
@@ -1133,7 +1233,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   {tab === "financiamentos" && <DollarSign className="w-3.5 h-3.5" />}
                   {tab === "orientacoes" && <Users className="w-3.5 h-3.5" />}
                   {tab === "formacoes_academicas" && <GraduationCap className="w-3.5 h-3.5" />}
-                  {label}
+                  {tab === "producoes_tecnicas" && <Wrench className="w-3.5 h-3.5" />}
+                  {tab === "premios" && <Trophy className="w-3.5 h-3.5" />}
+                  {tab === "grupos_pesquisa" && <Network className="w-3.5 h-3.5" />}
+                  {tabLabel(tab)}
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     activeTab === tab ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400"
                   }`}>
@@ -1154,6 +1257,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             {activeTab === "financiamentos" && financiamentos.length === 0 && <EmptyState tab="financiamentos" />}
             {activeTab === "orientacoes" && orientacoes.length === 0 && <EmptyState tab="orientacoes" />}
             {activeTab === "formacoes_academicas" && formacoes.length === 0 && <EmptyState tab="formacoes_academicas" />}
+            {activeTab === "producoes_tecnicas" && producoesTecnicas.length === 0 && <EmptyState tab="produções técnicas" />}
+            {activeTab === "premios" && premios.length === 0 && <EmptyState tab="prêmios" />}
+            {activeTab === "grupos_pesquisa" && gruposPesquisa.length === 0 && <EmptyState tab="grupos de pesquisa" />}
 
             {/* PROJECTS VIEW */}
             {activeTab === "projetos" && projetos.map((item) => (
@@ -1430,6 +1536,136 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   onConfirm={() => handleConfirm("formacoes_academicas", item.id)}
                   onEdit={() => handleOpenEdit("formacoes_academicas", item)}
                   onDiscard={() => handleDiscard("formacoes_academicas", item.id)}
+                />
+              </div>
+            ))}
+
+            {/* PRODUÇÃO TÉCNICA */}
+            {activeTab === "producoes_tecnicas" && producoesTecnicas.map((item) => (
+              <div
+                key={item.id}
+                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                      {item.tipo}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.titulo}</h3>
+                    {item.instituicao && <p className="text-[11px] text-slate-400 mt-1">{item.instituicao}</p>}
+                  </div>
+                  <ConfidenceBadge level={item.confianca_ia} />
+                </div>
+                {item.descricao && (
+                  <p className="text-xs text-slate-400 mt-3 bg-slate-950/40 p-2.5 rounded border border-slate-900">{item.descricao}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Ano</span>
+                    {item.ano ?? "—"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">URL</span>
+                    <span className="truncate block text-indigo-400">{item.url || "—"}</span>
+                  </div>
+                </div>
+                <OriginalFragment text={item.trecho_original} />
+                <ActionPanel
+                  status={item.status_validacao}
+                  onConfirm={() => handleConfirm("producoes_tecnicas", item.id)}
+                  onEdit={() => handleOpenEdit("producoes_tecnicas", item)}
+                  onDiscard={() => handleDiscard("producoes_tecnicas", item.id)}
+                />
+              </div>
+            ))}
+
+            {/* PRÊMIOS */}
+            {activeTab === "premios" && premios.map((item) => (
+              <div
+                key={item.id}
+                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                      {item.tipo}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.nome}</h3>
+                    {item.instituicao_concedente && (
+                      <p className="text-[11px] text-slate-400 mt-1">{item.instituicao_concedente}</p>
+                    )}
+                  </div>
+                  <ConfidenceBadge level={item.confianca_ia} />
+                </div>
+                {item.descricao && (
+                  <p className="text-xs text-slate-400 mt-3 bg-slate-950/40 p-2.5 rounded border border-slate-900">{item.descricao}</p>
+                )}
+                <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Ano</span>
+                    {item.ano ?? "—"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Concedente</span>
+                    {item.instituicao_concedente || "—"}
+                  </div>
+                </div>
+                <OriginalFragment text={item.trecho_original} />
+                <ActionPanel
+                  status={item.status_validacao}
+                  onConfirm={() => handleConfirm("premios", item.id)}
+                  onEdit={() => handleOpenEdit("premios", item)}
+                  onDiscard={() => handleDiscard("premios", item.id)}
+                />
+              </div>
+            ))}
+
+            {/* GRUPOS DE PESQUISA */}
+            {activeTab === "grupos_pesquisa" && gruposPesquisa.map((item) => (
+              <div
+                key={item.id}
+                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                }`}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                      {item.papel}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.nome_grupo}</h3>
+                    {item.linha_tematica && (
+                      <p className="text-[11px] text-slate-400 mt-1">{item.linha_tematica}</p>
+                    )}
+                  </div>
+                  <ConfidenceBadge level={item.confianca_ia} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                    <span className="text-[9px] text-slate-500 block">Código DGP</span>
+                    {item.codigo_dgp || "—"}
+                  </div>
+                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2">
+                    <span className="text-[9px] text-slate-500 block">Instituição</span>
+                    {item.instituicao || "—"}
+                  </div>
+                </div>
+                <OriginalFragment text={item.trecho_original} />
+                <ActionPanel
+                  status={item.status_validacao}
+                  onConfirm={() => handleConfirm("grupos_pesquisa", item.id)}
+                  onEdit={() => handleOpenEdit("grupos_pesquisa", item)}
+                  onDiscard={() => handleDiscard("grupos_pesquisa", item.id)}
                 />
               </div>
             ))}
@@ -2296,7 +2532,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             <div className="border-b border-[#1e293b] p-4 flex justify-between items-center">
               <h3 className="font-bold text-sm text-slate-200 flex items-center gap-2">
                 <Edit2 className="w-4.5 h-4.5 text-indigo-400" />
-                Editar e Corrigir {editingItem.type === "projetos" ? "Projeto" : editingItem.type === "eventos" ? "Evento" : editingItem.type === "producoes" ? "Produção" : "Financiamento"}
+                Editar e Corrigir {({
+                  projetos: "Projeto",
+                  eventos: "Evento",
+                  producoes: "Produção",
+                  financiamentos: "Financiamento",
+                  orientacoes: "Orientação",
+                  formacoes_academicas: "Formação",
+                  producoes_tecnicas: "Produção Técnica",
+                  premios: "Prêmio",
+                  grupos_pesquisa: "Grupo de Pesquisa",
+                } as Record<EntityTab, string>)[editingItem.type as EntityTab] || "Registro"}
               </h3>
               <button 
                 onClick={() => setEditingItem(null)}
@@ -2455,6 +2701,153 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
                       />
                     </div>
+                  </div>
+                </>
+              )}
+
+              {editingItem.type === "producoes_tecnicas" && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Título</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.titulo}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, titulo: e.target.value } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tipo</label>
+                      <input
+                        type="text"
+                        value={editingItem.item.tipo}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, tipo: e.target.value } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano</label>
+                      <input
+                        type="number"
+                        value={editingItem.item.ano ?? ""}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: e.target.value ? parseInt(e.target.value) : null } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Instituição</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.instituicao || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao: e.target.value || null } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Descrição</label>
+                    <textarea
+                      rows={2}
+                      value={editingItem.item.descricao || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, descricao: e.target.value || null } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingItem.type === "premios" && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nome do prêmio / título</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.nome}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, nome: e.target.value } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Tipo</label>
+                      <input
+                        type="text"
+                        value={editingItem.item.tipo}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, tipo: e.target.value } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano</label>
+                      <input
+                        type="number"
+                        value={editingItem.item.ano ?? ""}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: e.target.value ? parseInt(e.target.value) : null } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Instituição concedente</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.instituicao_concedente || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao_concedente: e.target.value || null } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingItem.type === "grupos_pesquisa" && (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nome do grupo</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.nome_grupo}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, nome_grupo: e.target.value } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Papel</label>
+                      <input
+                        type="text"
+                        value={editingItem.item.papel}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, papel: e.target.value } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Código DGP</label>
+                      <input
+                        type="text"
+                        value={editingItem.item.codigo_dgp || ""}
+                        onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, codigo_dgp: e.target.value || null } })}
+                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Linha temática</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.linha_tematica || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, linha_tematica: e.target.value || null } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Instituição</label>
+                    <input
+                      type="text"
+                      value={editingItem.item.instituicao || ""}
+                      onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao: e.target.value || null } })}
+                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                    />
                   </div>
                 </>
               )}

@@ -102,6 +102,43 @@ export interface FormacaoAcademica {
   status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
 }
 
+export interface ProducaoTecnica {
+  id: string;
+  tipo: string;
+  titulo: string;
+  ano: number | null;
+  instituicao: string | null;
+  descricao: string | null;
+  url: string | null;
+  confianca_ia: "alta" | "media" | "baixa";
+  trecho_original: string;
+  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
+export interface Premio {
+  id: string;
+  tipo: string;
+  nome: string;
+  ano: number | null;
+  instituicao_concedente: string | null;
+  descricao: string | null;
+  confianca_ia: "alta" | "media" | "baixa";
+  trecho_original: string;
+  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
+export interface GrupoPesquisa {
+  id: string;
+  nome_grupo: string;
+  codigo_dgp: string | null;
+  papel: string;
+  linha_tematica: string | null;
+  instituicao: string | null;
+  confianca_ia: "alta" | "media" | "baixa";
+  trecho_original: string;
+  status_validacao: "pendente" | "confirmado" | "editado" | "descartado";
+}
+
 export interface ProfessorResumo {
   titulacao_maxima?: string | null;
   data_ultima_atualizacao_lattes?: string | null;
@@ -143,6 +180,9 @@ export type EntityTab =
   | "producoes"
   | "financiamentos"
   | "orientacoes"
-  | "formacoes_academicas";
+  | "formacoes_academicas"
+  | "producoes_tecnicas"
+  | "premios"
+  | "grupos_pesquisa";
 
 export type ValidationEntityType = EntityTab;
