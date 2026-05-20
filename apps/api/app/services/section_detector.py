@@ -1,7 +1,7 @@
 import re
 import logging
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from sqlmodel import Session, select
 from app.models.data import CurriculoUpload, PdfPage, PdfSection
 
