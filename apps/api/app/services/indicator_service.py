@@ -344,12 +344,23 @@ class IndicatorService:
 
         tabela_docente.sort(key=lambda x: x["total"], reverse=True)
 
+        producao_linha_tipo: Dict[str, Dict[str, int]] = {}
+        for p in producoes:
+            if p.professor_id not in profs:
+                continue
+            linha = self._linha_nome(profs[p.professor_id])
+            cat = _norm_tipo_producao(p.tipo)
+            if linha not in producao_linha_tipo:
+                producao_linha_tipo[linha] = {}
+            producao_linha_tipo[linha][cat] = producao_linha_tipo[linha].get(cat, 0) + 1
+
         return {
             "totais": totals,
             "producao_por_tipo": por_tipo,
             "producao_por_ano": dict(sorted(por_ano.items())),
             "producao_por_docente": por_docente,
             "producao_por_linha": por_linha,
+            "producao_por_linha_e_tipo": producao_linha_tipo,
             "tabela_por_docente": tabela_docente,
             "ranking_artigos": sorted(
                 tabela_docente, key=lambda x: x["artigos"], reverse=True
@@ -397,13 +408,21 @@ class IndicatorService:
         por_tipo: Dict[str, int] = {}
         tabela: List[Dict[str, Any]] = []
 
+        pesquisa_extensao_por_ano: Dict[str, Dict[str, int]] = {}
+        impacto_regional = 0
+
         for pr in projetos:
             nome = profs[pr.professor_id].nome_completo if pr.professor_id in profs else "?"
             por_docente[nome] = por_docente.get(nome, 0) + 1
             linha = self._linha_nome(profs[pr.professor_id]) if pr.professor_id in profs else "?"
             por_linha[linha] = por_linha.get(linha, 0) + 1
             if pr.ano_inicio:
-                por_ano[str(pr.ano_inicio)] = por_ano.get(str(pr.ano_inicio), 0) + 1
+                ano = str(pr.ano_inicio)
+                por_ano[ano] = por_ano.get(ano, 0) + 1
+                if ano not in pesquisa_extensao_por_ano:
+                    pesquisa_extensao_por_ano[ano] = {"pesquisa": 0, "extensao": 0}
+                key = "pesquisa" if pr.tipo == TipoProjeto.PESQUISA else "extensao"
+                pesquisa_extensao_por_ano[ano][key] = pesquisa_extensao_por_ano[ano].get(key, 0) + 1
             tipo = _enum_val(pr.tipo)
             por_tipo[tipo] = por_tipo.get(tipo, 0) + 1
             tabela.append(
@@ -416,6 +435,43 @@ class IndicatorService:
                     "financiamento": "Sim" if pr.financiamento_mencionado else "Não",
                     "agencia": pr.agencia_fomento,
                     "status_validacao": _enum_val(pr.status_validacao),
+                    "origem": "lattes",
+                }
+            )
+
+        por_tema: Dict[str, int] = {}
+        por_publico: Dict[str, int] = {}
+        por_territorio: Dict[str, int] = {}
+        tabela_relatorios: List[Dict[str, Any]] = []
+
+        for rel in relatorios:
+            nome = profs[rel.professor_id].nome_completo if rel.professor_id in profs else "?"
+            linha = self._linha_nome(profs[rel.professor_id]) if rel.professor_id in profs else "?"
+            if rel.tema_principal:
+                por_tema[rel.tema_principal] = por_tema.get(rel.tema_principal, 0) + 1
+            if rel.publico_atendido:
+                por_publico[rel.publico_atendido] = por_publico.get(rel.publico_atendido, 0) + 1
+            if rel.territorio_impactado:
+                por_territorio[rel.territorio_impactado] = por_territorio.get(
+                    rel.territorio_impactado, 0
+                ) + 1
+            if rel.tipo_impacto and _enum_val(rel.tipo_impacto) in ("regional", "local"):
+                impacto_regional += 1
+            tabela_relatorios.append(
+                {
+                    "titulo": rel.titulo,
+                    "docente": nome,
+                    "linha": linha,
+                    "tipo": _enum_val(rel.tipo),
+                    "tema": rel.tema_principal,
+                    "publico": rel.publico_atendido,
+                    "territorio": rel.territorio_impactado,
+                    "financiamento": "Sim"
+                    if rel.possui_financiamento_confirmado or rel.houve_financiamento
+                    else "Não",
+                    "produto": rel.produto_gerado,
+                    "tipo_impacto": _enum_val(rel.tipo_impacto) if rel.tipo_impacto else None,
+                    "origem": "relatorio",
                 }
             )
 
@@ -424,12 +480,18 @@ class IndicatorService:
             "total_projetos_extensao": extensao,
             "projetos_com_financiamento": com_fin,
             "projetos_sem_financiamento": sem_fin,
+            "projetos_impacto_regional": impacto_regional,
             "total_relatorios_complementares": len(relatorios),
             "projetos_por_docente": por_docente,
             "projetos_por_linha": por_linha,
             "projetos_por_ano": dict(sorted(por_ano.items())),
             "projetos_por_tipo": por_tipo,
+            "pesquisa_extensao_por_ano": pesquisa_extensao_por_ano,
+            "projetos_por_tema": por_tema,
+            "projetos_por_publico": por_publico,
+            "projetos_por_territorio": por_territorio,
             "tabela": tabela,
+            "tabela_relatorios": tabela_relatorios,
             "filtros": self.filters.query_params(),
         }
 
@@ -449,7 +511,13 @@ class IndicatorService:
             "projetos_por_linha": {},
             "projetos_por_ano": {},
             "projetos_por_tipo": {},
+            "pesquisa_extensao_por_ano": {},
+            "projetos_por_tema": {},
+            "projetos_por_publico": {},
+            "projetos_por_territorio": {},
+            "projetos_impacto_regional": 0,
             "tabela": [],
+            "tabela_relatorios": [],
             "filtros": self.filters.query_params(),
         }
 

@@ -22,8 +22,9 @@ import {
   buildDossieQuery,
   type FilterState,
 } from "@/components/dossie/DossieFilters";
-import { KpiCard, SimpleBarChart, SimpleLineChart } from "@/components/dossie/charts";
+import { KpiCard, SimpleBarChart, SimpleLineChart, StackedBarChart } from "@/components/dossie/charts";
 import { CatalogPanel, ExportButtons } from "@/components/dossie/CatalogPanel";
+import { RelatorioForm } from "@/components/dossie/RelatorioForm";
 
 const TABS = [
   { id: "visao", label: "Visão Geral", icon: LayoutDashboard },
@@ -266,6 +267,20 @@ export default function DossieApcnPage() {
                     <SimpleLineChart data={prod.producao_por_ano} />
                   </div>
                 )}
+                {demanda && (demanda.por_ano as Record<string, Record<string, number>>) && (
+                  <div className="glow-card rounded-xl p-5">
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Demanda discente por ano</h3>
+                    <StackedBarChart
+                      data={Object.fromEntries(
+                        Object.entries(demanda.por_ano as Record<string, Record<string, number>>).map(
+                          ([ano, v]) => [ano, { inscritos: v.inscritos, vagas: v.vagas }]
+                        )
+                      )}
+                      keys={["inscritos", "vagas"]}
+                      colors={["#6366f1", "#94a3b8"]}
+                    />
+                  </div>
+                )}
                 {demanda && (demanda.total_processos as number) > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <KpiCard label="Inscritos (seleção)" value={demanda.total_inscritos as number} />
@@ -349,6 +364,18 @@ export default function DossieApcnPage() {
                   <h3 className="text-sm font-semibold text-slate-300 mb-3">Evolução por ano</h3>
                   <SimpleLineChart data={prod.producao_por_ano || {}} />
                 </div>
+                {(prod.producao_por_linha_e_tipo as Record<string, Record<string, number>>) &&
+                  Object.keys(prod.producao_por_linha_e_tipo as object).length > 0 && (
+                    <div className="glow-card rounded-xl p-5">
+                      <h3 className="text-sm font-semibold text-slate-300 mb-3">
+                        Produção por linha e tipo
+                      </h3>
+                      <StackedBarChart
+                        data={prod.producao_por_linha_e_tipo as Record<string, Record<string, number>>}
+                        keys={["artigos", "livros", "capitulos", "anais", "producao_tecnica"]}
+                      />
+                    </div>
+                  )}
                 <div className="glow-card rounded-xl overflow-x-auto">
                   <table className="w-full text-xs min-w-[700px]">
                     <thead className="bg-slate-900/80 text-slate-400 text-[10px] uppercase">
@@ -384,22 +411,64 @@ export default function DossieApcnPage() {
 
             {tab === "projetos" && projetos && (
               <section className="space-y-6">
+                <RelatorioForm professores={professores} linhas={linhas} onSaved={loadData} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <KpiCard label="Pesquisa" value={(projetos.total_projetos_pesquisa as number) ?? 0} />
                   <KpiCard label="Extensão" value={(projetos.total_projetos_extensao as number) ?? 0} accent="emerald" />
                   <KpiCard label="Com financiamento" value={(projetos.projetos_com_financiamento as number) ?? 0} />
-                  <KpiCard label="Relatórios complementares" value={(projetos.total_relatorios_complementares as number) ?? 0} />
+                  <KpiCard
+                    label="Impacto regional"
+                    value={(projetos.projetos_impacto_regional as number) ?? 0}
+                    accent="emerald"
+                  />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por docente</h3>
-                    <SimpleBarChart data={(projetos.projetos_por_docente as Record<string, number>) || {}} color="#10b981" />
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Pesquisa × extensão por ano</h3>
+                    <StackedBarChart
+                      data={(projetos.pesquisa_extensao_por_ano as Record<string, Record<string, number>>) || {}}
+                      keys={["pesquisa", "extensao"]}
+                    />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por ano</h3>
-                    <SimpleLineChart data={(projetos.projetos_por_ano as Record<string, number>) || {}} color="#10b981" />
+                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por território</h3>
+                    <SimpleBarChart
+                      data={(projetos.projetos_por_territorio as Record<string, number>) || {}}
+                      color="#10b981"
+                    />
                   </div>
                 </div>
+                {(projetos.tabela_relatorios as Array<Record<string, unknown>>)?.length > 0 && (
+                  <div className="glow-card rounded-xl overflow-x-auto">
+                    <h3 className="text-sm font-semibold text-slate-300 p-4 border-b border-slate-800">
+                      Relatórios complementares (impacto / extensão)
+                    </h3>
+                    <table className="w-full text-xs min-w-[800px]">
+                      <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase">
+                        <tr>
+                          <th className="p-2 text-left">Título</th>
+                          <th className="p-2">Docente</th>
+                          <th className="p-2">Tema</th>
+                          <th className="p-2">Público</th>
+                          <th className="p-2">Território</th>
+                          <th className="p-2">Financ.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(projetos.tabela_relatorios as Array<Record<string, unknown>>).map((row, i) => (
+                          <tr key={i} className="border-t border-slate-800">
+                            <td className="p-2">{String(row.titulo)}</td>
+                            <td className="p-2">{String(row.docente)}</td>
+                            <td className="p-2 text-slate-400">{String(row.tema ?? "—")}</td>
+                            <td className="p-2 text-slate-400">{String(row.publico ?? "—")}</td>
+                            <td className="p-2">{String(row.territorio ?? "—")}</td>
+                            <td className="p-2 text-center">{String(row.financiamento)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </section>
             )}
 
@@ -613,13 +682,32 @@ export default function DossieApcnPage() {
                         <tr key={i} className="border-t border-slate-800">
                           <td className="p-2 font-mono text-[10px]">{String(row.tipo_lacuna ?? row.tipo)}</td>
                           <td className="p-2 text-slate-400">{String(row.secao_documento ?? "—")}</td>
-                          <td className="p-2 text-slate-300 max-w-xs truncate">{String(row.descricao)}</td>
+                          <td className="p-2 text-slate-300 max-w-xs truncate" title={String(row.descricao)}>
+                            {String(row.descricao)}
+                          </td>
                           <td className="p-2 text-center">{String(row.gravidade)}</td>
                           <td className="p-2 text-center">
                             {row.resolvido ? (
                               <span className="text-emerald-400">OK</span>
                             ) : row.virtual ? (
-                              <span className="text-rose-400">APCN</span>
+                              <span className="text-rose-400" title={String(row.sugestao_de_correcao || "")}>
+                                APCN
+                              </span>
+                            ) : row.id ? (
+                              <button
+                                type="button"
+                                className="text-[10px] px-2 py-0.5 bg-emerald-800 rounded text-emerald-200"
+                                onClick={async () => {
+                                  await apiFetch(`/lacunas/${row.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ resolvido: true }),
+                                  });
+                                  loadData();
+                                }}
+                              >
+                                Resolver
+                              </button>
                             ) : (
                               <span className="text-amber-400">Aberta</span>
                             )}
@@ -641,7 +729,21 @@ export default function DossieApcnPage() {
                 <ExportButtons query={buildDossieQuery(filters)} />
                 {narrativas && (
                   <div className="space-y-4 pt-4 border-t border-slate-800">
-                    <h4 className="text-sm font-semibold text-slate-300">Textos-síntese (narrativas)</h4>
+                    <div className="flex items-center justify-between gap-4">
+                      <h4 className="text-sm font-semibold text-slate-300">Textos-síntese (narrativas)</h4>
+                      <button
+                        type="button"
+                        className="text-xs px-3 py-1.5 border border-slate-700 rounded-lg hover:border-indigo-600"
+                        onClick={() => {
+                          const text = Object.entries(narrativas)
+                            .map(([k, v]) => `## ${k}\n\n${v}`)
+                            .join("\n\n");
+                          navigator.clipboard.writeText(text);
+                        }}
+                      >
+                        Copiar textos
+                      </button>
+                    </div>
                     {Object.entries(narrativas).map(([key, text]) => (
                       <div key={key} className="text-xs text-slate-400 leading-relaxed">
                         <span className="text-indigo-400 font-bold uppercase block mb-1">{key}</span>

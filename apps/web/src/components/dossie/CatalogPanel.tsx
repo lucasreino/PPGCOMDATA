@@ -166,6 +166,12 @@ export function ExportButtons({ query }: { query: string }) {
     URL.revokeObjectURL(url);
   };
 
+  const templates = [
+    ["template/egressos.csv", "template_egressos.csv"],
+    ["template/processos-seletivos.csv", "template_selecao.csv"],
+    ["template/eventos-institucionais.csv", "template_simcom.csv"],
+  ] as const;
+
   const items = [
     ["producao.csv", "producao_docente.csv"],
     ["financiamento.csv", "financiamento.csv"],
@@ -177,7 +183,25 @@ export function ExportButtons({ query }: { query: string }) {
   ] as const;
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="space-y-3">
+      <div>
+        <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Modelos CSV (importação)</p>
+        <div className="flex flex-wrap gap-2">
+          {templates.map(([path, file]) => (
+            <button
+              key={path}
+              type="button"
+              onClick={() => download(`/dossie-apcn/export/${path}`, file)}
+              className="px-3 py-2 bg-slate-900 border border-dashed border-slate-600 rounded-lg text-xs"
+            >
+              {file}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] text-slate-500 uppercase font-bold mb-2">Exportar dados atuais</p>
+        <div className="flex flex-wrap gap-2">
       {items.map(([path, file]) => (
         <button
           key={path}
@@ -188,6 +212,8 @@ export function ExportButtons({ query }: { query: string }) {
           {file}
         </button>
       ))}
+        </div>
+      </div>
     </div>
   );
 }

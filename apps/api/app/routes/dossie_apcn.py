@@ -250,3 +250,32 @@ async def export_resumo_md(
         media_type="text/markdown; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=resumo_ppgcom.md"},
     )
+
+
+_CSV_TEMPLATES = {
+    "egressos": (
+        "nome,ano_ingresso,ano_conclusao,cidade_origem,estado_origem,genero,"
+        "setor_atuacao,atividade_atual,esta_em_doutorado,instituicao_doutorado\n"
+        "Maria Exemplo,2018,2020,São Luís,MA,feminino,ensino superior,Professora,nao,\n"
+    ),
+    "processos-seletivos": (
+        "ano,nivel,vagas,inscritos,inscricoes_deferidas,aprovados,matriculados,cotistas\n"
+        "2024,mestrado,20,85,70,12,10,3\n"
+    ),
+    "eventos-institucionais": (
+        "nome,edicao,ano,numero_inscritos,numero_trabalhos,agencias_financiadoras\n"
+        "SIMCOM,15,2024,320,180,FAPEMA; CNPq\n"
+    ),
+}
+
+
+@router.get("/export/template/{nome}.csv")
+async def export_template_csv(nome: str, _user=Depends(require_staff)):
+    content = _CSV_TEMPLATES.get(nome)
+    if not content:
+        raise HTTPException(404, detail="Template não encontrado.")
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=template_{nome}.csv"},
+    )

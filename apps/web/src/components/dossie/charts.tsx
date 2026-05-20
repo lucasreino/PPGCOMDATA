@@ -90,6 +90,68 @@ export function SimpleLineChart({ data, color = "#6366f1" }: LineChartProps) {
   );
 }
 
+interface StackedBarProps {
+  data: Record<string, Record<string, number>>;
+  keys?: string[];
+  colors?: string[];
+}
+
+export function StackedBarChart({
+  data,
+  keys = ["pesquisa", "extensao", "artigos", "livros"],
+  colors = ["#6366f1", "#10b981", "#a855f7", "#f59e0b"],
+}: StackedBarProps) {
+  const entries = Object.entries(data);
+  if (entries.length === 0) {
+    return <p className="text-xs text-slate-500 py-8 text-center">Sem dados</p>;
+  }
+  const maxTotal = Math.max(
+    ...entries.map(([, v]) => Object.values(v).reduce((a, b) => a + b, 0)),
+    1
+  );
+
+  return (
+    <div className="space-y-3">
+      {entries.map(([label, parts]) => {
+        const total = Object.values(parts).reduce((a, b) => a + b, 0);
+        return (
+          <div key={label}>
+            <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+              <span className="truncate max-w-[65%]">{label}</span>
+              <span>{total}</span>
+            </div>
+            <div className="h-3 flex rounded-full overflow-hidden bg-slate-900">
+              {keys.map((k, i) => {
+                const val = parts[k] || 0;
+                if (!val) return null;
+                const w = (val / maxTotal) * 100;
+                return (
+                  <div
+                    key={k}
+                    style={{ width: `${w}%`, backgroundColor: colors[i % colors.length] }}
+                    title={`${k}: ${val}`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      <div className="flex flex-wrap gap-3 text-[9px] text-slate-500 pt-2">
+        {keys.map((k, i) => (
+          <span key={k} className="flex items-center gap-1">
+            <span
+              className="w-2 h-2 rounded-sm inline-block"
+              style={{ backgroundColor: colors[i % colors.length] }}
+            />
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function KpiCard({
   label,
   value,
