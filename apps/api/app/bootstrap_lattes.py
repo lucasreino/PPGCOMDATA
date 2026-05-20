@@ -106,9 +106,9 @@ def bootstrap():
             
             # Decide which research line to map to based on teacher name keyword map
             name_lower = clean_name.lower()
-            if any(k in name_lower for k in ["messias", "domingos", "izani", "leticia", "thaisa"]):
+            if any(k in name_lower for k in ["messias", "domingos", "izani", "larissa", "marcelli", "odlinari"]):
                 assigned_line = linha1
-            elif any(k in name_lower for k in ["tavares", "larissa", "marcelli", "michelly", "gisa", "leila", "thays"]):
+            elif any(k in name_lower for k in ["tavares", "leila", "leticia", "thaisa", "gisa", "gislene", "thays", "michelly"]):
                 assigned_line = linha2
             else:
                 assigned_line = linha1 # default fallback
