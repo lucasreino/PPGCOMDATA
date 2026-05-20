@@ -1068,6 +1068,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           >
             Gerar Relatório com IA
           </button>
+          <a
+            href="/dossie-apcn"
+            className="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 border border-transparent hover:border-indigo-800"
+          >
+            Dossiê APCN
+          </a>
         </div>
 
         {/* API connection indicator */}
