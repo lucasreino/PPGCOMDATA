@@ -14,6 +14,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import engine
 from app.models.core import Professor, LinhaPesquisa
 from app.models.enums import TipoDocente
+from app.services.professor_lookup import find_professor
+from app.services.professor_dedupe import merge_duplicate_professors
 
 LINE1_NAME = "Tecnologias, Audiovisual e Processos Regionais de Comunicação"
 LINE2_NAME = "Processos Comunicacionais, Cidadania e Identidades"
@@ -171,31 +173,6 @@ PROFESSOR_DATA = [
 ]
 
 
-def _normalize_lattes_id(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return None
-    return value.rstrip("/").split("/")[-1]
-
-
-def _find_professor(profs: list[Professor], data: dict) -> Optional[Professor]:
-    email = data["email"].lower()
-    lattes = _normalize_lattes_id(data.get("id_lattes"))
-    nome = data["nome_completo"].lower()
-
-    for p in profs:
-        if p.email and p.email.lower() == email:
-            return p
-        if lattes and _normalize_lattes_id(p.id_lattes) == lattes:
-            return p
-        if p.nome_completo.lower() == nome:
-            return p
-        # fallback: sobrenome distintivo
-        sobrenome = nome.split()[-2] if len(nome.split()) > 2 else nome.split()[-1]
-        if sobrenome and sobrenome in p.nome_completo.lower():
-            return p
-    return None
-
-
 def _apply_data(prof: Professor, data: dict, linha_id) -> None:
     prof.nome_completo = data["nome_completo"]
     prof.email = data["email"]
@@ -246,7 +223,13 @@ def run_precision_seeding():
         print("\n--- Atualizando / criando docentes ---")
         for data in PROFESSOR_DATA:
             linha_id = l1.id if data["linha"] == "linha1" else l2.id
-            prof = _find_professor(profs, data)
+            prof = find_professor(
+                session,
+                nome_completo=data["nome_completo"],
+                email=data["email"],
+                id_lattes=data.get("id_lattes"),
+                candidates=profs,
+            )
 
             if prof:
                 print(f"  Atualizado: {data['nome_completo']}")
@@ -264,6 +247,16 @@ def run_precision_seeding():
                 profs.append(prof)
 
         session.commit()
+
+        print("\n--- Mesclando docentes duplicados ---")
+        stats = merge_duplicate_professors(session)
+        if stats["records_deleted"]:
+            print(
+                f"  Removidos {stats['records_deleted']} cadastro(s) duplicado(s) "
+                f"({stats['groups_merged']} mesclagem(ns))."
+            )
+        else:
+            print("  Nenhuma duplicata encontrada.")
 
         unmatched = [
             p

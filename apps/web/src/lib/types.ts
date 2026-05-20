@@ -1,6 +1,8 @@
 export interface Professor {
   id: string;
   nome_completo: string;
+  email?: string;
+  id_lattes?: string;
   linha: string;
   tipo: string;
   status: "pendente" | "processado" | "validado";

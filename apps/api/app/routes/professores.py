@@ -14,6 +14,7 @@ from app.schemas.professor_resumo import (
     OrientacaoResumoItem,
     FormacaoResumoItem,
 )
+from app.services.professor_lookup import find_professor, professor_dedupe_key
 
 router = APIRouter(prefix="/professores", tags=["Professores"])
 
@@ -26,7 +27,17 @@ async def list_professores(
     """List all professors with research line loaded."""
     statement = select(Professor).options(selectinload(Professor.linha_pesquisa))
     results = session.exec(statement).all()
-    return [ProfessorListItem.from_model(p) for p in results]
+
+    seen: set[str] = set()
+    unique: list[Professor] = []
+    for prof in sorted(results, key=lambda p: p.nome_completo or ""):
+        key = professor_dedupe_key(prof)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(prof)
+
+    return [ProfessorListItem.from_model(p) for p in unique]
 
 
 @router.post("/", response_model=Professor, status_code=status.HTTP_201_CREATED)
@@ -36,6 +47,17 @@ async def create_professor(
     _user=Depends(require_staff),
 ):
     """Register a new professor in the system."""
+    existing = find_professor(
+        session,
+        nome_completo=professor.nome_completo,
+        email=professor.email,
+        id_lattes=professor.id_lattes,
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Docente já cadastrado: {existing.nome_completo}",
+        )
     session.add(professor)
     session.commit()
     session.refresh(professor)

@@ -10,6 +10,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import engine
 from app.config import settings
 from app.models.core import Professor, LinhaPesquisa
+from app.services.professor_lookup import find_professor, normalize_text
+from app.utils_fix_linhas import PROFESSOR_DATA
 from app.models.data import CurriculoUpload
 from app.models.enums import StatusProcessamento, StatusValidacao
 from app.services.pdf_processor import process_curriculo_pdf
@@ -114,21 +116,42 @@ def bootstrap():
             else:
                 assigned_line = linha1 # default fallback
             
-            # Find or create professor
-            stmt_prof = select(Professor).where(Professor.nome_completo == clean_name)
-            prof = session.exec(stmt_prof).first()
+            prof = None
+            nome_norm = normalize_text(clean_name)
+            for official in PROFESSOR_DATA:
+                if normalize_text(official["nome_completo"]) == nome_norm:
+                    prof = find_professor(
+                        session,
+                        nome_completo=official["nome_completo"],
+                        email=official["email"],
+                        id_lattes=official.get("id_lattes"),
+                    )
+                    break
+            if not prof:
+                for official in PROFESSOR_DATA:
+                    official_norm = normalize_text(official["nome_completo"])
+                    if nome_norm in official_norm or official_norm in nome_norm:
+                        prof = find_professor(
+                            session,
+                            email=official["email"],
+                            id_lattes=official.get("id_lattes"),
+                        )
+                        break
+            if not prof:
+                prof = find_professor(session, nome_completo=clean_name)
+
             if not prof:
                 print(f"👤 Docente '{clean_name}' não encontrado no banco. Criando registro...")
                 prof = Professor(
                     nome_completo=clean_name,
                     linha_pesquisa_id=assigned_line.id if assigned_line else None,
-                    status=True
+                    status=True,
                 )
                 session.add(prof)
                 session.commit()
                 session.refresh(prof)
             else:
-                print(f"👤 Docente '{clean_name}' já cadastrado.")
+                print(f"👤 Docente vinculado: {prof.nome_completo}")
                 # Update research line if it is None or set to old default
                 if not prof.linha_pesquisa_id:
                     prof.linha_pesquisa_id = assigned_line.id if assigned_line else None

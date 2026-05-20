@@ -82,12 +82,8 @@ export default function Dashboard() {
   const [reportModelUsed, setReportModelUsed] = useState<string>("");
 
   // App core state
-  const [professors, setProfessors] = useState<Professor[]>([
-    { id: "1", nome_completo: "Prof. Dr. Lucas Reino", linha: "Tecnologias, Audiovisual e Processos Regionais de Comunicação", tipo: "Permanente", status: "pendente" },
-    { id: "2", nome_completo: "Profª. Drª. Amanda Souza", linha: "Processos Comunicacionais, Cidadania e Identidades", tipo: "Permanente", status: "validado" },
-    { id: "3", nome_completo: "Prof. Dr. Carlos Alberto", linha: "Tecnologias, Audiovisual e Processos Regionais de Comunicação", tipo: "Colaborador", status: "processado" },
-  ]);
-  const [selectedProfId, setSelectedProfId] = useState<string>("1");
+  const [professors, setProfessors] = useState<Professor[]>([]);
+  const [selectedProfId, setSelectedProfId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<EntityTab>("projetos");
 
   const [editingItem, setEditingItem] = useState<{ type: string; item: any } | null>(null);
@@ -152,6 +148,8 @@ export default function Dashboard() {
         const mapped = data.map(p => ({
           id: p.id,
           nome_completo: p.nome_completo,
+          email: p.email,
+          id_lattes: p.id_lattes,
           linha:
             p.linha_pesquisa?.nome ??
             linhasPesquisa.find((l) => l.id === p.linha_pesquisa_id)?.nome ??
@@ -161,12 +159,19 @@ export default function Dashboard() {
             : "Permanente",
           status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
         }));
-        
-        if (mapped.length > 0) {
-          setProfessors(mapped);
-          // Set first professor as selected if the current selected isn't in the list
-          if (!mapped.some(p => p.id === selectedProfId)) {
-            setSelectedProfId(mapped[0].id);
+
+        const seen = new Set<string>();
+        const unique = mapped.filter((p) => {
+          const key = (p.email || p.id_lattes || p.nome_completo || p.id).toLowerCase();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        if (unique.length > 0) {
+          setProfessors(unique);
+          if (!unique.some(p => p.id === selectedProfId)) {
+            setSelectedProfId(unique[0].id);
           }
         }
       })
