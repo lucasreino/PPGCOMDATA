@@ -30,8 +30,19 @@ def _openai_base_url() -> str:
     return base
 
 
+def _is_opencode_go() -> bool:
+    base = _openai_base_url()
+    return "opencode.ai" in base and "/go" in base
+
+
 def _is_opencode_zen() -> bool:
     return "opencode.ai" in _openai_base_url()
+
+
+def _go_uses_messages_api() -> bool:
+    """MiniMax no OpenCode Go usa /messages (formato Anthropic), não chat/completions."""
+    model = (settings.AI_MODEL or "").lower()
+    return _is_opencode_go() and model.startswith("minimax")
 
 
 def _extract_message_text(message: Dict[str, Any]) -> str:
@@ -143,11 +154,55 @@ def _gemini_structured(
     return json.loads(content_text)
 
 
+def _extract_anthropic_text(data: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for block in data.get("content") or []:
+        if isinstance(block, dict):
+            if block.get("type") == "text" and block.get("text"):
+                parts.append(str(block["text"]))
+            elif block.get("text"):
+                parts.append(str(block["text"]))
+    return "\n".join(parts).strip()
+
+
+def _opencode_go_messages_structured(
+    system_prompt: str,
+    user_prompt: str,
+    schema_dict: Dict[str, Any],
+) -> Dict[str, Any]:
+    prepared = _prepare_openai_schema(schema_dict)
+    schema_hint = json.dumps(prepared, ensure_ascii=False)[:12000]
+    sys_prompt = (
+        f"{system_prompt}\n\nResponda APENAS com JSON válido (sem markdown), "
+        f"seguindo o schema:\n{schema_hint}"
+    )
+    url = f"{_openai_base_url()}/messages"
+    headers = {
+        "Content-Type": "application/json",
+        "x-api-key": settings.AI_API_KEY,
+        "anthropic-version": "2023-06-01",
+    }
+    payload = {
+        "model": settings.AI_MODEL,
+        "max_tokens": 16384,
+        "system": sys_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+    response = _request_with_retry(url=url, headers=headers, payload=payload)
+    content_text = _extract_anthropic_text(response.json())
+    if not content_text:
+        raise ValueError(f"Resposta Anthropic vazia: {str(response.json())[:400]}")
+    return _parse_json_text(content_text)
+
+
 def _openai_structured(
     system_prompt: str,
     user_prompt: str,
     schema_dict: Dict[str, Any],
 ) -> Dict[str, Any]:
+    if _go_uses_messages_api():
+        return _opencode_go_messages_structured(system_prompt, user_prompt, schema_dict)
+
     url = f"{_openai_base_url()}/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -169,7 +224,7 @@ def _openai_structured(
         "max_tokens": 16384,
     }
 
-    if _is_opencode_zen():
+    if _is_opencode_zen() or _is_opencode_go():
         payload["response_format"] = {"type": "json_object"}
         response = _request_with_retry(url=url, headers=headers, payload=payload)
     else:
@@ -235,6 +290,24 @@ def generate_text(
         raise ValueError("AI_API_KEY não configurada")
 
     if _is_openai_family():
+        if _go_uses_messages_api():
+            url = f"{_openai_base_url()}/messages"
+            headers = {
+                "Content-Type": "application/json",
+                "x-api-key": settings.AI_API_KEY,
+                "anthropic-version": "2023-06-01",
+            }
+            payload = {
+                "model": settings.AI_MODEL,
+                "max_tokens": 8192,
+                "system": system_prompt,
+                "messages": [{"role": "user", "content": user_prompt}],
+            }
+            response = _request_with_retry(
+                url=url, headers=headers, payload=payload, timeout=120.0
+            )
+            return _extract_anthropic_text(response.json())
+
         url = f"{_openai_base_url()}/chat/completions"
         headers = {
             "Content-Type": "application/json",
@@ -249,7 +322,8 @@ def generate_text(
             "temperature": temperature,
         }
         response = _request_with_retry(url=url, headers=headers, payload=payload, timeout=120.0)
-        return response.json()["choices"][0]["message"]["content"]
+        msg = response.json()["choices"][0]["message"]
+        return _extract_message_text(msg) or str(msg.get("content") or "")
 
     if _provider() == "gemini":
         url = (
@@ -272,6 +346,8 @@ def generate_text(
 
 
 def provider_label() -> str:
+    if _is_opencode_go():
+        return f"opencode-go/{settings.AI_MODEL}"
     if _is_openai_family():
         return f"openai/{settings.AI_MODEL}"
     if _provider() == "gemini":
