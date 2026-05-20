@@ -67,3 +67,5 @@ desktop.ini
 # Storage uploads (local development uploads)
 apps/api/uploads/
 apps/api/data/
+data/
+
