@@ -6,7 +6,7 @@ import json
 
 from app.database import get_session
 from app.models.core import User
-from app.models.data import Projeto, Evento, Producao, Financiamento, LogValidacao
+from app.models.data import Projeto, Evento, Producao, Financiamento, LogValidacao, AlertaLacuna
 from app.models.enums import StatusValidacao
 
 router = APIRouter(prefix="/validacao", tags=["Validation & Human-in-the-Loop"])
@@ -40,7 +40,7 @@ async def listar_pendentes(
     professor_id: Optional[str] = None,
     session: Session = Depends(get_session)
 ):
-    """Lists all pending items awaiting human validation (projects, events, publications, funding)."""
+    """Lists all pending items awaiting human validation (projects, events, publications, funding, gaps)."""
     results = {}
     for key, model in ENTIDADES_MAP.items():
         statement = select(model).where(model.status_validacao == StatusValidacao.PENDENTE)
@@ -50,8 +50,34 @@ async def listar_pendentes(
             statement = statement.where(model.professor_id == professor_id)
         
         results[key] = session.exec(statement).all()
+    
+    # Query active/non-resolved gap alerts for the professor
+    statement_lacunas = select(AlertaLacuna).where(AlertaLacuna.resolvido == False)
+    if curriculo_upload_id:
+        statement_lacunas = statement_lacunas.where(AlertaLacuna.curriculo_upload_id == curriculo_upload_id)
+    if professor_id:
+        statement_lacunas = statement_lacunas.where(AlertaLacuna.professor_id == professor_id)
+        
+    results["lacunas"] = session.exec(statement_lacunas).all()
         
     return results
+
+@router.post("/lacunas/{id}/resolver")
+async def resolver_lacuna(
+    id: str,
+    session: Session = Depends(get_session)
+):
+    """Marks an information gap alert as resolved."""
+    obj = session.get(AlertaLacuna, id)
+    if not obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lacuna ID {id} não encontrada."
+        )
+    obj.resolvido = True
+    session.add(obj)
+    session.commit()
+    return {"status": "sucesso", "mensagem": f"Lacuna {id} marcada como resolvida."}
 
 @router.post("/{entidade}/{id}/confirmar")
 async def confirmar_registro(

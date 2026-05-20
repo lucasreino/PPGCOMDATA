@@ -100,6 +100,9 @@ export default function Dashboard() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
+  // Dynamic API URL detection
+  const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000/api/v1");
+
   // App core state
   const [professors, setProfessors] = useState<Professor[]>([
     { id: "1", nome_completo: "Prof. Dr. Lucas Reino", linha: "Comunicação e Cultura Digital", tipo: "Permanente", status: "pendente" },
@@ -126,21 +129,81 @@ export default function Dashboard() {
 
   // Initialize and check API
   useEffect(() => {
-    fetch("http://localhost:8000/")
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const detectedUrl = `http://${host}:8000/api/v1`;
+    const checkUrl = `http://${host}:8000/`;
+    setApiUrl(detectedUrl);
+
+    fetch(checkUrl)
       .then(res => res.json())
       .then(() => setApiConnected(true))
       .catch(() => {
         setApiConnected(false);
-        console.log("Servidor FastAPI local offline, utilizando dados simulados premium.");
+        console.log("Servidor FastAPI offline, utilizando dados simulados premium.");
       });
   }, []);
 
-  // Load teacher specific data on select
+  // Fetch all professors when API is connected
   useEffect(() => {
+    if (!apiConnected) return;
+
+    fetch(`${apiUrl}/professores/`)
+      .then(res => {
+        if (!res.ok) throw new Error("Erro ao carregar docentes");
+        return res.json();
+      })
+      .then((data: any[]) => {
+        const mapped = data.map(p => ({
+          id: p.id,
+          nome_completo: p.nome_completo,
+          linha: p.linha_pesquisa ? p.linha_pesquisa.nome : "Comunicação e Cultura Digital",
+          tipo: p.tipo_docente || "Permanente",
+          status: p.status ? "validado" : "pendente"
+        }));
+        
+        if (mapped.length > 0) {
+          setProfessors(mapped);
+          // Set first professor as selected if the current selected isn't in the list
+          if (!mapped.some(p => p.id === selectedProfId)) {
+            setSelectedProfId(mapped[0].id);
+          }
+        }
+      })
+      .catch(err => {
+        console.error("Falha ao buscar docentes da API:", err);
+      });
+  }, [apiConnected, apiUrl]);
+
+  // Load teacher specific data on select (API or Mock fallback)
+  useEffect(() => {
+    if (!selectedProfId) return;
+
+    if (apiConnected) {
+      setLoading(true);
+      fetch(`${apiUrl}/validacao/pendentes?professor_id=${selectedProfId}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Erro ao carregar dados do docente");
+          return res.json();
+        })
+        .then((data: any) => {
+          setProjetos(data.projetos || []);
+          setEventos(data.eventos || []);
+          setProducoes(data.producoes || []);
+          setFinanciamentos(data.financiamentos || []);
+          setLacunas(data.lacunas || []);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Falha ao buscar dados do docente:", err);
+          setLoading(false);
+        });
+      return;
+    }
+
+    // --- FALLBACK MOCK DATA ---
     const prof = professors.find(p => p.id === selectedProfId);
     if (!prof) return;
 
-    // Load custom mocked metrics to keep dashboard extremely vibrant out of the box
     if (selectedProfId === "1") {
       setProjetos([
         {
@@ -288,14 +351,13 @@ export default function Dashboard() {
       setFinanciamentos([]);
       setLacunas([]);
     } else {
-      // Empty or clean state
       setProjetos([]);
       setEventos([]);
       setProducoes([]);
       setFinanciamentos([]);
       setLacunas([]);
     }
-  }, [selectedProfId]);
+  }, [selectedProfId, apiConnected, apiUrl]);
 
   // Handle human-in-the-loop action: Confirmar
   const handleConfirm = (type: string, id: string) => {
@@ -334,7 +396,18 @@ export default function Dashboard() {
       }));
     }
 
-    addAuditLog("confirmar", `Confirmou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+    if (apiConnected) {
+      fetch(`${apiUrl}/validacao/${type}/${id}/confirmar`, { method: "POST" })
+        .then(res => {
+          if (!res.ok) throw new Error("Falha ao salvar confirmação");
+          addAuditLog("confirmar", `[Real DB] Confirmou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+        })
+        .catch(err => {
+          console.error("Erro ao salvar confirmação:", err);
+        });
+    } else {
+      addAuditLog("confirmar", `Confirmou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+    }
     checkProfUpdate(selectedProfId);
   };
 
@@ -375,7 +448,18 @@ export default function Dashboard() {
       }));
     }
 
-    addAuditLog("descartar", `Descartou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+    if (apiConnected) {
+      fetch(`${apiUrl}/validacao/${type}/${id}/descartar`, { method: "POST" })
+        .then(res => {
+          if (!res.ok) throw new Error("Falha ao descartar registro");
+          addAuditLog("descartar", `[Real DB] Descartou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+        })
+        .catch(err => {
+          console.error("Erro ao descartar registro:", err);
+        });
+    } else {
+      addAuditLog("descartar", `Descartou ${type.slice(0, -2)}: "${itemTitle.slice(0, 45)}..."`);
+    }
     checkProfUpdate(selectedProfId);
   };
 
@@ -388,6 +472,37 @@ export default function Dashboard() {
   const handleSaveEdit = () => {
     if (!editingItem) return;
     const { type, item } = editingItem;
+
+    if (apiConnected) {
+      const { id: _, created_at: __, updated_at: ___, ...updates } = item;
+      fetch(`${apiUrl}/validacao/${type}/${item.id}/editar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates)
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("Falha ao salvar edição");
+          return res.json();
+        })
+        .then(() => {
+          if (type === "projetos") {
+            setProjetos(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+          } else if (type === "eventos") {
+            setEventos(prev => prev.map(e => e.id === item.id ? { ...item, status_validacao: "editado" } : e));
+          } else if (type === "producoes") {
+            setProducoes(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
+          } else if (type === "financiamentos") {
+            setFinanciamentos(prev => prev.map(f => f.id === item.id ? { ...item, status_validacao: "editado" } : f));
+          }
+          addAuditLog("editar", `[Real DB] Editou e Validou ${type.slice(0, -2)}: "${(item.titulo || item.nome_evento || item.fonte).slice(0, 45)}..."`);
+          setEditingItem(null);
+        })
+        .catch(err => {
+          console.error("Erro ao salvar edição:", err);
+          alert("Erro ao salvar edição no servidor.");
+        });
+      return;
+    }
 
     if (type === "projetos") {
       setProjetos(prev => prev.map(p => p.id === item.id ? { ...item, status_validacao: "editado" } : p));
@@ -406,8 +521,6 @@ export default function Dashboard() {
 
   // Check if professor validation status should update
   const checkProfUpdate = (profId: string) => {
-    // If all items for the teacher are verified (not pending), the teacher status can be "validado"
-    // For demo purposes, we will mark it as validated if at least one item changes
     setProfessors(prev => prev.map(p => {
       if (p.id === profId) {
         return { ...p, status: "validado" };
@@ -418,6 +531,23 @@ export default function Dashboard() {
 
   // Resolve specific gap
   const handleResolveGap = (gapId: string) => {
+    if (apiConnected) {
+      fetch(`${apiUrl}/validacao/lacunas/${gapId}/resolver`, { method: "POST" })
+        .then(res => {
+          if (!res.ok) throw new Error("Falha ao resolver lacuna");
+          setLacunas(prev => prev.map(l => l.id === gapId ? { ...l, resolvido: true } : l));
+          const gap = lacunas.find(l => l.id === gapId);
+          if (gap) {
+            addAuditLog("resolvido", `[Real DB] Marcou lacuna como resolvida: "${gap.tipo_lacuna}"`);
+          }
+        })
+        .catch(err => {
+          console.error("Erro ao resolver lacuna:", err);
+          alert("Erro ao resolver lacuna no servidor.");
+        });
+      return;
+    }
+
     setLacunas(prev => prev.map(l => l.id === gapId ? { ...l, resolvido: true } : l));
     const gap = lacunas.find(l => l.id === gapId);
     if (gap) {
@@ -439,7 +569,7 @@ export default function Dashboard() {
     ]);
   };
 
-  // Trigger Local Upload & Pipeline Execution Simulation
+  // Trigger Local Upload & Pipeline Execution
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -453,7 +583,54 @@ export default function Dashboard() {
     setUploadProgress(10);
     setProcessingStep("Enviando Currículo Lattes PDF...");
 
-    // Simulate pipeline beautifully
+    if (apiConnected) {
+      const formData = new FormData();
+      formData.append("professor_id", selectedProfId);
+      formData.append("file", selectedFile);
+
+      try {
+        const uploadRes = await fetch(`${apiUrl}/uploads/`, {
+          method: "POST",
+          body: formData
+        });
+        if (!uploadRes.ok) throw new Error("Erro no upload do arquivo.");
+        const uploadData = await uploadRes.json();
+        
+        setUploadProgress(50);
+        setProcessingStep("Processando e extraindo dados com IA...");
+
+        const processRes = await fetch(`${apiUrl}/uploads/${uploadData.id}/processar`, {
+          method: "POST"
+        });
+        if (!processRes.ok) throw new Error("Erro no processamento do arquivo.");
+        const processData = await processRes.json();
+
+        setUploadProgress(100);
+        setIsProcessing(false);
+        setProcessingStep("");
+        setSelectedFile(null);
+        addAuditLog("processamento", `[Real DB] Lattes processado! Extraídos: ${processData.extração_ia?.projetos_extraidos || 0} projetos, ${processData.extração_ia?.producoes_extraidas || 0} produções.`);
+        
+        // Reload teacher data to show the new items
+        fetch(`${apiUrl}/validacao/pendentes?professor_id=${selectedProfId}`)
+          .then(res => res.json())
+          .then(data => {
+            setProjetos(data.projetos || []);
+            setEventos(data.eventos || []);
+            setProducoes(data.producoes || []);
+            setFinanciamentos(data.financiamentos || []);
+            setLacunas(data.lacunas || []);
+          });
+      } catch (err: any) {
+        console.error("Erro no processamento real:", err);
+        setIsProcessing(false);
+        setProcessingStep("");
+        alert(`Erro no processamento: ${err.message || "Erro desconhecido"}`);
+      }
+      return;
+    }
+
+    // Simulate pipeline beautifully (mock)
     setTimeout(() => {
       setUploadProgress(40);
       setProcessingStep("Extraindo texto do PDF (PyMuPDF)...");
@@ -475,7 +652,6 @@ export default function Dashboard() {
       setProcessingStep("");
       setSelectedFile(null);
       
-      // Update targeted professor's status to processed
       setProfessors(prev => prev.map(p => {
         if (p.id === selectedProfId) {
           return { ...p, status: "processado" };
@@ -483,12 +659,10 @@ export default function Dashboard() {
         return p;
       }));
 
-      // Injects simulated values for a realistic extraction experience
       addAuditLog("processamento", `Pipeline finalizado com sucesso para o Lattes.`);
       
-      // If the professor uploaded was Prof Reino (id 1), let's refresh its state
       if (selectedProfId === "1") {
-        setSelectedProfId("1"); // triggers reload
+        setSelectedProfId("1");
       }
     }, 6000);
   };
