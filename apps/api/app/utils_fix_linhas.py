@@ -1,13 +1,20 @@
+"""
+Sincroniza linhas de pesquisa e docentes do PPGCOM com o cadastro oficial.
+Execute: python -m app.utils_fix_linhas
+"""
+
 import os
 import sys
+from typing import Optional
+
 from sqlmodel import Session, select
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import engine
 from app.models.core import Professor, LinhaPesquisa
+from app.models.enums import TipoDocente
 
-# Define correct lines
 LINE1_NAME = "Tecnologias, Audiovisual e Processos Regionais de Comunicação"
 LINE2_NAME = "Processos Comunicacionais, Cidadania e Identidades"
 
@@ -27,113 +34,186 @@ LINE2_DESC = (
     "processos de construção e negociação da cidadania em contextos contemporâneos."
 )
 
-PROFESSOR_DATA = {
-    # LINHA 1
-    "izani": {
+# Cadastro oficial PPGCOM (linha 1 = tecnologias/audiovisual; linha 2 = cidadania/identidades)
+PROFESSOR_DATA = [
+    {
         "nome_completo": "Izani Pibernat Mustafá",
         "email": "izani.mustafa@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/9088752631596667",
         "id_lattes": "9088752631596667",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Rádio, Podcast e Mídia Sonora no Maranhão (RPM)",
+        "tematicas": "Rádio; Rádio e Gênero; Rádio e Política; Radiojornalismo; Rádios Universitárias; Podcast",
     },
-    "messias": {
+    {
         "nome_completo": "José Carlos Messias Santos Franco",
         "email": "jose.cmsf@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/8042448829229400",
         "id_lattes": "8042448829229400",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Laboratório de Pesquisa em Games, Gambiarras e Mediações em Rede (GamerLab)",
+        "tematicas": "TIC, games, cultura hacker, pirataria, consumo participativo",
     },
-    "larissa": {
+    {
         "nome_completo": "Larissa Leda Fonseca Rocha",
         "email": "larissa.leda@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/5812508596685080",
         "id_lattes": "5812508596685080",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Observatório de Experiências Expandidas em Comunicação (ObEEC)",
+        "tematicas": "Experiências expandidas em comunicação",
     },
-    "marcelli": {
+    {
         "nome_completo": "Marcelli Alves da Silva",
         "email": "marcelli.alves@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/8985071802390376",
         "id_lattes": "8985071802390376",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Grupo de Pesquisa em Jornalismo e Cibercultura (GCiber) / G Mídia",
+        "tematicas": "Telejornalismo, audiovisual, cibermeio, telerreportagem, jornalismo na web",
     },
-    "domingos": {
+    {
         "nome_completo": "Domingos Alves de Almeida",
         "email": "domingos.almeida@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/1919610825042640",
         "id_lattes": "1919610825042640",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Grupo de Pesquisa e Criação em Comunicação Audiovisual, Culturas e Artes (GPCOM)",
+        "tematicas": "Comunicação e Política, Televisão, História do Jornalismo, América Latina",
     },
-    "odlinari": {
+    {
         "nome_completo": "Odlinari Ramon Nascimento da Silva",
         "email": "odlinari.silva@ufma.br",
         "link_lattes": "https://lattes.cnpq.br/4303555424897191",
         "id_lattes": "4303555424897191",
-        "linha": "linha1"
+        "linha": "linha1",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Comunicação e Religiões e Teorias da Comunicação / GMIC",
+        "tematicas": "Midiatização da religião; mídia e política; plataformização; epistemologia da Comunicação",
     },
-    # LINHA 2
-    "tavares": {
+    {
         "nome_completo": "Camilla Quesada Tavares",
         "email": "camilla.tavares@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/1766143822703684",
         "id_lattes": "1766143822703684",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.COLABORADOR,
+        "grupo_pesquisa": "Grupo de Pesquisa em Comunicação, Política e Sociedade (COPS)",
+        "tematicas": "Comunicação política, jornalismo e desinformação",
     },
-    "leila": {
+    {
         "nome_completo": "Leila Lima de Sousa",
         "email": "sousa.leila@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/9312604992263679",
         "id_lattes": "9312604992263679",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Grupo Interdisciplinar Maria Firmina Dos Reis",
+        "tematicas": "Gênero, raça e cidadania comunicativa",
     },
-    "leticia": {
+    {
         "nome_completo": "Letícia Conceição Martins Cardoso",
         "email": "leticia.cardoso@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/6186532880175192",
         "id_lattes": "6186532880175192",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.COLABORADOR,
+        "grupo_pesquisa": "Grupo de Estudos Cultura e Identidade na Contemporaneidade (GECI)",
+        "tematicas": "Cultura popular; mediações; identidades; gênero",
     },
-    "thaisa": {
+    {
         "nome_completo": "Thaisa Cristina Bueno",
         "email": "thaisa.bueno@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/4123207392983951",
         "id_lattes": "4123207392983951",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Espelho – Jornalismo, Gênero e Moda",
+        "tematicas": "Identidade e trabalho em jornalismo; gênero; jornalismo de moda",
     },
-    "gislene": {
+    {
         "nome_completo": "Maria Gislene Carvalho Fonseca",
         "email": "maria.gcf@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/4061348210902950",
         "id_lattes": "4061348210902950",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "EsTreMa / Laborejo",
+        "tematicas": "Gêneros, sexualidades, corpos, Epistemologias da Comunicação",
     },
-    "gisa": {
-        "nome_completo": "Maria Gislene Carvalho Fonseca",
-        "email": "maria.gcf@ufma.br",
-        "link_lattes": "http://lattes.cnpq.br/4061348210902950",
-        "id_lattes": "4061348210902950",
-        "linha": "linha2"
-    },
-    "thays": {
+    {
         "nome_completo": "Thays Assunção Reis",
         "email": "thays.assuncao@ufma.br",
         "link_lattes": "http://lattes.cnpq.br/7896667981420340",
         "id_lattes": "7896667981420340",
-        "linha": "linha2"
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Grupo de Pesquisa Jornalismo, Mídia e Memória (JOIMP)",
+        "tematicas": "Jornalismo local e regional; plataformas digitais; desinformação",
     },
-    "michelly": {
+    {
         "nome_completo": "Michelly Santos de Carvalho",
         "email": "michelly.carvalho@ufma.br",
         "link_lattes": "https://lattes.cnpq.br/0079215403799516",
         "id_lattes": "0079215403799516",
-        "linha": "linha2"
-    }
-}
+        "linha": "linha2",
+        "tipo_docente": TipoDocente.PERMANENTE,
+        "grupo_pesquisa": "Grupo Interdisciplinar Maria Firmina Dos Reis",
+        "tematicas": "Comunicação, educação, gênero, relações raciais e decolonialidade",
+    },
+]
+
+
+def _normalize_lattes_id(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    return value.rstrip("/").split("/")[-1]
+
+
+def _find_professor(profs: list[Professor], data: dict) -> Optional[Professor]:
+    email = data["email"].lower()
+    lattes = _normalize_lattes_id(data.get("id_lattes"))
+    nome = data["nome_completo"].lower()
+
+    for p in profs:
+        if p.email and p.email.lower() == email:
+            return p
+        if lattes and _normalize_lattes_id(p.id_lattes) == lattes:
+            return p
+        if p.nome_completo.lower() == nome:
+            return p
+        # fallback: sobrenome distintivo
+        sobrenome = nome.split()[-2] if len(nome.split()) > 2 else nome.split()[-1]
+        if sobrenome and sobrenome in p.nome_completo.lower():
+            return p
+    return None
+
+
+def _apply_data(prof: Professor, data: dict, linha_id) -> None:
+    prof.nome_completo = data["nome_completo"]
+    prof.email = data["email"]
+    prof.link_lattes = data["link_lattes"]
+    prof.id_lattes = data["id_lattes"]
+    prof.linha_pesquisa_id = linha_id
+    prof.tipo_docente = data["tipo_docente"]
+    prof.status = True
+    prof.observacoes = (
+        f"Grupo de pesquisa: {data['grupo_pesquisa']}\n"
+        f"Temáticas: {data['tematicas']}"
+    )
+
 
 def run_precision_seeding():
     with Session(engine) as session:
-        print("--- seeding research lines ---")
-        # Ensure Line 1
+        print("=" * 60)
+        print("PPGCOMDATA — Sincronização de Linhas e Docentes")
+        print("=" * 60)
+
         stmt1 = select(LinhaPesquisa).where(LinhaPesquisa.nome == LINE1_NAME)
         l1 = session.exec(stmt1).first()
         if not l1:
@@ -143,7 +223,6 @@ def run_precision_seeding():
             l1.descricao = LINE1_DESC
             session.add(l1)
 
-        # Ensure Line 2
         stmt2 = select(LinhaPesquisa).where(LinhaPesquisa.nome == LINE2_NAME)
         l2 = session.exec(stmt2).first()
         if not l2:
@@ -156,62 +235,55 @@ def run_precision_seeding():
         session.commit()
         session.refresh(l1)
         session.refresh(l2)
+        print(f"Linha 1: {l1.nome} ({len([d for d in PROFESSOR_DATA if d['linha'] == 'linha1'])} docentes)")
+        print(f"Linha 2: {l2.nome} ({len([d for d in PROFESSOR_DATA if d['linha'] == 'linha2'])} docentes)")
 
-        # Update existing professors
-        profs = session.exec(select(Professor)).all()
-        matched_keys = set()
-        
-        print("\n--- Updating existing professors ---")
-        for p in profs:
-            name_lower = p.nome_completo.lower()
-            matched = False
-            for key, data in PROFESSOR_DATA.items():
-                if key in name_lower:
-                    print(f"Updating professor data: '{p.nome_completo}' -> '{data['nome_completo']}'")
-                    p.nome_completo = data["nome_completo"]
-                    p.email = data["email"]
-                    p.link_lattes = data["link_lattes"]
-                    p.id_lattes = data["id_lattes"]
-                    p.linha_pesquisa_id = l1.id if data["linha"] == "linha1" else l2.id
-                    session.add(p)
-                    matched_keys.add(key)
-                    matched = True
-                    break
-            if not matched:
-                print(f"⚠️ Unmatched database professor: {p.nome_completo}")
+        profs = list(session.exec(select(Professor)).all())
+        official_emails = {d["email"].lower() for d in PROFESSOR_DATA}
 
-        # Create new/missing professors
-        print("\n--- Seeding missing professors ---")
-        for key, data in PROFESSOR_DATA.items():
-            if key not in matched_keys:
-                # Check if the professor already exists under the new full name to avoid duplicate seeds
-                stmt = select(Professor).where(Professor.nome_completo == data["nome_completo"])
-                existing = session.exec(stmt).first()
-                if not existing:
-                    print(f"Creating missing professor: '{data['nome_completo']}'")
-                    new_p = Professor(
-                        nome_completo=data["nome_completo"],
-                        email=data["email"],
-                        link_lattes=data["link_lattes"],
-                        id_lattes=data["id_lattes"],
-                        linha_pesquisa_id=l1.id if data["linha"] == "linha1" else l2.id,
-                        status=True
-                    )
-                    session.add(new_p)
-                else:
-                    print(f"Professor already exists under full name: '{data['nome_completo']}'")
+        print("\n--- Atualizando / criando docentes ---")
+        for data in PROFESSOR_DATA:
+            linha_id = l1.id if data["linha"] == "linha1" else l2.id
+            prof = _find_professor(profs, data)
+
+            if prof:
+                print(f"  Atualizado: {data['nome_completo']}")
+                _apply_data(prof, data, linha_id)
+                session.add(prof)
+            else:
+                print(f"  Criado: {data['nome_completo']}")
+                prof = Professor(
+                    nome_completo=data["nome_completo"],
+                    email=data["email"],
+                    status=True,
+                )
+                _apply_data(prof, data, linha_id)
+                session.add(prof)
+                profs.append(prof)
 
         session.commit()
-        print("\n--- Precision Migration Completed! ---")
 
-        # Cleanup old line if still exists
-        cleanup_stmt = select(LinhaPesquisa).where(LinhaPesquisa.nome == "Comunicação e Cultura Digital")
+        unmatched = [
+            p
+            for p in session.exec(select(Professor)).all()
+            if (p.email or "").lower() not in official_emails
+        ]
+        if unmatched:
+            print("\n--- Docentes no banco sem correspondência no cadastro oficial ---")
+            for p in unmatched:
+                print(f"  ⚠️ {p.nome_completo} ({p.email or 'sem e-mail'})")
+
+        cleanup_stmt = select(LinhaPesquisa).where(
+            LinhaPesquisa.nome == "Comunicação e Cultura Digital"
+        )
         old_l = session.exec(cleanup_stmt).first()
         if old_l:
-            print("Cleaning up old 'Comunicação e Cultura Digital' line...")
             session.delete(old_l)
             session.commit()
-            print("Old line cleanup completed.")
+            print("\nLinha antiga 'Comunicação e Cultura Digital' removida.")
+
+        print("\n--- Sincronização concluída! ---")
+
 
 if __name__ == "__main__":
     run_precision_seeding()
