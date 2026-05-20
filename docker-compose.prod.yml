@@ -27,6 +27,7 @@ services:
       - HOST=0.0.0.0
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-ppgcomdata}
       - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_sign_key_for_ppgcomdata_jwt_auth}
+      - CORS_ORIGINS=${CORS_ORIGINS}
       - AI_API_KEY=${AI_API_KEY}
       - AI_MODEL=${AI_MODEL:-gemini-1.5-flash}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
