@@ -28,10 +28,12 @@ class Settings:
         "http://localhost:3000,http://127.0.0.1:3000",
     )
     
-    # AI Config
+    # AI Config (openai | gemini | openai_compatible)
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
-    AI_MODEL: str = os.getenv("AI_MODEL", "gemini-2.5-flash")
-    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "4"))
+    AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    AI_BASE_URL: str = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
+    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "1"))
     
     # Storage Config
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")

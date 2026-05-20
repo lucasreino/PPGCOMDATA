@@ -1,4 +1,3 @@
-import httpx
 import json
 import logging
 import time
@@ -9,6 +8,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.config import settings
+from app.services.llm_client import get_structured_output
 from app.schemas.ai import (
     LattesExtractionResultSchema,
     FormacaoExtractionSchema,
@@ -115,6 +115,7 @@ def get_gemini_structured_output(
     section_text: str,
     profile: ExtractionProfile,
 ) -> Dict[str, Any]:
+    """Extrai JSON estruturado via provedor configurado (OpenAI ou Gemini)."""
     schema_model = _PROFILE_SCHEMA[profile]
     if not settings.AI_API_KEY:
         logger.warning("AI_API_KEY não configurada. Usando mock generator.")
@@ -139,50 +140,11 @@ Texto da Seção:
 """
     schema_dict = schema_model.model_json_schema()
     schema_dict = inline_refs(schema_dict, schema_dict.get("$defs", {}))
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"
-    )
-    payload = {
-        "contents": [{"parts": [{"text": SYSTEM_PROMPT_BASE}, {"text": prompt}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "responseSchema": schema_dict,
-        },
-    }
-    delay = float(getattr(settings, "AI_REQUEST_DELAY_SECONDS", 0) or 0)
-    last_error: Exception | None = None
-
-    for attempt in range(5):
-        try:
-            with httpx.Client(timeout=90.0) as client:
-                response = client.post(url, json=payload)
-                if response.status_code == 429:
-                    wait = min(90, 8 * (2**attempt))
-                    logger.warning(
-                        "Rate limit Gemini (429). Aguardando %ss antes de tentar de novo...",
-                        wait,
-                    )
-                    time.sleep(wait)
-                    continue
-                response.raise_for_status()
-                content_text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-                if delay > 0:
-                    time.sleep(delay)
-                return json.loads(content_text)
-        except httpx.HTTPStatusError as exc:
-            last_error = exc
-            if exc.response.status_code == 429 and attempt < 4:
-                wait = min(90, 8 * (2**attempt))
-                time.sleep(wait)
-                continue
-            break
-        except Exception as exc:
-            last_error = exc
-            break
-
-    logger.error("Falha na API de IA: %s", last_error)
-    return generate_mock_extraction(section_name, section_text, profile)
+    try:
+        return get_structured_output(SYSTEM_PROMPT_BASE, prompt, schema_dict)
+    except Exception as exc:
+        logger.error("Falha na API de IA (%s): %s", settings.AI_PROVIDER, exc)
+        return generate_mock_extraction(section_name, section_text, profile)
 
 
 def generate_mock_extraction(

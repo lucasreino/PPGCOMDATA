@@ -52,7 +52,8 @@ async def get_status():
     return {
         "database": "configured",
         "storage": settings.STORAGE_PROVIDER,
-        "ai_provider": "available" if settings.AI_API_KEY else "not_configured"
+        "ai_provider": settings.AI_PROVIDER if settings.AI_API_KEY else "not_configured",
+        "ai_model": settings.AI_MODEL if settings.AI_API_KEY else None,
     }
 
 # Mount sub-routers

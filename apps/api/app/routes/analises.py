@@ -4,8 +4,6 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 import json
 import logging
-import httpx
-
 from app.database import get_session
 from app.config import settings
 from app.models.core import Professor, LinhaPesquisa
@@ -18,6 +16,7 @@ from app.models.data import (
 )
 from app.auth import require_staff
 from app.services.indicator_service import IndicatorFilters, IndicatorService
+from app.services.llm_client import generate_text, provider_label
 
 logger = logging.getLogger("ppgcomdata")
 
@@ -57,7 +56,7 @@ async def gerar_relatorio_ia(
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Generates an academic synthesis or executive report using the Gemini 2.5 Flash API.
+    """Generates an academic synthesis or executive report using the configured LLM API.
     
     Extracts relevant context from the PostgreSQL database based on filters,
     structures a rich dataset, and passes it to the AI alongside the user's custom instructions.
@@ -182,39 +181,18 @@ async def gerar_relatorio_ia(
             "modelo": "Mock AI Engine (Simulado)"
         }
 
-    # Call Gemini model
-    headers = {"Content-Type": "application/json"}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.AI_MODEL}:generateContent?key={settings.AI_API_KEY}"
-    
-    payload_gemini = {
-        "contents": [{
-            "parts": [
-                {"text": system_instruction},
-                {"text": user_prompt}
-            ]
-        }],
-        "generationConfig": {
-            "temperature": 0.2
-        }
-    }
-
     try:
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(url, json=payload_gemini, headers=headers)
-            response.raise_for_status()
-            res_data = response.json()
-            
-            content_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-            return {
-                "relatorio": content_text,
-                "modelo": settings.AI_MODEL
-            }
-    except Exception as e:
-        logger.error(f"Erro ao chamar Gemini para geração de relatório: {str(e)}")
-        # Fallback to premium simulated report on error
+        content_text = generate_text(system_instruction, user_prompt, temperature=0.2)
         return {
-            "relatorio": gerar_mock_relatorio(professor_id, professores, instrucoes_usuario) + f"\n\n*(Nota: Ocorreu uma falha de conexão na API do Gemini. Retornamos este modelo analítico simulado de alta fidelidade para garantir a resiliência do sistema).* ",
-            "modelo": "Simulação de Resiliência"
+            "relatorio": content_text,
+            "modelo": provider_label(),
+        }
+    except Exception as e:
+        logger.error("Erro ao chamar LLM para geração de relatório: %s", e)
+        return {
+            "relatorio": gerar_mock_relatorio(professor_id, professores, instrucoes_usuario)
+            + f"\n\n*(Nota: Falha na API ({settings.AI_PROVIDER}). Relatório simulado de resiliência.)* ",
+            "modelo": "Simulação de Resiliência",
         }
 
 def gerar_mock_relatorio(professor_id: Optional[str], professores: list, instrucoes: str) -> str:
