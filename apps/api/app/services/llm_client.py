@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -27,6 +28,30 @@ def _is_openai_family() -> bool:
 def _openai_base_url() -> str:
     base = (settings.AI_BASE_URL or "https://api.openai.com/v1").rstrip("/")
     return base
+
+
+def _is_opencode_zen() -> bool:
+    return "opencode.ai" in _openai_base_url()
+
+
+def _extract_message_text(message: Dict[str, Any]) -> str:
+    content = message.get("content")
+    if content and str(content).strip():
+        return str(content).strip()
+    reasoning = message.get("reasoning")
+    if reasoning and str(reasoning).strip():
+        return str(reasoning).strip()
+    return ""
+
+
+def _parse_json_text(text: str) -> Dict[str, Any]:
+    raw = (text or "").strip()
+    if not raw:
+        raise ValueError("Resposta vazia do modelo")
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.IGNORECASE)
+        raw = re.sub(r"\s*```$", "", raw)
+    return json.loads(raw)
 
 
 def _prepare_openai_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
@@ -63,11 +88,13 @@ def _request_with_retry(
                 response = client.post(url, json=payload, headers=headers)
                 if response.status_code in _RETRYABLE_STATUS and attempt < max_attempts - 1:
                     wait = min(90, 8 * (2**attempt))
+                    err_body = (response.text or "")[:400]
                     logger.warning(
-                        "Rate limit/erro %s em %s. Aguardando %ss...",
+                        "Rate limit/erro %s em %s. Aguardando %ss... %s",
                         response.status_code,
                         _provider(),
                         wait,
+                        err_body,
                     )
                     time.sleep(wait)
                     continue
@@ -127,36 +154,52 @@ def _openai_structured(
         "Authorization": f"Bearer {settings.AI_API_KEY}",
     }
     prepared = _prepare_openai_schema(schema_dict)
-    payload = {
+    schema_hint = json.dumps(prepared, ensure_ascii=False)[:12000]
+    sys_prompt = (
+        f"{system_prompt}\n\nResponda APENAS com JSON válido (sem markdown), "
+        f"seguindo o schema:\n{schema_hint}"
+    )
+
+    payload: Dict[str, Any] = {
         "model": settings.AI_MODEL,
         "messages": [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": sys_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "response_format": {
+        "max_tokens": 16384,
+    }
+
+    if _is_opencode_zen():
+        payload["response_format"] = {"type": "json_object"}
+        response = _request_with_retry(url=url, headers=headers, payload=payload)
+    else:
+        payload["response_format"] = {
             "type": "json_schema",
             "json_schema": {
                 "name": "lattes_extraction",
                 "strict": True,
                 "schema": prepared,
             },
-        },
-    }
-    try:
-        response = _request_with_retry(url=url, headers=headers, payload=payload)
-    except httpx.HTTPStatusError as exc:
-        if exc.response.status_code == 400:
-            logger.warning(
-                "OpenAI json_schema strict falhou; tentando json_object: %s",
-                exc.response.text[:300],
-            )
-            payload.pop("response_format", None)
-            payload["response_format"] = {"type": "json_object"}
+        }
+        try:
             response = _request_with_retry(url=url, headers=headers, payload=payload)
-        else:
-            raise
-    content_text = response.json()["choices"][0]["message"]["content"]
-    return json.loads(content_text)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 400:
+                logger.warning(
+                    "json_schema strict falhou; tentando json_object: %s",
+                    exc.response.text[:300],
+                )
+                payload["response_format"] = {"type": "json_object"}
+                payload["messages"][0]["content"] = sys_prompt
+                response = _request_with_retry(url=url, headers=headers, payload=payload)
+            else:
+                raise
+
+    message = response.json()["choices"][0]["message"]
+    content_text = _extract_message_text(message)
+    if not content_text:
+        raise ValueError(f"Resposta sem conteúdo: {str(message)[:400]}")
+    return _parse_json_text(content_text)
 
 
 def get_structured_output(
