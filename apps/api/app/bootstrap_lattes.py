@@ -17,8 +17,12 @@ from app.services.section_detector import split_and_save_sections
 from app.services.ai_extractor import extract_and_save_section_data
 
 # Root levels directories
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-LATTES_SRC_DIR = os.path.join(ROOT_DIR, "data", "lattes")
+if os.path.exists("/workspace/data/lattes"):
+    LATTES_SRC_DIR = "/workspace/data/lattes"
+else:
+    ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    LATTES_SRC_DIR = os.path.join(ROOT_DIR, "data", "lattes")
+
 
 def bootstrap():
     print("=" * 60)
