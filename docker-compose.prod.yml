@@ -28,8 +28,11 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-ppgcomdata}
       - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_sign_key_for_ppgcomdata_jwt_auth}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
       - AI_API_KEY=${AI_API_KEY}
-      - AI_MODEL=${AI_MODEL:-gemini-1.5-flash}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
+      - AI_BASE_URL=${AI_BASE_URL:-https://api.openai.com/v1}
+      - AI_REQUEST_DELAY_SECONDS=${AI_REQUEST_DELAY_SECONDS:-1}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - STORAGE_BUCKET=${STORAGE_BUCKET:-ppgcomdata-uploads}
     volumes:
