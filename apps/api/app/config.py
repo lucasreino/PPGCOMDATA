@@ -31,6 +31,7 @@ class Settings:
     # AI Config
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
     AI_MODEL: str = os.getenv("AI_MODEL", "gemini-2.5-flash")
+    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "4"))
     
     # Storage Config
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")

@@ -1,6 +1,7 @@
 import httpx
 import json
 import logging
+import time
 from datetime import date, datetime
 from typing import Any, Dict, Optional, Type
 
@@ -149,15 +150,39 @@ Texto da Seção:
             "responseSchema": schema_dict,
         },
     }
-    try:
-        with httpx.Client(timeout=60.0) as client:
-            response = client.post(url, json=payload)
-            response.raise_for_status()
-            content_text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
-            return json.loads(content_text)
-    except Exception as e:
-        logger.error(f"Falha na API de IA: {e}")
-        return generate_mock_extraction(section_name, section_text, profile)
+    delay = float(getattr(settings, "AI_REQUEST_DELAY_SECONDS", 0) or 0)
+    last_error: Exception | None = None
+
+    for attempt in range(5):
+        try:
+            with httpx.Client(timeout=90.0) as client:
+                response = client.post(url, json=payload)
+                if response.status_code == 429:
+                    wait = min(90, 8 * (2**attempt))
+                    logger.warning(
+                        "Rate limit Gemini (429). Aguardando %ss antes de tentar de novo...",
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                response.raise_for_status()
+                content_text = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+                if delay > 0:
+                    time.sleep(delay)
+                return json.loads(content_text)
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            if exc.response.status_code == 429 and attempt < 4:
+                wait = min(90, 8 * (2**attempt))
+                time.sleep(wait)
+                continue
+            break
+        except Exception as exc:
+            last_error = exc
+            break
+
+    logger.error("Falha na API de IA: %s", last_error)
+    return generate_mock_extraction(section_name, section_text, profile)
 
 
 def generate_mock_extraction(
