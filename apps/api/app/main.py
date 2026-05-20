@@ -1,7 +1,7 @@
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import auth, professores, linhas_pesquisa, uploads, validacao
+from app.routes import auth, professores, linhas_pesquisa, uploads, validacao, analises
 
 app = FastAPI(
     title="PPGCOMDATA API",
@@ -45,6 +45,6 @@ api_router.include_router(professores.router)
 api_router.include_router(linhas_pesquisa.router)
 api_router.include_router(uploads.router)
 api_router.include_router(validacao.router)
+api_router.include_router(analises.router)
 
 app.include_router(api_router)
-

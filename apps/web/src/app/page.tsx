@@ -103,6 +103,31 @@ export default function Dashboard() {
   // Dynamic API URL detection
   const [apiUrl, setApiUrl] = useState<string>("http://localhost:8000/api/v1");
 
+  // Navigation Tabs state
+  const [mainTab, setMainTab] = useState<"validacao" | "estatisticas" | "relatorios">("validacao");
+
+  // Research Lines state
+  const [linhasPesquisa, setLinhasPesquisa] = useState<any[]>([]);
+
+  // Statistics filters & data
+  const [statsProfessorId, setStatsProfessorId] = useState<string>("todos");
+  const [statsLinhaPesquisaId, setStatsLinhaPesquisaId] = useState<string>("todas");
+  const [statsAnoInicio, setStatsAnoInicio] = useState<string>("2020");
+  const [statsAnoFim, setStatsAnoFim] = useState<string>("2026");
+  const [statsData, setStatsData] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState<boolean>(false);
+
+  // AI Report Generator filters, prompt & text
+  const [reportProfessorId, setReportProfessorId] = useState<string>("todos");
+  const [reportLinhaPesquisaId, setReportLinhaPesquisaId] = useState<string>("todas");
+  const [reportAnoInicio, setReportAnoInicio] = useState<string>("2020");
+  const [reportAnoFim, setReportAnoFim] = useState<string>("2026");
+  const [reportPrompt, setReportPrompt] = useState<string>("");
+  const [reportText, setReportText] = useState<string>("");
+  const [generatingReport, setGeneratingReport] = useState<boolean>(false);
+  const [reportLogs, setReportLogs] = useState<string[]>([]);
+  const [reportModelUsed, setReportModelUsed] = useState<string>("");
+
   // App core state
   const [professors, setProfessors] = useState<Professor[]>([
     { id: "1", nome_completo: "Prof. Dr. Lucas Reino", linha: "Comunicação e Cultura Digital", tipo: "Permanente", status: "pendente" },
@@ -136,10 +161,27 @@ export default function Dashboard() {
 
     fetch(checkUrl)
       .then(res => res.json())
-      .then(() => setApiConnected(true))
+      .then(() => {
+        setApiConnected(true);
+        // Load research lines when API is active
+        fetch(`${detectedUrl}/linhas-pesquisa/`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.length > 0) {
+              setLinhasPesquisa(data);
+            }
+          })
+          .catch(err => console.log("Linhas de pesquisa fetch error:", err));
+      })
       .catch(() => {
         setApiConnected(false);
         console.log("Servidor FastAPI offline, utilizando dados simulados premium.");
+        // Set mock research lines
+        setLinhasPesquisa([
+          { id: "4c79ded3-93e5-40aa-86a2-88d1f17766be", nome: "Comunicação e Cultura Digital", codigo: "L1" },
+          { id: "2", nome: "Mídia, Política e Sociedade", codigo: "L2" },
+          { id: "3", nome: "Processos de Recepção de Mídia", codigo: "L3" }
+        ]);
       });
   }, []);
 
@@ -158,7 +200,7 @@ export default function Dashboard() {
           nome_completo: p.nome_completo,
           linha: p.linha_pesquisa ? p.linha_pesquisa.nome : "Comunicação e Cultura Digital",
           tipo: p.tipo_docente || "Permanente",
-          status: p.status ? "validado" : "pendente"
+          status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
         }));
         
         if (mapped.length > 0) {
@@ -555,6 +597,167 @@ export default function Dashboard() {
     }
   };
 
+  // Generate simulated stats for local mock flow
+  const generateSimulatedStats = () => {
+    return {
+      total_producoes: 48,
+      total_projetos: 8,
+      total_eventos: 15,
+      fomento_total: { solicitado: 120000.0, aprovado: 85000.0, executado: 45000.0 },
+      producoes_por_tipo: { "artigo": 24, "livro": 6, "capitulo": 12, "outra": 6 },
+      producoes_por_ano: { "2020": 5, "2021": 8, "2022": 10, "2023": 12, "2024": 8, "2025": 5 },
+      projetos_por_situacao: { "Em andamento": 3, "Concluído": 5 },
+      fomento_por_agencia: { "CNPQ": 45000.0, "CAPES": 25000.0, "FAPEMA": 15000.0 },
+      lacunas: {
+        total: 22,
+        resolvidas: 14,
+        pendentes: 8,
+        por_gravidade: { "alta": 2, "media": 4, "baixa": 2 }
+      }
+    };
+  };
+
+  // Fetch statistics dynamically when filters change
+  useEffect(() => {
+    if (mainTab !== "estatisticas") return;
+
+    if (!apiConnected) {
+      setStatsData(generateSimulatedStats());
+      return;
+    }
+
+    setLoadingStats(true);
+    let query = `?`;
+    if (statsProfessorId !== "todos") query += `professor_id=${statsProfessorId}&`;
+    if (statsLinhaPesquisaId !== "todas") query += `linha_pesquisa_id=${statsLinhaPesquisaId}&`;
+    if (statsAnoInicio) query += `ano_inicio=${statsAnoInicio}&`;
+    if (statsAnoFim) query += `ano_fim=${statsAnoFim}&`;
+
+    fetch(`${apiUrl}/analises/estatisticas${query}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Erro ao carregar estatísticas");
+        return res.json();
+      })
+      .then(data => {
+        setStatsData(data);
+        setLoadingStats(false);
+      })
+      .catch(err => {
+        console.error("Erro ao buscar estatísticas da API:", err);
+        setStatsData(generateSimulatedStats());
+        setLoadingStats(false);
+      });
+  }, [mainTab, statsProfessorId, statsLinhaPesquisaId, statsAnoInicio, statsAnoFim, apiConnected, apiUrl]);
+
+  // AI Report Generation Trigger
+  const handleGenerateReport = async () => {
+    setGeneratingReport(true);
+    setReportText("");
+    setReportLogs(["[1/4] Consultando banco de dados PostgreSQL..."]);
+
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+    await sleep(800);
+    setReportLogs(prev => [...prev, "[2/4] Consolidando estatísticas e publicações..."]);
+
+    await sleep(800);
+    setReportLogs(prev => [...prev, "[3/4] Formatando contexto estruturado para IA..."]);
+
+    await sleep(800);
+    setReportLogs(prev => [...prev, "[4/4] Solicitando redação ao modelo Gemini 2.5 Flash..."]);
+
+    if (apiConnected) {
+      try {
+        const response = await fetch(`${apiUrl}/analises/relatorio/gerar`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            professor_id: reportProfessorId === "todos" ? null : reportProfessorId,
+            linha_pesquisa_id: reportLinhaPesquisaId === "todas" ? null : reportLinhaPesquisaId,
+            ano_inicio: reportAnoInicio ? parseInt(reportAnoInicio) : null,
+            ano_fim: reportAnoFim ? parseInt(reportAnoFim) : null,
+            instrucoes_usuario: reportPrompt || "Gere uma análise moderna e compilada das produções e financiamentos."
+          })
+        });
+
+        if (!response.ok) throw new Error("Erro na geração do relatório");
+        const data = await response.json();
+        
+        setReportText(data.relatorio);
+        setReportModelUsed(data.modelo);
+        addAuditLog("relatorio", `[Real DB] Gerou relatório analítico via Gemini.`);
+      } catch (err: any) {
+        console.error("Erro na geração de relatório real:", err);
+        setReportText(`**Erro na geração de relatório:** ${err.message || "Erro desconhecido"}`);
+      } finally {
+        setGeneratingReport(false);
+      }
+      return;
+    }
+
+    // Mock Report Fallback
+    await sleep(1500);
+    const selectedProfObj = professors.find(p => p.id === reportProfessorId);
+    const profName = selectedProfObj ? selectedProfObj.nome_completo : "Geral do PPGCOM";
+    
+    const mockText = `# Relatório Analítico Executivo - Indicadores Docentes (${profName})
+
+**Data de Geração:** ${new Date().toLocaleDateString("pt-BR")} | **Solicitante:** Coordenador PPGCOM | **Motor de Análise:** Gemini 2.5 Flash (Simulado)
+
+---
+
+## 1. Introdução e Escopo
+Este documento apresenta uma síntese executiva analítica da produção acadêmica, captação financeira e projetos de pesquisa vinculados ao corpo docente do Programa de Pós-Graduação em Comunicação (PPGCOM). A análise foca nas correlações entre fomento, produção de artigos qualificados e resolução de gaps nos currículos.
+
+> **Diretrizes e Instruções Customizadas:**
+> *"${reportPrompt || "Compilar produções gerais e gaps informacionais"}"*
+
+---
+
+## 2. Visão Geral das Métricas
+A tabela a seguir consolida o desempenho quantitativo extraído dos currículos Lattes processados na base de dados:
+
+| Docente | Tipo | Projetos Ativos | Produções | Fomento Estimado | Gaps Resolvidos |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Zé Messias** | Permanente | 2 | 24 | R$ 45.000,00 | 100% |
+| **Domingos Alves** | Permanente | 2 | 4 | R$ 15.000,00 | 100% |
+| **Marcelli Alves** | Permanente | 3 | 4 | R$ 25.000,00 | 100% |
+| **Izani Mustafa** | Permanente | 2 | 4 | R$ 10.000,00 | 100% |
+
+---
+
+## 3. Análise Detalhada de Destaques
+1. **Regularidade da Produção:** Observa-se que o corpo docente mantém um fluxo contínuo de publicações, com destaque para artigos de periódicos científicos e capítulos de livros em editoras de prestígio nacional.
+2. **Captação de Fomento:** Os docentes com fomento ativo junto a agências de fomento como CNPq e FAPEMA lideram os grupos de pesquisa com maior densidade de alunos envolvidos, reiterando a importância do auxílio financeiro direto.
+3. **Consistência de Dados (Human-in-the-Loop):** Com o processamento via pipeline de IA do PPGCOMDATA e a validação ativa feita pela coordenação, a integridade dos dados alcançou **100% de conformidade operacional**, eliminando duplicidades e incoerências estruturais comuns em currículos Lattes brutos.
+
+---
+
+## 4. Recomendações e Conclusões
+* **Recomendação 1:** Estimular os professores com status de fomento pendente a revisarem seus currículos ou submeterem relatórios de auxílio, resolvendo potenciais lacunas de financiamento oculto.
+* **Recomendação 2:** Alinhar as pesquisas em andamento com as metas do próximo quadriênio de avaliação CAPES, priorizando publicações em veículos de estratificação de alto impacto (A1 a A4).
+`;
+    setReportText(mockText);
+    setReportModelUsed("Gemini 2.5 Flash (Simulado)");
+    setGeneratingReport(false);
+    addAuditLog("relatorio", `Gerou relatório analítico simulado.`);
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(reportText);
+    alert("Relatório copiado para a área de transferência!");
+  };
+
+  const downloadMarkdown = () => {
+    const element = document.createElement("a");
+    const file = new Blob([reportText], {type: 'text/markdown'});
+    element.href = URL.createObjectURL(file);
+    element.download = "relatorio_ppgcomdata.md";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
   // Add audit log helper
   const addAuditLog = (action: string, msg: string) => {
     const timeStr = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -686,6 +889,40 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Navigation Tabs */}
+        <div className="hidden md:flex items-center space-x-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
+          <button
+            onClick={() => setMainTab("validacao")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              mainTab === "validacao"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Validação
+          </button>
+          <button
+            onClick={() => setMainTab("estatisticas")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              mainTab === "estatisticas"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Estatísticas
+          </button>
+          <button
+            onClick={() => setMainTab("relatorios")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              mainTab === "relatorios"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            Gerar Relatório com IA
+          </button>
+        </div>
+
         {/* API connection indicator */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-xs">
@@ -702,7 +939,8 @@ export default function Dashboard() {
       </header>
 
       {/* 📊 Dashboard Core */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+      {mainTab === "validacao" && (
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn">
         
         {/* Left Side: Professor Selection & Lattes Upload (3 Cols) */}
         <div className="lg:col-span-3 space-y-6">
@@ -1217,6 +1455,668 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📊 Aba Estatísticas */}
+      {/* ========================================================================= */}
+      {mainTab === "estatisticas" && (
+        <main className="flex-1 p-6 space-y-6 animate-fadeIn bg-slate-950/20">
+          {/* Barra de Filtros */}
+          <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
+            <div className="flex-1 min-w-[200px] space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Docente</label>
+              <select
+                value={statsProfessorId}
+                onChange={(e) => setStatsProfessorId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+              >
+                <option value="todos">Todos os Docentes</option>
+                {professors.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nome_completo}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1 min-w-[200px] space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Linha de Pesquisa</label>
+              <select
+                value={statsLinhaPesquisaId}
+                onChange={(e) => setStatsLinhaPesquisaId(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+              >
+                <option value="todas">Todas as Linhas</option>
+                {linhasPesquisa.map((l) => (
+                  <option key={l.id} value={l.id}>{l.nome}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="w-[110px] space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano Início</label>
+              <input
+                type="number"
+                value={statsAnoInicio}
+                onChange={(e) => setStatsAnoInicio(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+              />
+            </div>
+
+            <div className="w-[110px] space-y-1.5">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano Fim</label>
+              <input
+                type="number"
+                value={statsAnoFim}
+                onChange={(e) => setStatsAnoFim(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                // Force stats refresh
+                const currentTab = mainTab;
+                setMainTab("validacao");
+                setTimeout(() => setMainTab(currentTab), 50);
+              }}
+              className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs shadow-lg shadow-indigo-600/10 transition-all flex items-center justify-center gap-2 min-h-[38px]"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingStats ? "animate-spin" : ""}`} />
+              Filtrar
+            </button>
+          </div>
+
+          {loadingStats ? (
+            <div className="flex flex-col items-center justify-center py-20 space-y-3">
+              <RefreshCw className="w-10 h-10 text-indigo-500 animate-spin" />
+              <span className="text-xs text-slate-400">Processando e computando agregações estatísticas...</span>
+            </div>
+          ) : statsData ? (
+            <div className="space-y-6">
+              {/* KPIs Highlights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-indigo-950/20 to-slate-900/30">
+                  <div className="bg-indigo-950/80 border border-indigo-800/60 p-3 rounded-xl text-indigo-400">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total de Produções</span>
+                    <h3 className="text-2xl font-bold text-white mt-0.5">{statsData.total_producoes}</h3>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Artigos, livros e capítulos</span>
+                  </div>
+                </div>
+
+                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-emerald-950/20 to-slate-900/30">
+                  <div className="bg-emerald-950/80 border border-emerald-800/60 p-3 rounded-xl text-emerald-400">
+                    <DollarSign className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Fomento Aprovado</span>
+                    <h3 className="text-2xl font-bold text-emerald-400 mt-0.5">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(statsData.fomento_total?.aprovado || 0)}
+                    </h3>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">
+                      Captado de FAPEMA, CNPq, etc.
+                    </span>
+                  </div>
+                </div>
+
+                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-purple-950/20 to-slate-900/30">
+                  <div className="bg-purple-950/80 border border-purple-800/60 p-3 rounded-xl text-purple-400">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Projetos Ativos</span>
+                    <h3 className="text-2xl font-bold text-purple-400 mt-0.5">{statsData.total_projetos}</h3>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">Pesquisas institucionais</span>
+                  </div>
+                </div>
+
+                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-amber-950/20 to-slate-900/30">
+                  <div className="bg-amber-950/80 border border-amber-800/60 p-3 rounded-xl text-amber-400">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Gaps Pendentes</span>
+                    <h3 className="text-2xl font-bold text-amber-400 mt-0.5">{statsData.lacunas?.pendentes || 0}</h3>
+                    <span className="text-[9px] text-slate-400 block mt-0.5">
+                      Taxa resolução: {statsData.lacunas?.total > 0 ? Math.round((statsData.lacunas.resolvidas / statsData.lacunas.total) * 100) : 100}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* 1. Evolução Histórica das Produções */}
+                <div className="glow-card rounded-xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <Calendar className="w-4 h-4 text-indigo-400" />
+                    Evolução Histórica das Produções
+                  </h3>
+
+                  {Object.keys(statsData.producoes_por_ano || {}).length === 0 ? (
+                    <div className="text-center py-10 text-slate-500 text-xs">Nenhum dado histórico encontrado</div>
+                  ) : (
+                    <div className="w-full space-y-3 pt-2">
+                      {/* Simple Pure React SVG Line Chart with Gradient */}
+                      <div className="relative h-44 w-full">
+                        <svg className="w-full h-full" viewBox="0 0 500 200" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.4" />
+                              <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.0" />
+                            </linearGradient>
+                          </defs>
+
+                          {/* Grid Lines */}
+                          <line x1="0" y1="50" x2="500" y2="50" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
+                          <line x1="0" y1="100" x2="500" y2="100" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
+                          <line x1="0" y1="150" x2="500" y2="150" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
+
+                          {(() => {
+                            const years = Object.keys(statsData.producoes_por_ano);
+                            const values = Object.values(statsData.producoes_por_ano) as number[];
+                            const maxVal = Math.max(...values, 5);
+                            
+                            const points = years.map((yr, idx) => {
+                              const x = (idx / (years.length - 1)) * 480 + 10;
+                              const y = 170 - (values[idx] / maxVal) * 140;
+                              return { x, y, value: values[idx], year: yr };
+                            });
+
+                            const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                            const areaPath = `${linePath} L ${points[points.length - 1].x} 170 L ${points[0].x} 170 Z`;
+
+                            return (
+                              <>
+                                {/* Filled Area */}
+                                <path d={areaPath} fill="url(#lineGrad)" />
+                                {/* Smooth Stroke Line */}
+                                <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="3.5" strokeLinecap="round" />
+
+                                {/* Dots */}
+                                {points.map((p, idx) => (
+                                  <g key={idx} className="group cursor-pointer">
+                                    <circle
+                                      cx={p.x}
+                                      cy={p.y}
+                                      r="6"
+                                      fill="#4f46e5"
+                                      stroke="#ffffff"
+                                      strokeWidth="2"
+                                      className="transition-all duration-200 hover:r-8"
+                                    />
+                                    <circle
+                                      cx={p.x}
+                                      cy={p.y}
+                                      r="12"
+                                      fill="#6366f1"
+                                      fillOpacity="0"
+                                      className="hover:fill-opacity-20 transition-all duration-200"
+                                    />
+                                    {/* Mini tooltip for each dot */}
+                                    <text
+                                      x={p.x}
+                                      y={p.y - 12}
+                                      fill="#a5b4fc"
+                                      fontSize="10"
+                                      fontWeight="bold"
+                                      textAnchor="middle"
+                                      className="opacity-90 bg-slate-900"
+                                    >
+                                      {p.value}
+                                    </text>
+                                  </g>
+                                ))}
+                              </>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+
+                      {/* X Axis Labels */}
+                      <div className="flex justify-between px-2 text-[10px] text-slate-500 font-bold">
+                        {Object.keys(statsData.producoes_por_ano).map((yr) => (
+                          <span key={yr}>{yr}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Proporção por Tipo de Produção */}
+                <div className="glow-card rounded-xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <FileText className="w-4 h-4 text-indigo-400" />
+                    Mix de Produção Acadêmica
+                  </h3>
+
+                  {Object.keys(statsData.producoes_por_tipo || {}).length === 0 ? (
+                    <div className="text-center py-10 text-slate-500 text-xs">Nenhuma produção registrada</div>
+                  ) : (
+                    <div className="space-y-4 pt-1">
+                      {(() => {
+                        const types = Object.keys(statsData.producoes_por_tipo);
+                        const values = Object.values(statsData.producoes_por_tipo) as number[];
+                        const total = values.reduce((a, b) => a + b, 0);
+
+                        return types.map((type, idx) => {
+                          const val = values[idx];
+                          const pct = Math.round((val / total) * 100);
+                          
+                          // Custom colors based on index
+                          const barColors = [
+                            "from-indigo-600 to-indigo-400",
+                            "from-purple-600 to-purple-400",
+                            "from-pink-600 to-pink-400",
+                            "from-emerald-600 to-emerald-400",
+                            "from-amber-600 to-amber-400"
+                          ];
+
+                          return (
+                            <div key={type} className="space-y-1.5">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="capitalize font-semibold text-slate-300 flex items-center gap-1.5">
+                                  <span className={`w-2.5 h-2.5 rounded bg-gradient-to-br ${barColors[idx % barColors.length]}`}></span>
+                                  {type === "artigo" ? "Artigos de Periódicos" 
+                                   : type === "livro" ? "Livros Publicados" 
+                                   : type === "capitulo" ? "Capítulos de Livros" 
+                                   : type === "evento" ? "Trabalhos em Eventos" 
+                                   : type}
+                                </span>
+                                <span className="font-bold text-slate-400">
+                                  {val} <span className="text-[10px] text-slate-500 font-normal">({pct}%)</span>
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-900">
+                                <div 
+                                  className={`bg-gradient-to-r ${barColors[idx % barColors.length]} h-full rounded-full transition-all duration-1000`}
+                                  style={{ width: `${pct}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Distribuição de Fomento por Agência Financiadora */}
+                <div className="glow-card rounded-xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <Award className="w-4 h-4 text-indigo-400" />
+                    Distribuição de Fomento por Agência
+                  </h3>
+
+                  {Object.keys(statsData.fomento_por_agencia || {}).length === 0 ? (
+                    <div className="text-center py-10 text-slate-500 text-xs">Nenhum fomento/recurso mapeado</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                      {/* Premium Circle Donut Chart */}
+                      <div className="flex justify-center py-2">
+                        {(() => {
+                          const agencies = Object.keys(statsData.fomento_por_agencia);
+                          const values = Object.values(statsData.fomento_por_agencia) as number[];
+                          const total = values.reduce((a, b) => a + b, 0);
+
+                          if (total === 0) return <div className="text-xs text-slate-500 font-semibold">R$ 0,00 Aprovados</div>;
+
+                          let cumulativePercent = 0;
+                          const slices = agencies.map((ag, idx) => {
+                            const val = values[idx];
+                            const percent = (val / total) * 100;
+                            const offset = cumulativePercent;
+                            cumulativePercent += percent;
+                            return { percent, offset, name: ag };
+                          });
+
+                          const colorPalette = ["#4f46e5", "#a855f7", "#ec4899", "#10b981", "#f59e0b"];
+
+                          return (
+                            <div className="relative w-44 h-44">
+                              <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
+                                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0f172a" strokeWidth="4.5" />
+                                {slices.map((slice, index) => (
+                                  <circle
+                                    key={slice.name}
+                                    cx="21"
+                                    cy="21"
+                                    r="15.91549430918954"
+                                    fill="transparent"
+                                    stroke={colorPalette[index % colorPalette.length]}
+                                    strokeWidth="4.8"
+                                    strokeDasharray={`${slice.percent} ${100 - slice.percent}`}
+                                    strokeDashoffset={100 - slice.offset}
+                                    className="transition-all duration-1000 ease-out"
+                                  />
+                                ))}
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Aprovado</span>
+                                <span className="text-sm font-extrabold text-white mt-0.5">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(total)}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Legend */}
+                      <div className="space-y-3">
+                        {(() => {
+                          const agencies = Object.keys(statsData.fomento_por_agencia);
+                          const values = Object.values(statsData.fomento_por_agencia) as number[];
+                          const total = values.reduce((a, b) => a + b, 0);
+                          const colorPalette = ["#4f46e5", "#a855f7", "#ec4899", "#10b981", "#f59e0b"];
+
+                          return agencies.map((ag, idx) => {
+                            const val = values[idx];
+                            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                            return (
+                              <div key={ag} className="flex justify-between items-center bg-slate-950/40 p-2 border border-slate-900 rounded-lg animate-fadeIn">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorPalette[idx % colorPalette.length] }}></span>
+                                  <span className="text-[11px] font-bold text-slate-300">{ag}</span>
+                                </div>
+                                <div className="text-[11px] font-bold text-slate-400 text-right">
+                                  <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)}</span>
+                                  <span className="text-[9px] text-slate-500 font-normal block">{pct}% do fomento</span>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Gravidade de Alertas & Gaps */}
+                <div className="glow-card rounded-xl p-5 space-y-4">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                    <AlertTriangle className="w-4 h-4 text-indigo-400" />
+                    Gravidade de Lacunas Pendentes
+                  </h3>
+
+                  {statsData.lacunas?.total === 0 ? (
+                    <div className="text-center py-10 text-slate-500 text-xs">Nenhuma lacuna registrada no sistema</div>
+                  ) : (
+                    <div className="space-y-4 pt-1">
+                      {/* Visual summary of gaps */}
+                      <div className="flex bg-slate-950 h-4.5 rounded-full overflow-hidden border border-slate-900 p-0.5">
+                        {(() => {
+                          const high = statsData.lacunas?.por_gravidade?.alta || 0;
+                          const med = statsData.lacunas?.por_gravidade?.media || 0;
+                          const low = statsData.lacunas?.por_gravidade?.baixa || 0;
+                          const total = high + med + low || 1;
+
+                          const pctH = (high / total) * 100;
+                          const pctM = (med / total) * 100;
+                          const pctL = (low / total) * 100;
+
+                          return (
+                            <>
+                              {high > 0 && <div className="bg-rose-500 h-full rounded-l-full" style={{ width: `${pctH}%` }} title={`Alta: ${high}`}></div>}
+                              {med > 0 && <div className="bg-amber-500 h-full" style={{ width: `${pctM}%` }} title={`Média: ${med}`}></div>}
+                              {low > 0 && <div className="bg-blue-500 h-full rounded-r-full" style={{ width: `${pctL}%` }} title={`Baixa: ${low}`}></div>}
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Detail list */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                          <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider block">Gravidade Alta</span>
+                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.alta || 0}</span>
+                          <span className="text-[9px] text-slate-500 mt-0.5 block">Exige ação imediata</span>
+                        </div>
+
+                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                          <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">Gravidade Média</span>
+                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.media || 0}</span>
+                          <span className="text-[9px] text-slate-500 mt-0.5 block">Revisão recomendada</span>
+                        </div>
+
+                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                          <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider block">Gravidade Baixa</span>
+                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.baixa || 0}</span>
+                          <span className="text-[9px] text-slate-500 mt-0.5 block">Ajustes informacionais</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-16 text-slate-500 text-xs">Nenhum dado analítico pôde ser computado</div>
+          )}
+        </main>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🤖 Aba Gerador de Relatórios com IA */}
+      {/* ========================================================================= */}
+      {mainTab === "relatorios" && (
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-950/20">
+          
+          {/* Lado Esquerdo: Configuração da Geração (4 colunas) */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="glow-card rounded-xl p-5 space-y-5 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
+              <div className="flex items-center space-x-2 border-b border-slate-900 pb-3">
+                <BarChart2 className="w-5 h-5 text-indigo-400 animate-pulse" />
+                <h2 className="text-sm font-bold tracking-wider text-slate-300 uppercase">Configurar Relatório</h2>
+              </div>
+
+              {/* Filtros Contextuais */}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Docente Alvo</label>
+                  <select
+                    value={reportProfessorId}
+                    onChange={(e) => setReportProfessorId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                  >
+                    <option value="todos">Todos os Docentes (Geral)</option>
+                    {professors.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nome_completo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Linha de Pesquisa</label>
+                  <select
+                    value={reportLinhaPesquisaId}
+                    onChange={(e) => setReportLinhaPesquisaId(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                  >
+                    <option value="todas">Todas as Linhas</option>
+                    {linhasPesquisa.map((l) => (
+                      <option key={l.id} value={l.id}>{l.nome}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano Início</label>
+                    <input
+                      type="number"
+                      value={reportAnoInicio}
+                      onChange={(e) => setReportAnoInicio(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano Fim</label>
+                    <input
+                      type="number"
+                      value={reportAnoFim}
+                      onChange={(e) => setReportAnoFim(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Templates Rápidos */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-900">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Presets e Templates Rápidos</label>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => setReportPrompt("Gere um relatório abrangente contendo o balanço de fomento recebido (CNPq, CAPES, FAPEMA), discriminando os valores por agência e o percentual de captação de cada docente.")}
+                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    💰 Balanço de Fomento & Captação
+                  </button>
+                  <button
+                    onClick={() => setReportPrompt("Redija uma síntese acadêmica detalhada das produções, destacando os artigos de periódicos mais relevantes e a aderência deles à linha de pesquisa correspondente.")}
+                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    📚 Síntese de Periódicos & Publicações
+                  </button>
+                  <button
+                    onClick={() => setReportPrompt("Gere um sumário executivo focado nos alertas e gaps de informação nos currículos. Explique quais são as principais inconsistências encontradas e forneça recomendações para a coordenação resolvê-las.")}
+                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    ⚠️ Sumário Executivo de Gaps/Incoerências
+                  </button>
+                </div>
+              </div>
+
+              {/* Instruções do Coordenador */}
+              <div className="space-y-2 pt-2 border-t border-slate-900">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">O que você precisa focar no relatório?</label>
+                <textarea
+                  rows={4}
+                  value={reportPrompt}
+                  onChange={(e) => setReportPrompt(e.target.value)}
+                  placeholder="Ex: Faça uma análise comparativa do fomento ativo e o volume de publicações recentes em periódicos..."
+                  className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200 placeholder-slate-600 resize-none leading-relaxed"
+                />
+              </div>
+
+              <button
+                disabled={generatingReport}
+                onClick={handleGenerateReport}
+                className={`w-full py-3 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                  generatingReport
+                    ? "bg-indigo-900/50 text-indigo-400 border border-indigo-850 cursor-not-allowed"
+                    : "bg-indigo-600 text-white hover:bg-indigo-500 hover:scale-[1.01] shadow-lg shadow-indigo-600/20 cursor-pointer active:scale-[0.99]"
+                }`}
+              >
+                {generatingReport ? (
+                  <>
+                    <RefreshCw className="w-4.5 h-4.5 animate-spin" />
+                    Gerando Relatório com IA...
+                  </>
+                ) : (
+                  <>
+                    <Award className="w-4.5 h-4.5" />
+                    Gerar Relatório Executivo
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Lado Direito: Visualizador de Markdown Executivo (8 colunas) */}
+          <div className="lg:col-span-8 flex flex-col h-full min-h-[580px] space-y-6">
+            <div className="glow-card rounded-xl p-5 flex flex-col flex-1 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
+              
+              <div className="flex justify-between items-center border-b border-slate-900 pb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-200 tracking-wider uppercase">Relatório Gerado por IA</h3>
+                  {reportModelUsed && (
+                    <span className="text-[10px] text-indigo-400 font-bold font-mono block mt-0.5">
+                      Modelo: {reportModelUsed}
+                    </span>
+                  )}
+                </div>
+
+                {reportText && !generatingReport && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={copyToClipboard}
+                      className="py-1.5 px-3 bg-slate-950 border border-slate-850 hover:border-slate-750 text-xs font-semibold text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+                      title="Copiar Relatório"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Copiar
+                    </button>
+                    <button
+                      onClick={downloadMarkdown}
+                      className="py-1.5 px-3 bg-slate-950 border border-slate-850 hover:border-slate-750 text-xs font-semibold text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+                      title="Baixar Markdown (.md)"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Baixar .MD
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="py-1.5 px-3 bg-indigo-950/60 border border-indigo-900 hover:bg-indigo-900 text-xs font-semibold text-indigo-400 hover:text-indigo-200 rounded-lg transition-all flex items-center gap-1.5"
+                      title="Imprimir / Salvar PDF"
+                    >
+                      <Award className="w-3.5 h-3.5" />
+                      Imprimir PDF
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Workspace Content Area */}
+              <div className="flex-1 flex flex-col justify-center mt-5 overflow-y-auto max-h-[500px] pr-1">
+                {generatingReport ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-6 text-center">
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-full border-4 border-indigo-950 border-t-indigo-500 animate-spin"></div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <BarChart2 className="w-6 h-6 text-indigo-400 animate-pulse" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-bold text-slate-300">Inteligência Artificial Pensando...</h4>
+                      <p className="text-xs text-slate-500 max-w-[280px] mx-auto leading-normal">
+                        Estamos consolidando os indicadores e gerando o parecer analítico.
+                      </p>
+                    </div>
+
+                    {/* Generation Logs Console */}
+                    <div className="w-full max-w-sm bg-slate-950 border border-slate-900 rounded-lg p-3 text-left font-mono text-[10px] text-slate-400 space-y-1.5 h-28 overflow-y-auto">
+                      {reportLogs.map((log, index) => (
+                        <div key={index} className="flex gap-2">
+                          <span className="text-indigo-500 font-bold select-none">&gt;</span>
+                          <span className={index === reportLogs.length - 1 ? "text-indigo-400 animate-pulse font-semibold" : ""}>{log}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : reportText ? (
+                  <div className="bg-slate-950/45 p-6 rounded-xl border border-slate-900/60 leading-relaxed text-slate-300 text-xs overflow-wrap-break text-left">
+                    <SimpleMarkdownRenderer content={reportText} />
+                  </div>
+                ) : (
+                  <div className="text-center py-20 text-slate-500 text-xs space-y-3">
+                    <Award className="w-12 h-12 text-slate-700 mx-auto" />
+                    <p className="font-semibold text-slate-400">Pronto para gerar pareceres e sínteses analíticas!</p>
+                    <p className="max-w-xs mx-auto text-slate-500 leading-normal">
+                      Selecione os filtros desejados, escolha um template rápido ou redija uma orientação personalizada para iniciar o pipeline de IA.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
 
       {/* 📝 Edit Item Modal */}
       {editingItem && (
@@ -1567,4 +2467,195 @@ function EmptyState({ tab }: { tab: string }) {
       Nenhum {tab} cadastrado ou processado ainda para este docente.
     </div>
   );
+}
+
+// Subcomponent: Pure React Simple Markdown Renderer
+function SimpleMarkdownRenderer({ content }: { content: string }) {
+  if (!content) return null;
+
+  // Simple line-by-line block parser
+  const lines = content.split("\n");
+  
+  const parseInline = (text: string) => {
+    const parts = [];
+    let currentIdx = 0;
+    
+    // Regex for bold **text** and inline `code`
+    const regex = /(\*\*.*?\*\*|`.*?`)/g;
+    let match;
+    
+    while ((match = regex.exec(text)) !== null) {
+      const matchText = match[0];
+      const matchIndex = match.index;
+      
+      // Push plain text before match
+      if (matchIndex > currentIdx) {
+        parts.push(text.slice(currentIdx, matchIndex));
+      }
+      
+      if (matchText.startsWith("**") && matchText.endsWith("**")) {
+        parts.push(
+          <strong key={matchIndex} className="text-white font-extrabold">
+            {matchText.slice(2, -2)}
+          </strong>
+        );
+      } else if (matchText.startsWith("`") && matchText.endsWith("`")) {
+        parts.push(
+          <code key={matchIndex} className="bg-slate-900 border border-slate-800 text-indigo-300 font-mono px-1 rounded text-[11px]">
+            {matchText.slice(1, -1)}
+          </code>
+        );
+      }
+      
+      currentIdx = regex.lastIndex;
+    }
+    
+    if (currentIdx < text.length) {
+      parts.push(text.slice(currentIdx));
+    }
+    
+    return parts.length > 0 ? parts : text;
+  };
+
+  let inList = false;
+  let listItems: React.ReactNode[] = [];
+  let inTable = false;
+  let tableHeaders: string[] = [];
+  let tableRows: string[][] = [];
+
+  const renderedBlocks: React.ReactNode[] = [];
+
+  const flushList = (key: string) => {
+    if (inList && listItems.length > 0) {
+      renderedBlocks.push(
+        <ul key={`ul-${key}`} className="list-disc pl-5 my-3 space-y-1.5 text-slate-350">
+          {listItems}
+        </ul>
+      );
+      listItems = [];
+      inList = false;
+    }
+  };
+
+  const flushTable = (key: string) => {
+    if (inTable && (tableHeaders.length > 0 || tableRows.length > 0)) {
+      renderedBlocks.push(
+        <div key={`table-wrapper-${key}`} className="overflow-x-auto my-4 rounded-lg border border-slate-850">
+          <table className="min-w-full divide-y divide-slate-850 text-xs">
+            <thead className="bg-slate-900/60">
+              <tr>
+                {tableHeaders.map((h, i) => (
+                  <th key={i} className="px-4 py-2 text-left font-bold text-slate-300 uppercase tracking-wider border-r border-slate-850 last:border-r-0">
+                    {parseInline(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-900 bg-slate-950/20">
+              {tableRows.map((row, ri) => (
+                <tr key={ri} className="hover:bg-slate-900/20 transition-colors">
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="px-4 py-2.5 text-slate-300 border-r border-slate-900 last:border-r-0">
+                      {parseInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      tableHeaders = [];
+      tableRows = [];
+      inTable = false;
+    }
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Handle Table line | cell 1 | cell 2 |
+    if (line.startsWith("|") && line.endsWith("|")) {
+      flushList(String(i));
+      
+      const cells = line.split("|").slice(1, -1).map(c => c.trim());
+      const isSeparator = cells.every(c => c.match(/^:?-+:?$/));
+      
+      if (isSeparator) {
+        inTable = true;
+        continue;
+      }
+
+      if (!inTable) {
+        tableHeaders = cells;
+        inTable = true;
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else {
+      flushTable(String(i));
+    }
+
+    // Handle list item: * or -
+    if (line.startsWith("* ") || line.startsWith("- ")) {
+      inList = true;
+      const text = line.substring(2);
+      listItems.push(
+        <li key={`li-${i}-${text.slice(0, 10)}`} className="leading-relaxed">
+          {parseInline(text)}
+        </li>
+      );
+      continue;
+    } else {
+      flushList(String(i));
+    }
+
+    // Handle Headings
+    if (line.startsWith("# ")) {
+      renderedBlocks.push(
+        <h1 key={`h1-${i}`} className="text-lg font-extrabold text-white mt-5 mb-3 pb-1.5 border-b border-slate-900 uppercase tracking-wide">
+          {parseInline(line.substring(2))}
+        </h1>
+      );
+    } else if (line.startsWith("## ")) {
+      renderedBlocks.push(
+        <h2 key={`h2-${i}`} className="text-sm font-extrabold text-indigo-400 mt-4 mb-2 uppercase tracking-wider flex items-center gap-2">
+          {parseInline(line.substring(3))}
+        </h2>
+      );
+    } else if (line.startsWith("### ")) {
+      renderedBlocks.push(
+        <h3 key={`h3-${i}`} className="text-xs font-bold text-slate-300 mt-3 mb-1.5 uppercase tracking-widest">
+          {parseInline(line.substring(4))}
+        </h3>
+      );
+    } 
+    // Handle Blockquotes
+    else if (line.startsWith("> ")) {
+      renderedBlocks.push(
+        <blockquote key={`bq-${i}`} className="my-3 p-3 bg-slate-900/40 border-l-2 border-indigo-600 rounded-r-lg text-slate-400 italic text-[11px] leading-relaxed">
+          {parseInline(line.substring(2))}
+        </blockquote>
+      );
+    }
+    // Handle Horizontal Rule
+    else if (line === "---") {
+      renderedBlocks.push(<hr key={`hr-${i}`} className="my-4 border-slate-900" />);
+    }
+    // Handle Paragraph
+    else if (line.length > 0) {
+      renderedBlocks.push(
+        <p key={`p-${i}`} className="my-2.5 text-slate-350 leading-relaxed">
+          {parseInline(line)}
+        </p>
+      );
+    }
+  }
+
+  // Flush remaining elements
+  flushList("end");
+  flushTable("end");
+
+  return <div className="space-y-1">{renderedBlocks}</div>;
 }
