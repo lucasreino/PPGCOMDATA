@@ -53,7 +53,7 @@ def fix_existing_uploads(session: Session) -> dict:
             print(f"  ? Sem match: {upload.arquivo_nome}")
             continue
         if upload.professor_id != target.id:
-            print(f"  → {upload.arquivo_nome}: {upload.professor_id[:8]}... → {target.nome_completo}")
+            print(f"  → {upload.arquivo_nome} → {target.nome_completo}")
             reassign_upload_record(session, upload, target.id)
             moved += 1
 
