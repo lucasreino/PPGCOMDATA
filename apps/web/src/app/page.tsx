@@ -130,9 +130,9 @@ export default function Dashboard() {
 
   // App core state
   const [professors, setProfessors] = useState<Professor[]>([
-    { id: "1", nome_completo: "Prof. Dr. Lucas Reino", linha: "Comunicação e Cultura Digital", tipo: "Permanente", status: "pendente" },
-    { id: "2", nome_completo: "Profª. Drª. Amanda Souza", linha: "Mídia, Política e Sociedade", tipo: "Permanente", status: "validado" },
-    { id: "3", nome_completo: "Prof. Dr. Carlos Alberto", linha: "Processos de Recepção de Mídia", tipo: "Colaborador", status: "processado" },
+    { id: "1", nome_completo: "Prof. Dr. Lucas Reino", linha: "Tecnologias, Audiovisual e Processos Regionais de Comunicação", tipo: "Permanente", status: "pendente" },
+    { id: "2", nome_completo: "Profª. Drª. Amanda Souza", linha: "Processos Comunicacionais, Cidadania e Identidades", tipo: "Permanente", status: "validado" },
+    { id: "3", nome_completo: "Prof. Dr. Carlos Alberto", linha: "Tecnologias, Audiovisual e Processos Regionais de Comunicação", tipo: "Colaborador", status: "processado" },
   ]);
   const [selectedProfId, setSelectedProfId] = useState<string>("1");
   const [activeTab, setActiveTab] = useState<"projetos" | "eventos" | "producoes" | "financiamentos">("projetos");
@@ -176,11 +176,9 @@ export default function Dashboard() {
       .catch(() => {
         setApiConnected(false);
         console.log("Servidor FastAPI offline, utilizando dados simulados premium.");
-        // Set mock research lines
         setLinhasPesquisa([
-          { id: "4c79ded3-93e5-40aa-86a2-88d1f17766be", nome: "Comunicação e Cultura Digital", codigo: "L1" },
-          { id: "2", nome: "Mídia, Política e Sociedade", codigo: "L2" },
-          { id: "3", nome: "Processos de Recepção de Mídia", codigo: "L3" }
+          { id: "linha-1-mock", nome: "Tecnologias, Audiovisual e Processos Regionais de Comunicação" },
+          { id: "linha-2-mock", nome: "Processos Comunicacionais, Cidadania e Identidades" }
         ]);
       });
   }, []);
@@ -198,7 +196,7 @@ export default function Dashboard() {
         const mapped = data.map(p => ({
           id: p.id,
           nome_completo: p.nome_completo,
-          linha: p.linha_pesquisa ? p.linha_pesquisa.nome : "Comunicação e Cultura Digital",
+          linha: p.linha_pesquisa ? p.linha_pesquisa.nome : "Não especificada",
           tipo: p.tipo_docente || "Permanente",
           status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
         }));

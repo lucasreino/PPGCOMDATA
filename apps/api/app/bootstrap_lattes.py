@@ -51,18 +51,43 @@ def bootstrap():
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     
     with Session(engine) as session:
-        # 1. Get or create a default Research Line
-        statement = select(LinhaPesquisa).where(LinhaPesquisa.nome == "Comunicação e Cultura Digital")
-        linha = session.exec(statement).first()
-        if not linha:
-            print("Creating default research line...")
-            linha = LinhaPesquisa(
-                nome="Comunicação e Cultura Digital",
-                descricao="Linha de pesquisa padrão para importação em lote."
-            )
-            session.add(linha)
-            session.commit()
-            session.refresh(linha)
+        # 1. Get or create the two actual Research Lines
+        LINE1_NAME = "Tecnologias, Audiovisual e Processos Regionais de Comunicação"
+        LINE2_NAME = "Processos Comunicacionais, Cidadania e Identidades"
+        
+        LINE1_DESC = (
+            "As pesquisas desta linha tem como foco explorar as implicações das tecnologias de comunicação "
+            "e do audiovisual nos processos comunicacionais em diversos contextos. A investigação abrange "
+            "o impacto das novas tecnologias, como a internet e plataformas digitais, na transformação da "
+            "produção e distribuição de conteúdo, além de analisar as práticas de consumo e as novas formas "
+            "de interação que surgem com esses avanços. Por outro lado, a linha também examina os processos "
+            "comunicacionais em nível regional, investigando como as dinâmicas locais influenciam a construção "
+            "de narrativas e a representação cultural."
+        )
+
+        LINE2_DESC = (
+            "Esta linha contempla pesquisas que se dedicam a investigar as relações entre os fluxos "
+            "de comunicação e a formação das identidades sociais e culturais, com especial atenção aos "
+            "processos de construção e negociação da cidadania em contextos contemporâneos."
+        )
+        
+        stmt1 = select(LinhaPesquisa).where(LinhaPesquisa.nome == LINE1_NAME)
+        linha1 = session.exec(stmt1).first()
+        if not linha1:
+            print(f"Creating Research Line 1: {LINE1_NAME}")
+            linha1 = LinhaPesquisa(nome=LINE1_NAME, descricao=LINE1_DESC)
+            session.add(linha1)
+            
+        stmt2 = select(LinhaPesquisa).where(LinhaPesquisa.nome == LINE2_NAME)
+        linha2 = session.exec(stmt2).first()
+        if not linha2:
+            print(f"Creating Research Line 2: {LINE2_NAME}")
+            linha2 = LinhaPesquisa(nome=LINE2_NAME, descricao=LINE2_DESC)
+            session.add(linha2)
+            
+        session.commit()
+        if linha1: session.refresh(linha1)
+        if linha2: session.refresh(linha2)
             
         for filename in pdf_files:
             print("-" * 50)
@@ -79,6 +104,15 @@ def bootstrap():
                 
             clean_name = clean_name.title()
             
+            # Decide which research line to map to based on teacher name keyword map
+            name_lower = clean_name.lower()
+            if any(k in name_lower for k in ["messias", "domingos", "izani", "leticia", "thaisa"]):
+                assigned_line = linha1
+            elif any(k in name_lower for k in ["tavares", "larissa", "marcelli", "michelly", "gisa", "leila", "thays"]):
+                assigned_line = linha2
+            else:
+                assigned_line = linha1 # default fallback
+            
             # Find or create professor
             stmt_prof = select(Professor).where(Professor.nome_completo == clean_name)
             prof = session.exec(stmt_prof).first()
@@ -86,7 +120,7 @@ def bootstrap():
                 print(f"👤 Docente '{clean_name}' não encontrado no banco. Criando registro...")
                 prof = Professor(
                     nome_completo=clean_name,
-                    linha_pesquisa_id=linha.id,
+                    linha_pesquisa_id=assigned_line.id if assigned_line else None,
                     status=True
                 )
                 session.add(prof)
@@ -94,6 +128,11 @@ def bootstrap():
                 session.refresh(prof)
             else:
                 print(f"👤 Docente '{clean_name}' já cadastrado.")
+                # Update research line if it is None or set to old default
+                if not prof.linha_pesquisa_id:
+                    prof.linha_pesquisa_id = assigned_line.id if assigned_line else None
+                    session.add(prof)
+                    session.commit()
 
             # Copy PDF to backend storage
             unique_filename = f"{uuid.uuid4()}.pdf"
