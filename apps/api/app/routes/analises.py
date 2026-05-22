@@ -230,7 +230,9 @@ async def gerar_relatorio_ia(
 
     try:
         content_text = await asyncio.to_thread(
-            generate_text, system_instruction, user_prompt, 0.2
+            lambda: generate_text(
+                system_instruction, user_prompt, temperature=0.2
+            )
         )
         return {
             "relatorio": content_text,
@@ -238,11 +240,12 @@ async def gerar_relatorio_ia(
         }
     except Exception as e:
         logger.error("Erro ao chamar LLM para geração de relatório: %s", e)
-        return {
-            "relatorio": gerar_mock_relatorio(professor_id, professores, instrucoes_usuario)
-            + f"\n\n*(Nota: Falha na API ({settings.AI_PROVIDER}). Relatório simulado de resiliência.)* ",
-            "modelo": "Simulação de Resiliência",
-        }
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                f"Falha ao gerar relatório com o modelo de IA ({provider_label()}): {e}"
+            ),
+        ) from e
 
 def gerar_mock_relatorio(professor_id: Optional[str], professores: list, instrucoes: str) -> str:
     """Generates an extremely detailed and realistic mock report in Markdown format."""
