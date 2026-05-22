@@ -45,6 +45,7 @@ function tabLabel(tab: EntityTab): string {
 }
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 import { PendingValidationModal } from "@/components/validation/PendingValidationModal";
+import { ArtigosQualisModal } from "@/components/analytics/ArtigosQualisModal";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { groupProducoesByTipo } from "@/lib/producao-groups";
@@ -96,6 +97,7 @@ export default function Dashboard() {
   const [statsData, setStatsData] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [showPendingValidationModal, setShowPendingValidationModal] = useState(false);
+  const [showArtigosQualisModal, setShowArtigosQualisModal] = useState(false);
 
   // AI Report Generator filters, prompt & text
   const [reportProfessorId, setReportProfessorId] = useState<string>("todos");
@@ -2085,15 +2087,21 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       {statsData.orientacoes_concluidas} concluídas · {statsData.orientacoes_em_andamento} em andamento
                     </p>
                   </div>
-                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                  <button
+                    type="button"
+                    onClick={() => setShowArtigosQualisModal(true)}
+                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                    title="Abrir painel de artigos por estrato Qualis, revistas e docentes"
+                  >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Qualis (artigos)</span>
                     <p className="text-xl font-bold text-indigo-300 mt-1">
                       {Object.keys(statsData.producoes_por_qualis || {}).length} estratos
                     </p>
                     <p className="text-[10px] text-slate-400 mt-1">
                       {Object.entries(statsData.producoes_por_qualis || {}).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Sem dados"}
+                      {" · clique para gráficos"}
                     </p>
-                  </div>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowPendingValidationModal(true)}
@@ -3059,6 +3067,16 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         breakdown={statsData?.validacao_pendentes}
         onReview={handleReviewPendingItem}
         onGoToValidation={handleGoToValidationTab}
+      />
+
+      <ArtigosQualisModal
+        open={showArtigosQualisModal}
+        onClose={() => setShowArtigosQualisModal(false)}
+        statsProfessorId={statsProfessorId}
+        statsLinhaPesquisaId={statsLinhaPesquisaId}
+        statsAnoInicio={statsAnoInicio}
+        statsAnoFim={statsAnoFim}
+        previewPorQualis={statsData?.producoes_por_qualis}
       />
     </div>
   );
