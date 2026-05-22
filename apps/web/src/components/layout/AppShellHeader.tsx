@@ -12,8 +12,10 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch } from "@/lib/api";
+import { APP_VERSION_LABEL } from "@/lib/app-version";
 import type { MainTab } from "@/lib/types";
 
 export type AppNavSection = "operacao" | "docentes" | "dossie";
@@ -83,6 +85,17 @@ export function AppShellHeader({
   const searchParams = useSearchParams();
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [apiVersion, setApiVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    apiFetch("/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { version?: string } | null) => {
+        if (data?.version) setApiVersion(`v${data.version}`);
+      })
+      .catch(() => setApiVersion(null));
+  }, [user]);
 
   const onOperacao = section === "operacao";
   const onDocentes = section === "docentes" || pathname.startsWith("/docentes");
@@ -176,8 +189,20 @@ export function AppShellHeader({
               <BarChart2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-white truncate">
-                PPGCOM<span className="text-indigo-400">DATA</span>
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-white truncate flex items-center gap-2 flex-wrap">
+                <span>
+                  PPGCOM<span className="text-indigo-400">DATA</span>
+                </span>
+                <span
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 font-semibold"
+                  title={
+                    apiVersion && apiVersion !== APP_VERSION_LABEL
+                      ? `Web ${APP_VERSION_LABEL} · API ${apiVersion}`
+                      : `Versão ${APP_VERSION_LABEL}`
+                  }
+                >
+                  {apiVersion ?? APP_VERSION_LABEL}
+                </span>
               </h1>
               <p className="text-[10px] text-slate-500 truncate group-hover:text-slate-400 transition-colors">
                 {onDossie
