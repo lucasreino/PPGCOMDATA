@@ -21,6 +21,7 @@ from app.auth import require_staff
 from app.services.cache_ttl import cache_clear_prefix, cached_call
 from app.services.indicator_service import IndicatorFilters, IndicatorService
 from app.services.artigos_qualis_analytics import build_artigos_qualis_insights
+from app.services.orientacoes_analytics import build_orientacoes_insights
 from app.services.llm_client import generate_text, provider_label
 
 logger = logging.getLogger("ppgcomdata")
@@ -130,6 +131,47 @@ async def obter_artigos_qualis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro interno ao computar artigos Qualis: {str(e)}",
+        ) from e
+
+
+@router.get("/orientacoes/painel")
+async def obter_orientacoes_painel(
+    professor_id: Optional[str] = None,
+    linha_pesquisa_id: Optional[str] = None,
+    ano_inicio: Optional[int] = None,
+    ano_fim: Optional[int] = None,
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
+):
+    """Painel de orientações por tipo, status, ano e docente."""
+    try:
+        cache_key = (
+            "analytics:orientacoes:"
+            + _analytics_cache_key(professor_id, linha_pesquisa_id, ano_inicio, ano_fim)
+        )
+        filters = IndicatorFilters(
+            professor_id=professor_id,
+            linha_pesquisa_id=linha_pesquisa_id,
+            ano_inicio=ano_inicio,
+            ano_fim=ano_fim,
+        )
+        svc = IndicatorService(session, filters)
+
+        def _load():
+            return build_orientacoes_insights(
+                session,
+                svc._apply_prof_filter,
+                svc._apply_validacao,
+                filters.ano_inicio,
+                filters.ano_fim,
+            )
+
+        return cached_call(cache_key, _ANALYTICS_CACHE_TTL_SEC, _load)
+    except Exception as e:
+        logger.error("Erro ao computar painel de orientações: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno ao computar orientações: {str(e)}",
         ) from e
 
 

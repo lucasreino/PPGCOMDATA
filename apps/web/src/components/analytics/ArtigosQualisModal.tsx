@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X, RefreshCw, AlertTriangle, BookOpen } from "lucide-react";
+import { X, RefreshCw, AlertTriangle, BookOpen, Printer } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { printArtigosQualisInPage } from "@/lib/artigos-qualis-print";
 import { SimpleBarChart, StackedBarChart } from "@/components/dossie/charts";
 
 const ESTRATO_COLORS: Record<string, string> = {
@@ -46,6 +47,7 @@ interface ArtigosQualisModalProps {
   statsLinhaPesquisaId: string;
   statsAnoInicio: string;
   statsAnoFim: string;
+  filterSummary?: string;
   previewPorQualis?: Record<string, number>;
 }
 
@@ -56,6 +58,7 @@ export function ArtigosQualisModal({
   statsLinhaPesquisaId,
   statsAnoInicio,
   statsAnoFim,
+  filterSummary,
   previewPorQualis,
 }: ArtigosQualisModalProps) {
   const [loading, setLoading] = useState(false);
@@ -126,9 +129,11 @@ export function ArtigosQualisModal({
 
   if (!open) return null;
 
+  const canPrint = !loading && !error && data != null;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="artigos-qualis-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -136,7 +141,18 @@ export function ArtigosQualisModal({
       aria-modal="true"
       aria-labelledby="artigos-qualis-title"
     >
-      <div className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-800 bg-[#0f172a] shadow-2xl">
+      <div
+        id="artigos-qualis-print-root"
+        className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-800 bg-[#0f172a] shadow-2xl qualis-print-panel"
+      >
+        <div className="print-only px-5 pt-5 pb-3 border-b border-slate-300 text-slate-800 text-[10pt]">
+          <p className="font-bold text-indigo-900 text-sm">PPGCOMDATA — Artigos e estratificação Qualis</p>
+          {filterSummary && <p className="mt-1 text-slate-600">{filterSummary}</p>}
+          <p className="mt-1 text-slate-500 text-[9pt]">
+            Gerado em {new Date().toLocaleString("pt-BR")}
+          </p>
+        </div>
+
         <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-800 shrink-0">
           <div>
             <h2
@@ -150,17 +166,29 @@ export function ArtigosQualisModal({
               Percentual por estrato, revistas e docente × estrato (filtros da aba Indicadores)
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-            aria-label="Fechar"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0 no-print">
+            <button
+              type="button"
+              onClick={() => printArtigosQualisInPage()}
+              disabled={!canPrint}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 border border-slate-700 hover:border-indigo-600 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              title={canPrint ? "Imprimir este painel" : "Aguarde o carregamento dos dados"}
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              aria-label="Fechar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 qualis-print-scroll">
           {loading && (
             <div className="flex flex-col items-center py-16 gap-3 text-slate-400">
               <RefreshCw className="w-8 h-8 animate-spin text-indigo-400" />
@@ -281,7 +309,7 @@ export function ArtigosQualisModal({
                   Lista de artigos ({data.artigos.length}
                   {data.total_artigos > data.artigos.length ? ` de ${data.total_artigos}` : ""})
                 </h3>
-                <ul className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 qualis-print-scroll">
                   {data.artigos.map((a) => (
                     <li
                       key={a.id}

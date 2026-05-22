@@ -46,6 +46,7 @@ function tabLabel(tab: EntityTab): string {
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 import { PendingValidationModal } from "@/components/validation/PendingValidationModal";
 import { ArtigosQualisModal } from "@/components/analytics/ArtigosQualisModal";
+import { OrientacoesModal } from "@/components/analytics/OrientacoesModal";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { groupProducoesByTipo } from "@/lib/producao-groups";
@@ -98,6 +99,7 @@ export default function Dashboard() {
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
   const [showPendingValidationModal, setShowPendingValidationModal] = useState(false);
   const [showArtigosQualisModal, setShowArtigosQualisModal] = useState(false);
+  const [showOrientacoesModal, setShowOrientacoesModal] = useState(false);
 
   // AI Report Generator filters, prompt & text
   const [reportProfessorId, setReportProfessorId] = useState<string>("todos");
@@ -2080,13 +2082,19 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
               {(statsData.total_orientacoes != null) && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                  <button
+                    type="button"
+                    onClick={() => setShowOrientacoesModal(true)}
+                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                    title="Abrir painel de orientações por professor, tipo, ano e situação"
+                  >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Orientações</span>
                     <p className="text-xl font-bold text-white mt-1">{statsData.total_orientacoes}</p>
                     <p className="text-[10px] text-slate-400 mt-1">
                       {statsData.orientacoes_concluidas} concluídas · {statsData.orientacoes_em_andamento} em andamento
+                      {" · clique para detalhar"}
                     </p>
-                  </div>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setShowArtigosQualisModal(true)}
@@ -3076,7 +3084,34 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         statsLinhaPesquisaId={statsLinhaPesquisaId}
         statsAnoInicio={statsAnoInicio}
         statsAnoFim={statsAnoFim}
+        filterSummary={[
+          statsProfessorId === "todos"
+            ? "Todos os docentes"
+            : professors.find((p) => p.id === statsProfessorId)?.nome_completo ?? "Docente",
+          statsLinhaPesquisaId === "todas"
+            ? "Todas as linhas"
+            : linhasPesquisa.find((l) => l.id === statsLinhaPesquisaId)?.nome ?? "Linha",
+          `${statsAnoInicio}—${statsAnoFim}`,
+        ].join(" · ")}
         previewPorQualis={statsData?.producoes_por_qualis}
+      />
+
+      <OrientacoesModal
+        open={showOrientacoesModal}
+        onClose={() => setShowOrientacoesModal(false)}
+        statsProfessorId={statsProfessorId}
+        statsLinhaPesquisaId={statsLinhaPesquisaId}
+        statsAnoInicio={statsAnoInicio}
+        statsAnoFim={statsAnoFim}
+        filterSummary={[
+          statsProfessorId === "todos"
+            ? "Todos os docentes"
+            : professors.find((p) => p.id === statsProfessorId)?.nome_completo ?? "Docente",
+          statsLinhaPesquisaId === "todas"
+            ? "Todas as linhas"
+            : linhasPesquisa.find((l) => l.id === statsLinhaPesquisaId)?.nome ?? "Linha",
+          `${statsAnoInicio}—${statsAnoFim}`,
+        ].join(" · ")}
       />
     </div>
   );
