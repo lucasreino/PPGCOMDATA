@@ -67,13 +67,13 @@ export function entityRecencyKey(entityKey: string, item: Rec): [number, number]
   return [primary, tieTs];
 }
 
-export function sortByNewestFirst<T extends Rec>(
+export function sortByNewestFirst<T>(
   items: T[],
   entityKey: string
 ): T[] {
   return [...items].sort((a, b) => {
-    const [pa, ta] = entityRecencyKey(entityKey, a);
-    const [pb, tb] = entityRecencyKey(entityKey, b);
+    const [pa, ta] = entityRecencyKey(entityKey, a as Rec);
+    const [pb, tb] = entityRecencyKey(entityKey, b as Rec);
     if (pb !== pa) return pb - pa;
     return tb - ta;
   });
