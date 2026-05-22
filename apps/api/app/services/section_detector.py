@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from sqlmodel import Session, select
 from app.models.data import CurriculoUpload, PdfPage, PdfSection
+from app.services.text_preprocessor import normalize_lattes_text
 
 logger = logging.getLogger("ppgcomdata.section_detector")
 
@@ -126,13 +127,14 @@ def split_and_save_sections(session: Session, curriculo_upload_id: str) -> List[
     statement = select(PdfPage).where(PdfPage.curriculo_upload_id == curriculo_upload_id).order_by(PdfPage.numero_pagina)
     pages = session.exec(statement).all()
     
-    # 2. Detect section boundaries and split
-    boundaries = detect_sections(upload.texto_extraido)
+    # 2. Detect section boundaries and split (texto já normalizado no PDF; re-normaliza uploads antigos)
+    full_text = normalize_lattes_text(upload.texto_extraido)
+    boundaries = detect_sections(full_text)
     if not boundaries:
         logger.warning(f"Nenhuma seção detectada no texto do curriculo ID: {curriculo_upload_id}")
         return []
         
-    chunks = split_text_by_sections(upload.texto_extraido, boundaries)
+    chunks = split_text_by_sections(full_text, boundaries)
     db_sections = []
     
     # Delete any existing sections for this upload (idempotency)

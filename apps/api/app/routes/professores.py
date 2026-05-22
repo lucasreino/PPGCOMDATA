@@ -1,22 +1,88 @@
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from sqlalchemy.orm import selectinload
-from typing import List
+from typing import Any, Dict, List
 from app.database import get_session
 from app.models.core import Professor
-from app.models.data import Orientacao, FormacaoAcademica, Banca
+from app.models.data import (
+    Orientacao,
+    FormacaoAcademica,
+    Banca,
+    Projeto,
+    Evento,
+    Producao,
+    Financiamento,
+    ProducaoTecnica,
+    PremioTitulo,
+    GrupoPesquisaDocente,
+)
 from app.models.enums import StatusOrientacao
 from app.auth import require_staff, get_current_user
 from app.schemas.professor import ProfessorListItem
+from app.schemas.professor_catalog import ProfessorCatalogItem
 from app.schemas.professor_resumo import (
     ProfessorResumoAcademico,
     OrientacaoResumoItem,
     FormacaoResumoItem,
 )
 from app.services.professor_lookup import find_professor, professor_dedupe_key
+from app.routes.validacao import ENTIDADES_MAP
 
 router = APIRouter(prefix="/professores", tags=["Professores"])
+
+_COUNT_MODELS = {
+    "total_projetos": Projeto,
+    "total_eventos": Evento,
+    "total_producoes": Producao,
+    "total_financiamentos": Financiamento,
+    "total_orientacoes": Orientacao,
+    "total_bancas": Banca,
+}
+
+
+def _counts_by_professor(session: Session) -> Dict[str, Dict[str, int]]:
+    """Contagens por professor_id para o catálogo."""
+    result: Dict[str, Dict[str, int]] = {}
+    for key, model in _COUNT_MODELS.items():
+        rows = session.exec(
+            select(model.professor_id, func.count()).group_by(model.professor_id)  # type: ignore[arg-type]
+        ).all()
+        for prof_id, count in rows:
+            pid = str(prof_id)
+            if pid not in result:
+                result[pid] = {}
+            result[pid][key] = int(count)
+    return result
+
+
+def _serialize_entities(
+    rows: List[Any], *, include_trecho: bool = True
+) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for row in rows:
+        data = row.model_dump(mode="json")
+        if not include_trecho:
+            data.pop("trecho_original", None)
+        out.append(data)
+    return out
+
+
+def _catalog_item_for_professor(
+    prof: Professor, counts: Dict[str, Dict[str, int]]
+) -> ProfessorCatalogItem:
+    pid = str(prof.id)
+    c = counts.get(pid, {})
+    base = ProfessorListItem.from_model(prof)
+    return ProfessorCatalogItem(
+        **base.model_dump(),
+        total_projetos=c.get("total_projetos", 0),
+        total_producoes=c.get("total_producoes", 0),
+        total_eventos=c.get("total_eventos", 0),
+        total_orientacoes=c.get("total_orientacoes", 0),
+        total_bancas=c.get("total_bancas", 0),
+        total_financiamentos=c.get("total_financiamentos", 0),
+    )
 
 
 @router.get("/", response_model=List[ProfessorListItem])
@@ -38,6 +104,28 @@ async def list_professores(
         unique.append(prof)
 
     return [ProfessorListItem.from_model(p) for p in unique]
+
+
+@router.get("/catalog", response_model=List[ProfessorCatalogItem])
+async def list_professores_catalog(
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
+):
+    """Lista docentes com foto, linha e contagens para o grid de perfis."""
+    statement = select(Professor).options(selectinload(Professor.linha_pesquisa))
+    results = session.exec(statement).all()
+
+    seen: set[str] = set()
+    unique: list[Professor] = []
+    for prof in sorted(results, key=lambda p: p.nome_completo or ""):
+        key = professor_dedupe_key(prof)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(prof)
+
+    counts = _counts_by_professor(session)
+    return [_catalog_item_for_professor(prof, counts) for prof in unique]
 
 
 @router.post("/", response_model=Professor, status_code=status.HTTP_201_CREATED)
@@ -62,6 +150,42 @@ async def create_professor(
     session.commit()
     session.refresh(professor)
     return professor
+
+
+@router.get("/{prof_id}/catalog", response_model=ProfessorCatalogItem)
+async def get_professor_catalog_item(
+    prof_id: str,
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
+):
+    """Metadados do docente + contagens (sem carregar catálogo inteiro)."""
+    professor = session.get(Professor, prof_id)
+    if not professor:
+        raise HTTPException(status_code=404, detail="Professor não encontrado")
+    counts = _counts_by_professor(session)
+    return _catalog_item_for_professor(professor, counts)
+
+
+@router.get("/{prof_id}/dados")
+async def get_professor_dados(
+    prof_id: str,
+    include_trecho: bool = False,
+    session: Session = Depends(get_session),
+    _user=Depends(get_current_user),
+):
+    """Todos os registros do docente (qualquer status de validação)."""
+    professor = session.get(Professor, prof_id)
+    if not professor:
+        raise HTTPException(status_code=404, detail="Professor não encontrado")
+
+    payload: Dict[str, Any] = {
+        "professor": ProfessorListItem.from_model(professor).model_dump(),
+    }
+    for key, model in ENTIDADES_MAP.items():
+        rows = session.exec(select(model).where(model.professor_id == prof_id)).all()
+        payload[key] = _serialize_entities(rows, include_trecho=include_trecho)
+
+    return payload
 
 
 @router.get("/{prof_id}", response_model=Professor)

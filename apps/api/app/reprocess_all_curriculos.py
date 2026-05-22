@@ -10,72 +10,20 @@ import os
 import sys
 import time
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import engine
 from app.models.core import Professor
-from app.models.data import CurriculoUpload
-from app.models.enums import StatusProcessamento
-from app.services.ai_extractor import extract_and_save_section_data
-from app.services.pdf_processor import process_curriculo_pdf
-from app.services.section_detector import split_and_save_sections
-from app.services.upload_cleanup import clear_upload_extraction_data
-from app.services.upload_status import refresh_upload_validation_status
+from app.models.data import CurriculoUpload, Producao
+from app.services.upload_pipeline import run_full_pipeline
 
 
 def reprocess_upload(session: Session, upload_id: str, section_delay: float) -> dict:
-    upload = process_curriculo_pdf(session, upload_id)
-    if upload.status == StatusProcessamento.ERRO_NO_PROCESSAMENTO:
-        return {"status": "erro", "mensagem": upload.mensagem_erro}
-
-    sections = split_and_save_sections(session, upload_id)
-    if not sections:
-        upload.status = StatusProcessamento.PROCESSADO_COM_ALERTAS
-        session.add(upload)
-        session.commit()
-        return {
-            "status": "sucesso_com_alertas",
-            "secoes_detectadas": 0,
-            "extração_ia": {},
-        }
-
-    clear_upload_extraction_data(session, upload_id)
-
-    ai_metrics = {
-        "projetos_extraidos": 0,
-        "eventos_extraidos": 0,
-        "producoes_extraidas": 0,
-        "financiamentos_extraidos": 0,
-        "formacoes_extraidas": 0,
-        "orientacoes_extraidas": 0,
-        "bancas_extraidas": 0,
-        "perfis_extraidos": 0,
-        "producoes_tecnicas_extraidas": 0,
-        "premios_extraidos": 0,
-        "grupos_extraidos": 0,
-        "lacunas_extraidas": 0,
-    }
-
-    for idx, section in enumerate(sections):
-        try:
-            metrics = extract_and_save_section_data(session, section.id)
-            for key in ai_metrics:
-                ai_metrics[key] += metrics.get(key, 0)
-        except Exception as exc:
-            print(f"    ⚠️ Seção '{section.nome_secao}': {exc}")
-        if section_delay > 0 and idx < len(sections) - 1:
-            time.sleep(section_delay)
-
-    refresh_upload_validation_status(session, upload_id)
-    session.refresh(upload)
-
-    return {
-        "status": "sucesso",
-        "secoes_detectadas": len(sections),
-        "extração_ia": ai_metrics,
-    }
+    """Reprocessa um upload com o mesmo pipeline da API (PDF + seções + IA paralela)."""
+    del section_delay  # legado: paralelismo substitui pausa entre seções
+    return run_full_pipeline(session, upload_id)
 
 
 def main() -> None:
@@ -98,11 +46,28 @@ def main() -> None:
         default=None,
         help="Processar apenas o docente com este e-mail",
     )
+    parser.add_argument(
+        "--from-index",
+        type=int,
+        default=1,
+        help="Índice 1-based do primeiro docente (ex.: 3 pula os dois primeiros)",
+    )
+    parser.add_argument(
+        "--only-zero-producao",
+        action="store_true",
+        help="Reprocessar só docentes com zero registros em Producao",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
+    from app.config import settings
+
     print("PPGCOMDATA — Reprocessamento em lote (último PDF por docente)")
-    print(f"Pausa entre seções: {args.delay}s | entre docentes: {args.professor_delay}s")
+    print(
+        f"IA paralela: {settings.AI_PARALLEL_WORKERS} workers | "
+        f"chunk ≤{settings.SECTION_CHUNK_MAX_CHARS} chars | "
+        f"entre docentes: {args.professor_delay}s"
+    )
     print("=" * 60)
 
     ok = skip = fail = 0
@@ -113,10 +78,27 @@ def main() -> None:
             stmt = stmt.where(Professor.email == args.email)
         profs = session.exec(stmt).all()
         if not profs:
-            print(f"Nenhum docente com e-mail {args.email}")
+            print(f"Nenhum docente com e-mail {args.email}" if args.email else "Nenhum docente encontrado")
             return
 
+        if args.only_zero_producao:
+            filtered: list[Professor] = []
+            for prof in profs:
+                count = session.exec(
+                    select(func.count())
+                    .select_from(Producao)
+                    .where(Producao.professor_id == prof.id)
+                ).one()
+                if count == 0:
+                    filtered.append(prof)
+            profs = filtered
+            print(f"Filtro --only-zero-producao: {len(profs)} docente(s)")
+
         for i, prof in enumerate(profs, start=1):
+            if i < args.from_index:
+                print(f"[{i}/{len(profs)}] SKIP {prof.nome_completo} (--from-index)")
+                skip += 1
+                continue
             upload = session.exec(
                 select(CurriculoUpload)
                 .where(CurriculoUpload.professor_id == prof.id)

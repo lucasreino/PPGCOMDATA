@@ -134,10 +134,12 @@ async def ultimo_upload_professor(
 @router.post("/professor/{professor_id}/reprocessar")
 async def reprocessar_ultimo_curriculo(
     professor_id: str,
+    background_tasks: BackgroundTasks,
+    background: bool = True,
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Reprocessa o PDF Lattes mais recente do docente (útil após correções no pipeline)."""
+    """Reprocessa o PDF Lattes mais recente do docente (background por padrão)."""
     upload = session.exec(
         select(CurriculoUpload)
         .where(CurriculoUpload.professor_id == professor_id)
@@ -145,6 +147,26 @@ async def reprocessar_ultimo_curriculo(
     ).first()
     if not upload:
         raise HTTPException(status_code=404, detail="Nenhum currículo para reprocessar.")
+
+    if upload.status == StatusProcessamento.PROCESSANDO:
+        return {
+            "status": "processando",
+            "upload_id": upload.id,
+            "mensagem": "Reprocessamento já em andamento.",
+        }
+
+    if background:
+        upload.status = StatusProcessamento.PROCESSANDO
+        upload.mensagem_erro = None
+        session.add(upload)
+        session.commit()
+        background_tasks.add_task(run_full_pipeline_background, upload.id)
+        return {
+            "status": "processando",
+            "upload_id": upload.id,
+            "mensagem": "Reprocessamento iniciado em background.",
+        }
+
     try:
         return run_full_pipeline(session, upload.id)
     except Exception as e:

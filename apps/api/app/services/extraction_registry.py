@@ -82,6 +82,30 @@ def should_extract_eventos_padrao(section_name: str) -> bool:
     return True
 
 
+def bibliographic_section_prompt(section_name: str) -> Optional[str]:
+    """Prompt extra para subseções de produção bibliográfica (perfil padrao)."""
+    if not should_extract_producoes(section_name):
+        return None
+    default = "outra"
+    normalized = (section_name or "").strip().lower()
+    if "artigo" in normalized:
+        default = "artigo"
+    elif "capítulo" in normalized or "capitulo" in normalized:
+        default = "capitulo"
+    elif "livro" in normalized:
+        default = "livro"
+    elif "anais" in normalized:
+        default = "anais"
+    return (
+        f"Extraia CADA publicação listada como um item em producoes. "
+        f"Use tipo=\"{default}\" para todos os itens desta seção. "
+        "autores deve ser STRING (nomes separados por ponto e vírgula), nunca array. "
+        "ano deve ser número inteiro (ex.: 2021) ou null; nunca use \"Atual\" ou texto livre. "
+        "confianca_ia: alta, media ou baixa. Inclua veículo (periódico/editora), DOI/ISSN/ISBN e "
+        "Qualis quando aparecerem no texto."
+    )
+
+
 def profile_extra_prompt(profile: ExtractionProfile) -> Optional[str]:
     prompts = {
         "formacao": (

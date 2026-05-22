@@ -14,6 +14,9 @@ class Settings:
         "DATABASE_URL", 
         "postgresql://postgres:postgres@localhost:5432/ppgcomdata"
     )
+    DB_POOL_SIZE: int = int(os.getenv("DB_POOL_SIZE", "10"))
+    DB_MAX_OVERFLOW: int = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    DB_POOL_RECYCLE: int = int(os.getenv("DB_POOL_RECYCLE", "3600"))
     
     # Authentication
     JWT_SECRET: str = os.getenv(
@@ -32,8 +35,15 @@ class Settings:
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
     AI_API_KEY: str = os.getenv("AI_API_KEY", "")
     AI_MODEL: str = os.getenv("AI_MODEL", "gpt-4o-mini")
+    # Fallbacks OpenCode Go quando cota do modelo principal esgota (ordem: pro → flash)
+    AI_FALLBACK_MODELS: str = os.getenv(
+        "AI_FALLBACK_MODELS", "deepseek-v4-pro,deepseek-v4-flash"
+    )
     AI_BASE_URL: str = os.getenv("AI_BASE_URL", "https://api.openai.com/v1")
-    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "1"))
+    AI_REQUEST_DELAY_SECONDS: float = float(os.getenv("AI_REQUEST_DELAY_SECONDS", "0"))
+    AI_PARALLEL_WORKERS: int = int(os.getenv("AI_PARALLEL_WORKERS", "3"))
+    SECTION_CHUNK_MAX_CHARS: int = int(os.getenv("SECTION_CHUNK_MAX_CHARS", "10000"))
+    SECTION_CHUNK_MAX_ITEMS: int = int(os.getenv("SECTION_CHUNK_MAX_ITEMS", "8"))
     
     # Storage Config
     STORAGE_PROVIDER: str = os.getenv("STORAGE_PROVIDER", "local")
@@ -46,6 +56,8 @@ class Settings:
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
         "uploads"
     )
+    # Pasta com XML Lattes ({id_lattes}.xml), ex.: lattes-xml/output
+    LATTES_XML_DIR: str = os.getenv("LATTES_XML_DIR", "")
 
 settings = Settings()
 

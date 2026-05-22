@@ -23,3 +23,5 @@ def test_extract_full_text_joins_pages():
     full = extract_full_text(pages)
     assert "Linha A" in full
     assert "Linha B" in full
+    assert "--- PAGINA 1 ---" in full
+    assert "--- PAGINA 2 ---" in full

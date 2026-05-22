@@ -4,11 +4,12 @@ import time
 from datetime import date, datetime
 from typing import Any, Dict, Optional, Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from sqlmodel import Session, select
 
 from app.config import settings
 from app.services.llm_client import get_structured_output
+from app.services.section_chunker import chunk_section_text
 from app.schemas.ai import (
     LattesExtractionResultSchema,
     FormacaoExtractionSchema,
@@ -20,6 +21,17 @@ from app.schemas.ai import (
     PremiosExtractionSchema,
     GruposPesquisaExtractionSchema,
     AIEventoSchema,
+    AIProjetoSchema,
+    AIProducaoSchema,
+    AIFinanciamentoSchema,
+    AILacunaSchema,
+    AIFormacaoSchema,
+    AIOrientacaoSchema,
+    AIBancaSchema,
+    AIPerfilSchema,
+    AIProducaoTecnicaSchema,
+    AIPremioSchema,
+    AIGrupoPesquisaSchema,
 )
 from app.models.data import (
     PdfSection,
@@ -41,11 +53,13 @@ from app.models.enums import StatusValidacao, FonteDado, NivelFormacao, EscopoEv
 from app.services.extraction_registry import (
     resolve_extraction_profile,
     profile_extra_prompt,
+    bibliographic_section_prompt,
     should_extract_producoes,
     should_extract_eventos_padrao,
     is_bibliographic_parent_section,
     ExtractionProfile,
 )
+from app.services.ai_response_normalizer import normalize_item_fields
 from app.services.dedupe import (
     producao_already_exists,
     projeto_already_exists,
@@ -99,6 +113,139 @@ def inline_refs(schema: Any, defs: Dict[str, Any]) -> Any:
     return schema
 
 
+def _is_schema_echo_item(item: Any) -> bool:
+    if not isinstance(item, dict):
+        return True
+    if "properties" in item or "additionalProperties" in item or "$ref" in item:
+        return True
+    return not (item.get("tipo_lacuna") and item.get("descricao"))
+
+
+_PROFILE_LIST_SCHEMAS: Dict[ExtractionProfile, Dict[str, Type[BaseModel]]] = {
+    "padrao": {
+        "projetos": AIProjetoSchema,
+        "producoes": AIProducaoSchema,
+        "financiamentos": AIFinanciamentoSchema,
+        "eventos": AIEventoSchema,
+        "lacunas": AILacunaSchema,
+    },
+    "formacao": {"formacoes": AIFormacaoSchema, "lacunas": AILacunaSchema},
+    "orientacoes": {"orientacoes": AIOrientacaoSchema, "lacunas": AILacunaSchema},
+    "bancas": {"bancas": AIBancaSchema, "lacunas": AILacunaSchema},
+    "eventos_participacao": {"eventos": AIEventoSchema, "lacunas": AILacunaSchema},
+    "eventos_organizacao": {"eventos": AIEventoSchema, "lacunas": AILacunaSchema},
+    "producao_tecnica": {"producoes_tecnicas": AIProducaoTecnicaSchema, "lacunas": AILacunaSchema},
+    "premios": {"premios": AIPremioSchema, "lacunas": AILacunaSchema},
+    "grupos_pesquisa": {"grupos": AIGrupoPesquisaSchema, "lacunas": AILacunaSchema},
+    "perfil": {"lacunas": AILacunaSchema},
+}
+
+
+def _unwrap_root_array(raw: Dict[str, Any], profile: ExtractionProfile) -> Dict[str, Any]:
+    """Alguns modelos retornam lista JSON em vez de objeto com chave de perfil."""
+    items = raw.get("__array__")
+    if not isinstance(items, list):
+        return raw
+    list_keys = {
+        "formacao": "formacoes",
+        "grupos_pesquisa": "grupos",
+        "orientacoes": "orientacoes",
+        "bancas": "bancas",
+        "eventos_participacao": "eventos",
+        "eventos_organizacao": "eventos",
+        "producao_tecnica": "producoes_tecnicas",
+        "premios": "premios",
+        "perfil": "perfis",
+    }
+    key = list_keys.get(profile)
+    if not key:
+        return {"lacunas": []}
+    return {key: items, "lacunas": raw.get("lacunas") or []}
+
+
+def _sanitize_ai_raw(
+    raw: Dict[str, Any],
+    profile: ExtractionProfile,
+    *,
+    section_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Limpa e normaliza resposta da IA antes da validação Pydantic."""
+    if not isinstance(raw, dict):
+        return raw
+    raw = _unwrap_root_array(raw, profile)
+    lacunas = raw.get("lacunas")
+    if isinstance(lacunas, list):
+        raw = {
+            **raw,
+            "lacunas": [g for g in lacunas if not _is_schema_echo_item(g)],
+        }
+    list_keys = {
+        "formacao": ("formacoes",),
+        "grupos_pesquisa": ("grupos",),
+        "padrao": ("projetos", "producoes", "financiamentos", "eventos"),
+        "orientacoes": ("orientacoes",),
+        "bancas": ("bancas",),
+        "eventos_participacao": ("eventos",),
+        "eventos_organizacao": ("eventos",),
+        "producao_tecnica": ("producoes_tecnicas",),
+        "premios": ("premios",),
+        "perfil": ("perfis",),
+    }.get(profile, ())
+    for key in list_keys:
+        items = raw.get(key)
+        if isinstance(items, list):
+            raw[key] = [
+                normalize_item_fields(dict(i), section_name=section_name)
+                for i in items
+                if isinstance(i, dict)
+            ]
+    return raw
+
+
+def _recover_list_fields(
+    raw: Dict[str, Any],
+    profile: ExtractionProfile,
+    *,
+    section_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Valida item a item; descarta só registros inválidos, não o chunk inteiro."""
+    field_schemas = _PROFILE_LIST_SCHEMAS.get(profile, {})
+    for field, item_schema in field_schemas.items():
+        items = raw.get(field)
+        if not isinstance(items, list):
+            continue
+        valid: list[Dict[str, Any]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            normalized = normalize_item_fields(dict(item), section_name=section_name)
+            title_key = (
+                normalized.get("titulo")
+                or normalized.get("nome")
+                or normalized.get("nome_evento")
+                or normalized.get("nome_grupo")
+            )
+            if not (title_key and str(title_key).strip()):
+                logger.warning(
+                    "Item descartado em %s (perfil=%s): sem título/nome identificável",
+                    field,
+                    profile,
+                )
+                continue
+            try:
+                valid.append(item_schema(**normalized).model_dump(mode="json"))
+            except ValidationError as exc:
+                logger.warning(
+                    "Item descartado em %s (perfil=%s): %s — %s",
+                    field,
+                    profile,
+                    normalized.get("titulo") or normalized.get("nome") or "?",
+                    exc.errors()[0].get("msg") if exc.errors() else exc,
+                )
+        raw[field] = valid
+    return raw
+
+
 def _parse_optional_date(value: str | None) -> date | None:
     if not value:
         return None
@@ -122,6 +269,9 @@ def get_gemini_structured_output(
         return generate_mock_extraction(section_name, section_text, profile)
 
     extra = profile_extra_prompt(profile) or ""
+    biblio = bibliographic_section_prompt(section_name) if profile == "padrao" else None
+    if biblio:
+        extra = f"{extra}\n{biblio}" if extra else biblio
     producao_hint = ""
     if profile == "padrao" and is_bibliographic_parent_section(section_name):
         producao_hint = (
@@ -483,6 +633,8 @@ def _persist_padrao(session: Session, section: PdfSection, data: LattesExtractio
             metrics["eventos_extraidos"] += 1
 
     for prod in data.producoes:
+        if not (prod.titulo or "").strip():
+            continue
         title_key = (prod.titulo or "").strip().lower()
         batch_key = f"{title_key}|{prod.ano}|{prod.tipo}"
         if batch_key in seen_titles:
@@ -761,43 +913,104 @@ def _persist_grupos(session: Session, section: PdfSection, data: GruposPesquisaE
     return {"grupos_extraidos": count, "lacunas_extraidas": lacunas}
 
 
+def _merge_metrics(total: Dict[str, int], part: Dict[str, int]) -> Dict[str, int]:
+    for key, value in part.items():
+        if isinstance(value, int):
+            total[key] = total.get(key, 0) + value
+    return total
+
+
+def _validate_extraction_raw(
+    raw: Dict[str, Any],
+    profile: ExtractionProfile,
+    *,
+    section_name: Optional[str] = None,
+) -> BaseModel:
+    schema_model = _PROFILE_SCHEMA[profile]
+    raw = _sanitize_ai_raw(raw, profile, section_name=section_name)
+    try:
+        return schema_model(**raw)
+    except ValidationError:
+        raw = _recover_list_fields(raw, profile, section_name=section_name)
+        if profile == "perfil" and isinstance(raw.get("perfil"), dict):
+            try:
+                raw["perfil"] = AIPerfilSchema(
+                    **normalize_item_fields(dict(raw["perfil"]), section_name=section_name)
+                ).model_dump(mode="json")
+            except ValidationError:
+                raw["perfil"] = None
+        return schema_model(**raw)
+
+
+def _persist_validated(
+    session: Session,
+    section: PdfSection,
+    validated: BaseModel,
+    profile: ExtractionProfile,
+) -> Dict[str, int]:
+    if profile == "padrao":
+        return _persist_padrao(session, section, validated)
+    if profile == "formacao":
+        return _persist_formacao(session, section, validated)
+    if profile == "orientacoes":
+        return _persist_orientacoes(session, section, validated)
+    if profile == "bancas":
+        return _persist_bancas(session, section, validated)
+    if profile == "eventos_participacao":
+        return _persist_eventos(session, section, validated, force_organizacao=False)
+    if profile == "eventos_organizacao":
+        return _persist_eventos(session, section, validated, force_organizacao=True)
+    if profile == "producao_tecnica":
+        return _persist_producao_tecnica(session, section, validated)
+    if profile == "premios":
+        return _persist_premios(session, section, validated)
+    if profile == "grupos_pesquisa":
+        return _persist_grupos(session, section, validated)
+    return _persist_perfil(session, section, validated)
+
+
 def extract_and_save_section_data(session: Session, pdf_section_id: str) -> Dict[str, Any]:
     section = session.get(PdfSection, pdf_section_id)
     if not section:
         raise ValueError(f"Seção ID {pdf_section_id} não encontrada.")
 
+    from app.services.lattes_xml_importer import should_skip_section_ai
+
+    if should_skip_section_ai(session, section):
+        section.status_extracao = True
+        session.add(section)
+        session.commit()
+        logger.info(
+            "Seção '%s' ignorada (dados já importados do XML)",
+            section.nome_secao,
+        )
+        return {"secoes_ignoradas_xml": 1}
+
     profile = resolve_extraction_profile(section.nome_secao)
+    chunks = chunk_section_text(section.nome_secao, section.texto_secao or "")
     logger.info(
-        f"Extração IA — seção '{section.nome_secao}' perfil={profile} upload={section.curriculo_upload_id}"
+        "Extração IA — seção '%s' perfil=%s chunks=%d upload=%s",
+        section.nome_secao,
+        profile,
+        len(chunks),
+        section.curriculo_upload_id,
     )
 
-    raw = get_gemini_structured_output(section.nome_secao, section.texto_secao, profile)
-    schema_model = _PROFILE_SCHEMA[profile]
-    validated = schema_model(**raw)
+    total_metrics: Dict[str, int] = {}
+    for idx, chunk_text in enumerate(chunks, start=1):
+        section_label = section.nome_secao
+        if len(chunks) > 1:
+            section_label = f"{section.nome_secao} (parte {idx}/{len(chunks)})"
 
-    if profile == "padrao":
-        metrics = _persist_padrao(session, section, validated)
-    elif profile == "formacao":
-        metrics = _persist_formacao(session, section, validated)
-    elif profile == "orientacoes":
-        metrics = _persist_orientacoes(session, section, validated)
-    elif profile == "bancas":
-        metrics = _persist_bancas(session, section, validated)
-    elif profile == "eventos_participacao":
-        metrics = _persist_eventos(session, section, validated, force_organizacao=False)
-    elif profile == "eventos_organizacao":
-        metrics = _persist_eventos(session, section, validated, force_organizacao=True)
-    elif profile == "producao_tecnica":
-        metrics = _persist_producao_tecnica(session, section, validated)
-    elif profile == "premios":
-        metrics = _persist_premios(session, section, validated)
-    elif profile == "grupos_pesquisa":
-        metrics = _persist_grupos(session, section, validated)
-    else:
-        metrics = _persist_perfil(session, section, validated)
+        raw = get_gemini_structured_output(section_label, chunk_text, profile)
+        validated = _validate_extraction_raw(
+            raw, profile, section_name=section.nome_secao
+        )
+        part_metrics = _persist_validated(session, section, validated, profile)
+        _merge_metrics(total_metrics, part_metrics)
 
     section.status_extracao = True
     session.add(section)
     session.commit()
-    logger.info(f"Extração concluída seção {pdf_section_id}: {metrics}")
-    return metrics
+    logger.info("Extração concluída seção %s: %s", pdf_section_id, total_metrics)
+    return total_metrics

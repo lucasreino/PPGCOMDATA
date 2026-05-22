@@ -1,5 +1,7 @@
 from datetime import datetime, date
 from typing import Optional, List
+
+from sqlalchemy import Column, Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 from app.models.base import UUIDModel, TimestampModel
 from app.models.enums import (
@@ -288,7 +290,17 @@ class AlertaLacuna(UUIDModel, TimestampModel, table=True):
     responsavel: Optional[str] = Field(default=None, nullable=True)
     prazo: Optional[date] = Field(default=None, nullable=True)
     status_tratamento: Optional[StatusTratamentoLacuna] = Field(
-        default=StatusTratamentoLacuna.ABERTA, nullable=True, index=True
+        default=StatusTratamentoLacuna.ABERTA,
+        sa_column=Column(
+            SAEnum(
+                StatusTratamentoLacuna,
+                values_callable=lambda obj: [e.value for e in obj],
+                native_enum=False,
+                length=32,
+            ),
+            nullable=True,
+            index=True,
+        ),
     )
 
     # Relationships

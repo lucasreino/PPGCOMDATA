@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   FileText, Upload, Check, Edit2, Trash2, AlertTriangle, 
   HelpCircle, CheckCircle, RefreshCw, BarChart2, Plus, 
@@ -9,7 +10,13 @@ import {
   Users, GraduationCap, Wrench, Trophy, Network
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch, getApiBaseUrl } from "@/lib/api";
+import {
+  apiFetch,
+  getApiBaseUrl,
+  getStoredToken,
+  parseApiErrorDetail,
+  SESSION_EXPIRED_MESSAGE,
+} from "@/lib/api";
 import type {
   Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab,
   Orientacao, FormacaoAcademica, ProfessorResumo,
@@ -37,6 +44,8 @@ function tabLabel(tab: EntityTab): string {
   return labels[tab];
 }
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
+import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
+import { printReportInPage } from "@/lib/report-print";
 import {
   ActionPanel,
   ConfidenceBadge,
@@ -47,9 +56,11 @@ import {
 
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading: authLoading, logout } = useAuth();
   // Connection state
   const [apiConnected, setApiConnected] = useState<boolean>(false);
+  const [aiModelLabel, setAiModelLabel] = useState<string>("OpenCode Go");
   const [loading, setLoading] = useState<boolean>(false);
   const [processingStep, setProcessingStep] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -109,21 +120,37 @@ export default function Dashboard() {
   }, [authLoading, user, router]);
 
   useEffect(() => {
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const checkUrl = `http://${host}:8000/`;
+    const base = getApiBaseUrl().replace(/\/$/, "");
+    const checkUrl = `${base}/status`;
 
     fetch(checkUrl)
-      .then(res => res.json())
-      .then(() => {
+      .then(res => {
+        if (!res.ok) throw new Error(`API status ${res.status}`);
+        return res.json();
+      })
+      .then(async (status) => {
+        if (status?.ai_provider && status?.ai_model) {
+          setAiModelLabel(`${status.ai_provider}/${status.ai_model}`);
+        } else if (status?.ai_provider === "not_configured") {
+          setAiModelLabel("modo simulado (sem chave de IA)");
+        }
+
+        if (!user) {
+          setApiConnected(false);
+          return;
+        }
         setApiConnected(true);
-        apiFetch("/linhas-pesquisa/")
-          .then(res => res.json())
-          .then(data => {
+        try {
+          const linhasRes = await apiFetch("/linhas-pesquisa/");
+          if (linhasRes.ok) {
+            const data = await linhasRes.json();
             if (data && data.length > 0) {
               setLinhasPesquisa(data);
             }
-          })
-          .catch(err => console.log("Linhas de pesquisa fetch error:", err));
+          }
+        } catch (err) {
+          console.log("API online, falha ao carregar linhas:", err);
+        }
       })
       .catch(() => {
         setApiConnected(false);
@@ -133,7 +160,7 @@ export default function Dashboard() {
           { id: "linha-2-mock", nome: "Processos Comunicacionais, Cidadania e Identidades" }
         ]);
       });
-  }, []);
+  }, [user]);
 
   // Fetch all professors when API is connected
   useEffect(() => {
@@ -179,6 +206,11 @@ export default function Dashboard() {
         console.error("Falha ao buscar docentes da API:", err);
       });
   }, [apiConnected, apiUrl, linhasPesquisa]);
+
+  useEffect(() => {
+    const pid = searchParams.get("professor_id");
+    if (pid) setSelectedProfId(pid);
+  }, [searchParams]);
 
   const reloadProfessorData = (profId: string) => {
     if (!apiConnected) return;
@@ -763,18 +795,12 @@ export default function Dashboard() {
   const handleGenerateReport = async () => {
     setGeneratingReport(true);
     setReportText("");
-    setReportLogs(["[1/4] Consultando banco de dados PostgreSQL..."]);
-
-    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-    await sleep(800);
-    setReportLogs(prev => [...prev, "[2/4] Consolidando estatísticas e publicações..."]);
-
-    await sleep(800);
-    setReportLogs(prev => [...prev, "[3/4] Formatando contexto estruturado para IA..."]);
-
-    await sleep(800);
-    setReportLogs(prev => [...prev, "[4/4] Solicitando redação ao modelo Gemini 2.5 Flash..."]);
+    setReportLogs([
+      "[1/4] Consultando banco de dados PostgreSQL...",
+      "[2/4] Consolidando estatísticas e publicações...",
+      "[3/4] Formatando contexto estruturado para IA...",
+      `[4/4] Solicitando redação ao modelo ${aiModelLabel} (pode levar 1–2 min)...`,
+    ]);
 
     if (apiConnected) {
       try {
@@ -790,15 +816,31 @@ export default function Dashboard() {
           })
         });
 
-        if (!response.ok) throw new Error("Erro na geração do relatório");
+        if (!response.ok) {
+          const errBody = await response.json().catch(() => ({}));
+          const msg = parseApiErrorDetail(
+            errBody.detail,
+            `HTTP ${response.status}`
+          );
+          throw new Error(msg || "Erro na geração do relatório");
+        }
         const data = await response.json();
         
         setReportText(data.relatorio);
         setReportModelUsed(data.modelo);
-        addAuditLog("relatorio", `[Real DB] Gerou relatório analítico via Gemini.`);
+        addAuditLog("relatorio", `[Real DB] Gerou relatório analítico via ${data.modelo || aiModelLabel}.`);
       } catch (err: any) {
         console.error("Erro na geração de relatório real:", err);
-        setReportText(`**Erro na geração de relatório:** ${err.message || "Erro desconhecido"}`);
+        const msg = String(err?.message || "");
+        const friendly = msg === SESSION_EXPIRED_MESSAGE
+          ? msg
+          : msg.toLowerCase().includes("credenciais inválidas") ||
+              msg.toLowerCase().includes("token expirado")
+            ? SESSION_EXPIRED_MESSAGE
+            : msg.toLowerCase().includes("failed to fetch")
+              ? `Não foi possível contactar a API em ${getApiBaseUrl()}. Verifique se o servidor FastAPI está no ar, se NEXT_PUBLIC_API_URL está correto e se não há bloqueio de CORS/rede.`
+              : msg || "Erro desconhecido";
+        setReportText(`**Erro na geração de relatório:** ${friendly}`);
       } finally {
         setGeneratingReport(false);
       }
@@ -806,13 +848,13 @@ export default function Dashboard() {
     }
 
     // Mock Report Fallback
-    await sleep(1500);
+    await new Promise((r) => setTimeout(r, 1500));
     const selectedProfObj = professors.find(p => p.id === reportProfessorId);
     const profName = selectedProfObj ? selectedProfObj.nome_completo : "Geral do PPGCOM";
     
     const mockText = `# Relatório Analítico Executivo - Indicadores Docentes (${profName})
 
-**Data de Geração:** ${new Date().toLocaleDateString("pt-BR")} | **Solicitante:** Coordenador PPGCOM | **Motor de Análise:** Gemini 2.5 Flash (Simulado)
+**Data de Geração:** ${new Date().toLocaleDateString("pt-BR")} | **Solicitante:** Coordenador PPGCOM | **Motor de Análise:** ${aiModelLabel} (Simulado)
 
 ---
 
@@ -848,7 +890,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 * **Recomendação 2:** Alinhar as pesquisas em andamento com as metas do próximo quadriênio de avaliação CAPES, priorizando publicações em veículos de estratificação de alto impacto (A1 a A4).
 `;
     setReportText(mockText);
-    setReportModelUsed("Gemini 2.5 Flash (Simulado)");
+    setReportModelUsed(`${aiModelLabel} (Simulado)`);
     setGeneratingReport(false);
     addAuditLog("relatorio", `Gerou relatório analítico simulado.`);
   };
@@ -866,6 +908,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
+  };
+
+  const handlePrintReport = () => {
+    if (!reportText.trim()) return;
+    printReportInPage();
   };
 
   // Add audit log helper
@@ -1013,7 +1060,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
     setTimeout(() => {
       setUploadProgress(95);
-      setProcessingStep("IA Gemini mapeando Projetos, Produções e Auxílios...");
+      setProcessingStep(`IA (${aiModelLabel}) mapeando Projetos, Produções e Auxílios...`);
     }, 4500);
 
     setTimeout(() => {
@@ -1037,6 +1084,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
     }, 6000);
   };
 
+  const orientacoesPorTipo = useMemo(
+    () => groupOrientacoesByTipo(orientacoes),
+    [orientacoes]
+  );
+
   if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
@@ -1048,7 +1100,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
       {/* 🚀 Header */}
-      <header className="border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
+      <header className="no-print border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-600/20">
             <BarChart2 className="w-6 h-6 animate-pulse" />
@@ -1102,6 +1154,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           >
             Dossiê APCN
           </a>
+          <Link
+            href="/docentes"
+            className="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 border border-transparent hover:border-indigo-800"
+          >
+            Corpo Docente
+          </Link>
         </div>
 
         {/* API connection indicator */}
@@ -1519,52 +1577,64 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               </div>
             ))}
 
-            {/* ORIENTAÇÕES */}
-            {activeTab === "orientacoes" && orientacoes.map((item) => (
-              <div
-                key={item.id}
-                className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
-                }`}
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
-                      {item.tipo} · {item.status}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-2">
-                      {item.nome_orientando || "Orientando não identificado"}
-                    </h3>
-                    {item.titulo_trabalho && (
-                      <p className="text-[11px] text-slate-400 mt-1">{item.titulo_trabalho}</p>
-                    )}
-                  </div>
-                  <ConfidenceBadge level={item.confianca_ia} />
+            {/* ORIENTAÇÕES — agrupadas por tipo */}
+            {activeTab === "orientacoes" && orientacoesPorTipo.map((group) => (
+              <section key={group.tipo} className="space-y-4">
+                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 bg-[#0b1120]/90 backdrop-blur-sm border-b border-slate-800/80">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                    {group.label}
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">
+                    {group.items.length}
+                  </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">Início</span>
-                    {item.ano_inicio ?? "—"}
+                {group.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
+                      item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                      item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                      item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start gap-4">
+                      <div>
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                          {item.status}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-200 mt-2">
+                          {item.nome_orientando || "Orientando não identificado"}
+                        </h3>
+                        {item.titulo_trabalho && (
+                          <p className="text-[11px] text-slate-400 mt-1">{item.titulo_trabalho}</p>
+                        )}
+                      </div>
+                      <ConfidenceBadge level={item.confianca_ia} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">Início</span>
+                        {item.ano_inicio ?? "—"}
+                      </div>
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">Conclusão</span>
+                        {item.ano_conclusao ?? "—"}
+                      </div>
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">Papel</span>
+                        {item.papel}
+                      </div>
+                    </div>
+                    <OriginalFragment text={item.trecho_original} />
+                    <ActionPanel
+                      status={item.status_validacao}
+                      onConfirm={() => handleConfirm("orientacoes", item.id)}
+                      onEdit={() => handleOpenEdit("orientacoes", item)}
+                      onDiscard={() => handleDiscard("orientacoes", item.id)}
+                    />
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">Conclusão</span>
-                    {item.ano_conclusao ?? "—"}
-                  </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">Papel</span>
-                    {item.papel}
-                  </div>
-                </div>
-                <OriginalFragment text={item.trecho_original} />
-                <ActionPanel
-                  status={item.status_validacao}
-                  onConfirm={() => handleConfirm("orientacoes", item.id)}
-                  onEdit={() => handleOpenEdit("orientacoes", item)}
-                  onDiscard={() => handleDiscard("orientacoes", item.id)}
-                />
-              </div>
+                ))}
+              </section>
             ))}
 
             {/* FORMAÇÃO */}
@@ -2378,10 +2448,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 🤖 Aba Gerador de Relatórios com IA */}
       {/* ========================================================================= */}
       {mainTab === "relatorios" && (
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-950/20">
+        <main className="report-print-layout flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-950/20">
           
           {/* Lado Esquerdo: Configuração da Geração (4 colunas) */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="no-print lg:col-span-4 space-y-6">
             <div className="glow-card rounded-xl p-5 space-y-5 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
               <div className="flex items-center space-x-2 border-b border-slate-900 pb-3">
                 <BarChart2 className="w-5 h-5 text-indigo-400 animate-pulse" />
@@ -2502,10 +2572,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           </div>
 
           {/* Lado Direito: Visualizador de Markdown Executivo (8 colunas) */}
-          <div className="lg:col-span-8 flex flex-col h-full min-h-[580px] space-y-6">
+          <div className="report-print-panel lg:col-span-8 flex flex-col h-full min-h-[580px] space-y-6">
             <div className="glow-card rounded-xl p-5 flex flex-col flex-1 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
               
-              <div className="flex justify-between items-center border-b border-slate-900 pb-4">
+              <div className="no-print flex justify-between items-center border-b border-slate-900 pb-4">
                 <div>
                   <h3 className="text-sm font-bold text-slate-200 tracking-wider uppercase">Relatório Gerado por IA</h3>
                   {reportModelUsed && (
@@ -2534,9 +2604,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       Baixar .MD
                     </button>
                     <button
-                      onClick={() => window.print()}
+                      onClick={handlePrintReport}
                       className="py-1.5 px-3 bg-indigo-950/60 border border-indigo-900 hover:bg-indigo-900 text-xs font-semibold text-indigo-400 hover:text-indigo-200 rounded-lg transition-all flex items-center gap-1.5"
-                      title="Imprimir / Salvar PDF"
+                      title="Imprimir ou salvar como PDF (na própria página)"
                     >
                       <Award className="w-3.5 h-3.5" />
                       Imprimir PDF
@@ -2546,9 +2616,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               </div>
 
               {/* Workspace Content Area */}
-              <div className="flex-1 flex flex-col justify-center mt-5 overflow-y-auto max-h-[500px] pr-1">
+              <div className="flex-1 flex flex-col justify-center mt-5 overflow-y-auto max-h-[500px] pr-1 print:max-h-none print:overflow-visible">
                 {generatingReport ? (
-                  <div className="flex flex-col items-center justify-center py-20 space-y-6 text-center">
+                  <div className="no-print flex flex-col items-center justify-center py-20 space-y-6 text-center">
                     <div className="relative">
                       <div className="w-14 h-14 rounded-full border-4 border-indigo-950 border-t-indigo-500 animate-spin"></div>
                       <div className="absolute inset-0 flex items-center justify-center">
@@ -2574,11 +2644,25 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     </div>
                   </div>
                 ) : reportText ? (
-                  <div className="bg-slate-950/45 p-6 rounded-xl border border-slate-900/60 leading-relaxed text-slate-300 text-xs overflow-wrap-break text-left">
+                  <div
+                    id="report-print-root"
+                    className="bg-slate-950/45 p-6 rounded-xl border border-slate-900/60 leading-relaxed text-slate-300 text-xs overflow-wrap-break text-left"
+                  >
+                    <div className="print-only mb-4 pb-3 border-b border-slate-300 text-slate-800 text-[10pt]">
+                      <p className="font-bold text-indigo-900 text-sm">PPGCOMDATA — Relatório analítico</p>
+                      <p className="mt-1 text-slate-600">
+                        {reportProfessorId === "todos"
+                          ? "Todos os docentes"
+                          : professors.find((p) => p.id === reportProfessorId)?.nome_completo}
+                        {" · "}
+                        {reportAnoInicio}—{reportAnoFim}
+                        {reportModelUsed ? ` · ${reportModelUsed}` : ""}
+                      </p>
+                    </div>
                     <SimpleMarkdownRenderer content={reportText} />
                   </div>
                 ) : (
-                  <div className="text-center py-20 text-slate-500 text-xs space-y-3">
+                  <div className="no-print text-center py-20 text-slate-500 text-xs space-y-3">
                     <Award className="w-12 h-12 text-slate-700 mx-auto" />
                     <p className="font-semibold text-slate-400">Pronto para gerar pareceres e sínteses analíticas!</p>
                     <p className="max-w-xs mx-auto text-slate-500 leading-normal">

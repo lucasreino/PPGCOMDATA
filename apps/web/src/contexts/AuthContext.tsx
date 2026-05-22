@@ -8,6 +8,7 @@ import {
   getStoredToken,
   login as apiLogin,
   setStoredToken,
+  setUnauthorizedHandler,
 } from "@/lib/api";
 
 interface AuthContextValue {
@@ -45,6 +46,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setStoredToken(null);
+      setUser(null);
+      router.replace("/login");
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [router]);
 
   const login = async (email: string, password: string) => {
     await apiLogin(email, password);

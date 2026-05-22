@@ -76,6 +76,7 @@ class TipoRecurso(str, Enum):
 
 class FonteDado(str, Enum):
     PDF_LATTES = "pdf_lattes"
+    XML_LATTES = "xml_lattes"
     RELATORIO_MANUAL = "relatorio_manual"
     ANEXO = "anexo"
     EDICAO_COORDENACAO = "edicao_coordenacao"

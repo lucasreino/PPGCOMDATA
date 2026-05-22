@@ -3,11 +3,44 @@ export interface Professor {
   nome_completo: string;
   email?: string;
   id_lattes?: string;
+  foto_url?: string | null;
   linha: string;
   tipo: string;
   status: "pendente" | "processado" | "validado";
   ultimo_upload?: string;
 }
+
+export interface ProfessorCatalog {
+  id: string;
+  nome_completo: string;
+  email?: string | null;
+  id_lattes?: string | null;
+  foto_url?: string | null;
+  link_lattes?: string | null;
+  titulacao_maxima?: string | null;
+  linha_pesquisa?: { id: string; nome: string } | null;
+  tipo_docente: string;
+  status: boolean;
+  total_projetos: number;
+  total_producoes: number;
+  total_eventos: number;
+  total_orientacoes: number;
+  total_bancas: number;
+  total_financiamentos: number;
+}
+
+export type ProfileTab =
+  | "resumo"
+  | "projetos"
+  | "eventos"
+  | "producoes"
+  | "orientacoes"
+  | "financiamentos"
+  | "formacoes_academicas"
+  | "bancas"
+  | "producoes_tecnicas"
+  | "premios"
+  | "grupos_pesquisa";
 
 export interface Projeto {
   id: string;

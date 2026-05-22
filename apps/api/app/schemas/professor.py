@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 from app.models.enums import TipoDocente
+from app.services.professor_foto import resolve_foto_url
 
 
 class LinhaPesquisaBrief(BaseModel):
@@ -15,6 +16,8 @@ class ProfessorListItem(BaseModel):
     email: Optional[str] = None
     link_lattes: Optional[str] = None
     id_lattes: Optional[str] = None
+    foto_url: Optional[str] = None
+    titulacao_maxima: Optional[str] = None
     tipo_docente: TipoDocente
     status: bool
     linha_pesquisa_id: Optional[str] = None
@@ -35,6 +38,13 @@ class ProfessorListItem(BaseModel):
             email=professor.email,
             link_lattes=professor.link_lattes,
             id_lattes=professor.id_lattes,
+            foto_url=getattr(professor, "foto_url", None)
+            or resolve_foto_url(
+                professor.nome_completo,
+                professor.id_lattes,
+                str(professor.id),
+            ),
+            titulacao_maxima=professor.titulacao_maxima,
             tipo_docente=professor.tipo_docente,
             status=professor.status,
             linha_pesquisa_id=str(professor.linha_pesquisa_id)

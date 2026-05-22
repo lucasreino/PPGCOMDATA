@@ -23,6 +23,7 @@ from app.models.data import (
 )
 from app.models.enums import StatusValidacao
 from app.auth import require_staff, get_current_user
+from app.services.cache_invalidation import invalidate_indicator_caches
 from app.services.upload_status import refresh_upload_validation_status
 
 router = APIRouter(prefix="/validacao", tags=["Validation & Human-in-the-Loop"])
@@ -133,6 +134,7 @@ async def confirmar_registro(
     session.add(log)
     session.commit()
     _maybe_refresh_upload_status(session, obj)
+    invalidate_indicator_caches()
 
     return {"status": "sucesso", "mensagem": f"Registro {id} confirmado com sucesso."}
 
@@ -191,6 +193,7 @@ async def editar_e_confirmar_registro(
     session.commit()
     session.refresh(obj)
     _maybe_refresh_upload_status(session, obj)
+    invalidate_indicator_caches()
 
     return {
         "status": "sucesso",
@@ -233,5 +236,6 @@ async def descartar_registro(
     session.add(log)
     session.commit()
     _maybe_refresh_upload_status(session, obj)
+    invalidate_indicator_caches()
 
     return {"status": "sucesso", "mensagem": f"Registro {id} descartado com sucesso."}

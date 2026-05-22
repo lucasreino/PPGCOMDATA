@@ -25,6 +25,7 @@ from app.models.data import (
     Egresso,
     ProcessoSeletivo,
 )
+from app.services.analytics_sql import build_analytics_stats_sql
 from app.services.proposal_lacuna_service import merge_gaps_with_db
 from app.models.enums import (
     StatusValidacao,
@@ -1075,225 +1076,21 @@ class IndicatorService:
                 "total_grupos_pesquisa": 0,
             }
 
-        producoes = self._fetch(Producao, "ano")
-        projetos = self._fetch(Projeto, "ano_inicio")
-        eventos = self._fetch(Evento, "ano")
-        financiamentos = self._fetch(Financiamento, "ano")
-        lacunas = self._fetch_lacunas()
-        orientacoes = self._fetch(Orientacao)
+        return build_analytics_stats_sql(
+            self.session,
+            self._apply_prof_filter,
+            self._apply_validacao,
+            self.filters.ano_inicio,
+            self.filters.ano_fim,
+        )
 
-        producoes_por_tipo: Dict[str, int] = {}
-        producoes_por_ano: Dict[str, int] = {}
-        producoes_por_qualis: Dict[str, int] = {}
-        for p in producoes:
-            producoes_por_tipo[p.tipo] = producoes_por_tipo.get(p.tipo, 0) + 1
-            if p.ano:
-                ano_str = str(p.ano)
-                producoes_por_ano[ano_str] = producoes_por_ano.get(ano_str, 0) + 1
-            if p.qualis:
-                q = p.qualis.upper().strip()
-                producoes_por_qualis[q] = producoes_por_qualis.get(q, 0) + 1
-
-        projetos_por_situacao: Dict[str, int] = {}
-        for pr in projetos:
-            situacao = pr.situacao or "Não especificada"
-            projetos_por_situacao[situacao] = projetos_por_situacao.get(situacao, 0) + 1
-
-        total_eventos = len(eventos)
-        eventos_organizados = sum(1 for e in eventos if e.eh_organizacao)
-        eventos_participacao = total_eventos - eventos_organizados
-
-        fomento_total = {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0}
-        fomento_por_agencia: Dict[str, float] = {}
-        for f in financiamentos:
-            fomento_total["solicitado"] += f.valor_solicitado or 0.0
-            fomento_total["aprovado"] += f.valor_aprovado or 0.0
-            fomento_total["executado"] += f.valor_executado or 0.0
-            agencia = (f.agencia or f.fonte or "Outras/Não especificada").upper().strip()
-            fomento_por_agencia[agencia] = fomento_por_agencia.get(agencia, 0.0) + (
-                f.valor_aprovado or 0.0
-            )
-        fomento_total = {k: round(v, 2) for k, v in fomento_total.items()}
-        fomento_por_agencia = {k: round(v, 2) for k, v in fomento_por_agencia.items()}
-
-        por_gravidade: Dict[str, int] = {}
-        for lac in lacunas:
-            grav = _enum_val(lac.gravidade)
-            por_gravidade[grav] = por_gravidade.get(grav, 0) + 1
-        resolvidas = sum(1 for l in lacunas if l.resolvido)
-        total_lacunas = len(lacunas)
-
-        validacao_pendentes: Dict[str, int] = {}
-        for key, model in (
-            ("projetos", Projeto),
-            ("eventos", Evento),
-            ("producoes", Producao),
-            ("financiamentos", Financiamento),
-            ("orientacoes", Orientacao),
-            ("formacoes_academicas", FormacaoAcademica),
-            ("bancas", Banca),
-            ("producoes_tecnicas", ProducaoTecnica),
-            ("premios", PremioTitulo),
-            ("grupos_pesquisa", GrupoPesquisaDocente),
-        ):
-            stmt = select(model).where(model.status_validacao == StatusValidacao.PENDENTE)
-            stmt = self._apply_prof_filter(stmt, model)
-            validacao_pendentes[key] = len(self.session.exec(stmt).all())
+    def get_visao_geral_bundle(self) -> Dict[str, Any]:
+        """Overview + demanda + narrativas em uma resposta (aba Visão Geral do dossiê)."""
+        from app.services.narrative_service import NarrativeService
 
         return {
-            "total_producoes": len(producoes),
-            "total_projetos": len(projetos),
-            "total_eventos": total_eventos,
-            "eventos_organizados": eventos_organizados,
-            "eventos_participacao": eventos_participacao,
-            "total_producoes_tecnicas": len(self._fetch(ProducaoTecnica)),
-            "total_premios": len(self._fetch(PremioTitulo)),
-            "total_grupos_pesquisa": len(self._fetch(GrupoPesquisaDocente)),
-            "fomento_total": fomento_total,
-            "producoes_por_tipo": producoes_por_tipo,
-            "producoes_por_ano": dict(sorted(producoes_por_ano.items())),
-            "projetos_por_situacao": projetos_por_situacao,
-            "fomento_por_agencia": fomento_por_agencia,
-            "lacunas": {
-                "total": total_lacunas,
-                "resolvidas": resolvidas,
-                "pendentes": total_lacunas - resolvidas,
-                "por_gravidade": por_gravidade,
-            },
-            "total_orientacoes": len(orientacoes),
-            "orientacoes_concluidas": sum(
-                1 for o in orientacoes if o.status == StatusOrientacao.CONCLUIDA
-            ),
-            "orientacoes_em_andamento": sum(
-                1 for o in orientacoes if o.status == StatusOrientacao.EM_ANDAMENTO
-            ),
-            "total_bancas": len(self._fetch(Banca)),
-            "total_formacoes": len(self._fetch(FormacaoAcademica)),
-            "producoes_por_qualis": producoes_por_qualis,
-            "validacao_pendentes": validacao_pendentes,
-        }
-
-    def get_analytics_stats(self) -> Dict[str, Any]:
-        """Estatísticas agregadas para /analises/estatisticas (dashboard principal)."""
-        if self._prof_ids is not None and not self._prof_ids:
-            return {
-                "total_producoes": 0,
-                "total_projetos": 0,
-                "total_eventos": 0,
-                "eventos_organizados": 0,
-                "eventos_participacao": 0,
-                "fomento_total": {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0},
-                "producoes_por_tipo": {},
-                "producoes_por_ano": {},
-                "projetos_por_situacao": {},
-                "fomento_por_agencia": {},
-                "lacunas": {"total": 0, "resolvidas": 0, "pendentes": 0, "por_gravidade": {}},
-                "total_orientacoes": 0,
-                "orientacoes_concluidas": 0,
-                "orientacoes_em_andamento": 0,
-                "total_bancas": 0,
-                "total_formacoes": 0,
-                "producoes_por_qualis": {},
-                "validacao_pendentes": {},
-                "total_producoes_tecnicas": 0,
-                "total_premios": 0,
-                "total_grupos_pesquisa": 0,
-            }
-
-        producoes = self._fetch(Producao, "ano")
-        projetos = self._fetch(Projeto, "ano_inicio")
-        eventos = self._fetch(Evento, "ano")
-        financiamentos = self._fetch(Financiamento, "ano")
-        lacunas = self._fetch_lacunas()
-        orientacoes = self._fetch(Orientacao)
-
-        producoes_por_tipo: Dict[str, int] = {}
-        producoes_por_ano: Dict[str, int] = {}
-        producoes_por_qualis: Dict[str, int] = {}
-        for p in producoes:
-            producoes_por_tipo[p.tipo] = producoes_por_tipo.get(p.tipo, 0) + 1
-            if p.ano:
-                ano_str = str(p.ano)
-                producoes_por_ano[ano_str] = producoes_por_ano.get(ano_str, 0) + 1
-            if p.qualis:
-                q = p.qualis.upper().strip()
-                producoes_por_qualis[q] = producoes_por_qualis.get(q, 0) + 1
-
-        projetos_por_situacao: Dict[str, int] = {}
-        for pr in projetos:
-            situacao = pr.situacao or "Não especificada"
-            projetos_por_situacao[situacao] = projetos_por_situacao.get(situacao, 0) + 1
-
-        total_eventos = len(eventos)
-        eventos_organizados = sum(1 for e in eventos if e.eh_organizacao)
-        eventos_participacao = total_eventos - eventos_organizados
-
-        fomento_total = {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0}
-        fomento_por_agencia: Dict[str, float] = {}
-        for f in financiamentos:
-            fomento_total["solicitado"] += f.valor_solicitado or 0.0
-            fomento_total["aprovado"] += f.valor_aprovado or 0.0
-            fomento_total["executado"] += f.valor_executado or 0.0
-            agencia = (f.agencia or f.fonte or "Outras/Não especificada").upper().strip()
-            fomento_por_agencia[agencia] = fomento_por_agencia.get(agencia, 0.0) + (
-                f.valor_aprovado or 0.0
-            )
-        fomento_total = {k: round(v, 2) for k, v in fomento_total.items()}
-        fomento_por_agencia = {k: round(v, 2) for k, v in fomento_por_agencia.items()}
-
-        por_gravidade: Dict[str, int] = {}
-        for lac in lacunas:
-            grav = _enum_val(lac.gravidade)
-            por_gravidade[grav] = por_gravidade.get(grav, 0) + 1
-        resolvidas = sum(1 for l in lacunas if l.resolvido)
-        total_lacunas = len(lacunas)
-
-        validacao_pendentes: Dict[str, int] = {}
-        for key, model in (
-            ("projetos", Projeto),
-            ("eventos", Evento),
-            ("producoes", Producao),
-            ("financiamentos", Financiamento),
-            ("orientacoes", Orientacao),
-            ("formacoes_academicas", FormacaoAcademica),
-            ("bancas", Banca),
-            ("producoes_tecnicas", ProducaoTecnica),
-            ("premios", PremioTitulo),
-            ("grupos_pesquisa", GrupoPesquisaDocente),
-        ):
-            stmt = select(model).where(model.status_validacao == StatusValidacao.PENDENTE)
-            stmt = self._apply_prof_filter(stmt, model)
-            validacao_pendentes[key] = len(self.session.exec(stmt).all())
-
-        return {
-            "total_producoes": len(producoes),
-            "total_projetos": len(projetos),
-            "total_eventos": total_eventos,
-            "eventos_organizados": eventos_organizados,
-            "eventos_participacao": eventos_participacao,
-            "total_producoes_tecnicas": len(self._fetch(ProducaoTecnica)),
-            "total_premios": len(self._fetch(PremioTitulo)),
-            "total_grupos_pesquisa": len(self._fetch(GrupoPesquisaDocente)),
-            "fomento_total": fomento_total,
-            "producoes_por_tipo": producoes_por_tipo,
-            "producoes_por_ano": dict(sorted(producoes_por_ano.items())),
-            "projetos_por_situacao": projetos_por_situacao,
-            "fomento_por_agencia": fomento_por_agencia,
-            "lacunas": {
-                "total": total_lacunas,
-                "resolvidas": resolvidas,
-                "pendentes": total_lacunas - resolvidas,
-                "por_gravidade": por_gravidade,
-            },
-            "total_orientacoes": len(orientacoes),
-            "orientacoes_concluidas": sum(
-                1 for o in orientacoes if o.status == StatusOrientacao.CONCLUIDA
-            ),
-            "orientacoes_em_andamento": sum(
-                1 for o in orientacoes if o.status == StatusOrientacao.EM_ANDAMENTO
-            ),
-            "total_bancas": len(self._fetch(Banca)),
-            "total_formacoes": len(self._fetch(FormacaoAcademica)),
-            "producoes_por_qualis": producoes_por_qualis,
-            "validacao_pendentes": validacao_pendentes,
+            "overview": self.get_overview_indicators(),
+            "demanda": self.get_selection_indicators(),
+            "narrativas": NarrativeService(self.session, self.filters).generate_all(),
+            "filtros": self.filters.query_params(),
         }

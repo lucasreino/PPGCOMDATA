@@ -13,6 +13,11 @@ services:
       - "127.0.0.1:5432:5432" # Keep DB internal to the VPS
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ppgcomdata}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
@@ -32,19 +37,35 @@ services:
       - AI_API_KEY=${AI_API_KEY}
       - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
       - AI_BASE_URL=${AI_BASE_URL:-https://api.openai.com/v1}
-      - AI_REQUEST_DELAY_SECONDS=${AI_REQUEST_DELAY_SECONDS:-1}
+      - AI_REQUEST_DELAY_SECONDS=${AI_REQUEST_DELAY_SECONDS:-0}
+      - AI_FALLBACK_MODELS=${AI_FALLBACK_MODELS:-deepseek-v4-pro,deepseek-v4-flash}
+      - AI_PARALLEL_WORKERS=${AI_PARALLEL_WORKERS:-3}
+      - DB_POOL_SIZE=${DB_POOL_SIZE:-10}
+      - DB_MAX_OVERFLOW=${DB_MAX_OVERFLOW:-20}
+      - DB_POOL_RECYCLE=${DB_POOL_RECYCLE:-3600}
+      - SECTION_CHUNK_MAX_CHARS=${SECTION_CHUNK_MAX_CHARS:-10000}
+      - SECTION_CHUNK_MAX_ITEMS=${SECTION_CHUNK_MAX_ITEMS:-8}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - STORAGE_BUCKET=${STORAGE_BUCKET:-ppgcomdata-uploads}
     volumes:
       - prod_uploads:/workspace/uploads
       - ./data:/workspace/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   web:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     container_name: ppgcomdata-web-prod
     restart: always
     ports:
@@ -52,7 +73,8 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000/api/v1}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata_prod:

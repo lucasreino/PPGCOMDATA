@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routes import (
     auth,
+    fotos,
     professores,
     linhas_pesquisa,
     uploads,
@@ -59,6 +60,7 @@ async def get_status():
     }
 
 # Mount sub-routers
+api_router.include_router(fotos.router)
 api_router.include_router(auth.router)
 api_router.include_router(professores.router)
 api_router.include_router(linhas_pesquisa.router)

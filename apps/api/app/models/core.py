@@ -45,6 +45,7 @@ class Professor(UUIDModel, TimestampModel, table=True):
     observacoes: Optional[str] = Field(default=None, nullable=True)
     titulacao_maxima: Optional[str] = Field(default=None, nullable=True, index=True)
     data_ultima_atualizacao_lattes: Optional[date] = Field(default=None, nullable=True)
+    foto_url: Optional[str] = Field(default=None, nullable=True)
 
     # Foreign Keys
     linha_pesquisa_id: Optional[str] = Field(

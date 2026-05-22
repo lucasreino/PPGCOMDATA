@@ -1,5 +1,26 @@
 const TOKEN_KEY = "ppgcomdata_token";
 
+export const SESSION_EXPIRED_MESSAGE =
+  "Sua sessão expirou ou é inválida. Faça login novamente.";
+
+let onUnauthorized: (() => void) | null = null;
+
+/** Registra callback (ex.: logout) quando a API retorna 401. */
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
+export function parseApiErrorDetail(detail: unknown, fallback: string): string {
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg?: string }).msg) : ""))
+      .filter(Boolean)
+      .join("; ");
+  }
+  return fallback;
+}
+
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -33,12 +54,21 @@ export async function apiFetch(
   const headers = new Headers(options.headers || {});
   if (requireAuth) {
     const token = getStoredToken();
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
+    if (!token) {
+      throw new Error(SESSION_EXPIRED_MESSAGE);
     }
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
+
+  if (requireAuth && response.status === 401) {
+    setStoredToken(null);
+    onUnauthorized?.();
+    throw new Error(SESSION_EXPIRED_MESSAGE);
+  }
+
+  return response;
 }
 
 export async function login(email: string, password: string): Promise<string> {

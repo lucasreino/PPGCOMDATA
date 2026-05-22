@@ -5,9 +5,24 @@ from sqlmodel import Session
 
 from app.auth import require_staff
 from app.database import get_session
+from app.services.cache_ttl import cache_clear_prefix, cached_call
 from app.services.export_service import ExportService
 from app.services.indicator_service import IndicatorFilters, IndicatorService
 from app.services.narrative_service import NarrativeService
+
+_DOSSIE_CACHE_TTL_SEC = 120
+
+
+def _dossie_cache_key(prefix: str, filters: IndicatorFilters) -> str:
+    q = filters.query_params()
+    return (
+        f"dossie:{prefix}:{q.get('professor_id')}|{q.get('linha_pesquisa_id')}|"
+        f"{q.get('ano_inicio')}|{q.get('ano_fim')}|{q.get('apenas_validados')}"
+    )
+
+
+def invalidate_dossie_cache() -> None:
+    cache_clear_prefix("dossie:")
 
 router = APIRouter(prefix="/dossie-apcn", tags=["Dossiê APCN"])
 
@@ -32,13 +47,31 @@ def _svc(session: Session, filters: IndicatorFilters) -> IndicatorService:
     return IndicatorService(session, filters)
 
 
+@router.get("/visao-geral")
+async def dossie_visao_geral(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    """Overview + demanda + narrativas em uma chamada (aba Visão Geral)."""
+    key = _dossie_cache_key("visao", filters)
+
+    def _load():
+        return _svc(session, filters).get_visao_geral_bundle()
+
+    return cached_call(key, _DOSSIE_CACHE_TTL_SEC, _load)
+
+
 @router.get("/overview")
 async def dossie_overview(
     session: Session = Depends(get_session),
     filters: IndicatorFilters = Depends(_filters),
     _user=Depends(require_staff),
 ):
-    return _svc(session, filters).get_overview_indicators()
+    key = _dossie_cache_key("overview", filters)
+    return cached_call(
+        key, _DOSSIE_CACHE_TTL_SEC, lambda: _svc(session, filters).get_overview_indicators()
+    )
 
 
 @router.get("/corpo-docente")

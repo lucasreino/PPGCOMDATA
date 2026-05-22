@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select, func
 from typing import List, Optional, Dict, Any
 from datetime import datetime, date
+from collections import defaultdict
+import asyncio
 import json
 import logging
 from app.database import get_session
@@ -13,14 +15,45 @@ from app.models.data import (
     Producao,
     Financiamento,
     Orientacao,
+    AlertaLacuna,
 )
 from app.auth import require_staff
+from app.services.cache_ttl import cache_clear_prefix, cached_call
 from app.services.indicator_service import IndicatorFilters, IndicatorService
 from app.services.llm_client import generate_text, provider_label
 
 logger = logging.getLogger("ppgcomdata")
 
 router = APIRouter(prefix="/analises", tags=["Analytics & AI Executive Reports"])
+
+_ANALYTICS_CACHE_TTL_SEC = 120
+
+
+def invalidate_analytics_cache() -> None:
+    cache_clear_prefix("analytics:")
+
+
+def _analytics_cache_key(
+    professor_id: Optional[str],
+    linha_pesquisa_id: Optional[str],
+    ano_inicio: Optional[int],
+    ano_fim: Optional[int],
+) -> str:
+    return f"{professor_id}|{linha_pesquisa_id}|{ano_inicio}|{ano_fim}"
+
+
+def _batch_by_professor(session: Session, model, prof_ids: List, ano_field: Optional[str], ano_inicio, ano_fim):
+    if not prof_ids:
+        return {}
+    stmt = select(model).where(model.professor_id.in_(prof_ids))
+    if ano_field and ano_inicio is not None:
+        stmt = stmt.where(getattr(model, ano_field) >= ano_inicio)
+    if ano_field and ano_fim is not None:
+        stmt = stmt.where(getattr(model, ano_field) <= ano_fim)
+    grouped: Dict[Any, list] = defaultdict(list)
+    for row in session.exec(stmt).all():
+        grouped[row.professor_id].append(row)
+    return grouped
 
 @router.get("/estatisticas")
 async def obter_estatisticas(
@@ -36,13 +69,20 @@ async def obter_estatisticas(
     Supports filtering by professor, research line, and year range.
     """
     try:
+        cache_key = "analytics:" + _analytics_cache_key(
+            professor_id, linha_pesquisa_id, ano_inicio, ano_fim
+        )
         filters = IndicatorFilters(
             professor_id=professor_id,
             linha_pesquisa_id=linha_pesquisa_id,
             ano_inicio=ano_inicio,
             ano_fim=ano_fim,
         )
-        return IndicatorService(session, filters).get_analytics_stats()
+
+        def _load():
+            return IndicatorService(session, filters).get_analytics_stats()
+
+        return cached_call(cache_key, _ANALYTICS_CACHE_TTL_SEC, _load)
     except Exception as e:
         logger.error(f"Erro ao computar estatísticas: {str(e)}")
         raise HTTPException(
@@ -87,42 +127,51 @@ async def gerar_relatorio_ia(
     context_lines.append(f"# DATASET DE PRODUÇÃO E FOMENTO - PPGCOM")
     context_lines.append(f"Período de Análise: {ano_inicio or 'Todos'} até {ano_fim or 'Todos'}")
     context_lines.append(f"Quantidade de Docentes Analisados: {len(professores)}\n")
-    
+
+    prof_ids = [p.id for p in professores]
+    projetos_map = _batch_by_professor(
+        session, Projeto, prof_ids, "ano_inicio", ano_inicio, ano_fim
+    )
+    producoes_map = _batch_by_professor(
+        session, Producao, prof_ids, "ano", ano_inicio, ano_fim
+    )
+    orientacoes_map = _batch_by_professor(
+        session, Orientacao, prof_ids, None, None, None
+    )
+    lacunas_map: Dict[Any, list] = defaultdict(list)
+    if prof_ids:
+        lac_stmt = select(AlertaLacuna).where(
+            AlertaLacuna.professor_id.in_(prof_ids),
+            AlertaLacuna.resolvido == False,
+        )
+        for lac in session.exec(lac_stmt).all():
+            lacunas_map[lac.professor_id].append(lac)
+
+    linha_cache: Dict[str, LinhaPesquisa] = {}
+
     for prof in professores:
         context_lines.append(f"## Docente: {prof.nome_completo}")
         context_lines.append(f"- Tipo: {prof.tipo_docente.upper() if prof.tipo_docente else 'Permanente'}")
         if prof.titulacao_maxima:
             context_lines.append(f"- Titulação máxima: {prof.titulacao_maxima}")
 
-        # Research Line
         if prof.linha_pesquisa_id:
-            linha = session.get(LinhaPesquisa, prof.linha_pesquisa_id)
+            lid = str(prof.linha_pesquisa_id)
+            if lid not in linha_cache:
+                linha_cache[lid] = session.get(LinhaPesquisa, prof.linha_pesquisa_id)
+            linha = linha_cache.get(lid)
             if linha:
                 context_lines.append(f"- Linha de Pesquisa: {linha.nome}")
-                
-        # 1. Projects
-        proj_stmt = select(Projeto).where(Projeto.professor_id == prof.id)
-        if ano_inicio:
-            proj_stmt = proj_stmt.where(Projeto.ano_inicio >= ano_inicio)
-        if ano_fim:
-            proj_stmt = proj_stmt.where(Projeto.ano_inicio <= ano_fim)
-        projetos = session.exec(proj_stmt).all()
-        
+
+        projetos = projetos_map.get(prof.id, [])
         context_lines.append(f"### Projetos de Pesquisa ({len(projetos)}):")
         for p in projetos:
             fim_str = str(p.ano_fim) if p.ano_fim else "Em andamento"
             context_lines.append(f"  * Projeto: \"{p.titulo}\" ({p.ano_inicio} - {fim_str}) | Situação: {p.situacao or 'N/A'}")
             if p.agencia_fomento:
                 context_lines.append(f"    - Financiamento Mencionado: Sim | Agência: {p.agencia_fomento}")
-        
-        # 2. Publications
-        prod_stmt = select(Producao).where(Producao.professor_id == prof.id)
-        if ano_inicio:
-            prod_stmt = prod_stmt.where(Producao.ano >= ano_inicio)
-        if ano_fim:
-            prod_stmt = prod_stmt.where(Producao.ano <= ano_fim)
-        producoes = session.exec(prod_stmt).all()
-        
+
+        producoes = producoes_map.get(prof.id, [])
         context_lines.append(f"### Produções Acadêmicas ({len(producoes)}):")
         for p in producoes:
             qualis_str = f" | Qualis: {p.qualis}" if p.qualis else ""
@@ -131,7 +180,7 @@ async def gerar_relatorio_ia(
                 f"Veículo: {p.veiculo or 'N/A'}{qualis_str}"
             )
 
-        orientacoes = session.exec(select(Orientacao).where(Orientacao.professor_id == prof.id)).all()
+        orientacoes = orientacoes_map.get(prof.id, [])
         context_lines.append(f"### Orientações ({len(orientacoes)}):")
         for o in orientacoes[:15]:
             context_lines.append(
@@ -139,9 +188,7 @@ async def gerar_relatorio_ia(
                 f"{o.status.value} ({o.ano_inicio or '?'}-{o.ano_conclusao or '?'})"
             )
 
-        # 3. Gaps/Lacunas
-        lac_stmt = select(AlertaLacuna).where(AlertaLacuna.professor_id == prof.id, AlertaLacuna.resolvido == False)
-        lacunas = session.exec(lac_stmt).all()
+        lacunas = lacunas_map.get(prof.id, [])
         if lacunas:
             context_lines.append(f"### Lacunas e Gaps de Informação Ativos ({len(lacunas)}):")
             for l in lacunas:
@@ -182,7 +229,9 @@ async def gerar_relatorio_ia(
         }
 
     try:
-        content_text = generate_text(system_instruction, user_prompt, temperature=0.2)
+        content_text = await asyncio.to_thread(
+            generate_text, system_instruction, user_prompt, 0.2
+        )
         return {
             "relatorio": content_text,
             "modelo": provider_label(),
