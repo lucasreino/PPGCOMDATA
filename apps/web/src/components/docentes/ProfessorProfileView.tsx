@@ -6,6 +6,7 @@ import { ExternalLink, Settings } from "lucide-react";
 import type { ProfessorCatalog, ProfessorResumo, ProfileTab } from "@/lib/types";
 import type { ProfessorDadosPayload } from "@/lib/map-professor-dados";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
+import { groupProducoesByTipo } from "@/lib/producao-groups";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 
@@ -53,6 +54,10 @@ export function ProfessorProfileView({
   const orientacoesPorTipo = useMemo(
     () => groupOrientacoesByTipo(dados.orientacoes),
     [dados.orientacoes]
+  );
+  const producoesPorTipo = useMemo(
+    () => groupProducoesByTipo(dados.producoes),
+    [dados.producoes]
   );
   const linha = prof.linha_pesquisa?.nome ?? "—";
   const tipo =
@@ -157,18 +162,25 @@ export function ProfessorProfileView({
             ))}
           />
         )}
-        {tab === "producoes" && (
-          <ListPanel
-            empty="Nenhuma produção registrada."
-            items={dados.producoes.map((p) => (
-              <RecordCard
-                key={p.id}
-                badge={p.tipo}
-                title={p.titulo}
-                meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}`}
-              />
-            ))}
-          />
+        {tab === "producoes" &&
+          producoesPorTipo.map((group) => (
+            <section key={group.tipo} className="space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-2">
+                {group.label}
+                <span className="text-slate-500 font-normal">({group.items.length})</span>
+              </h3>
+              {group.items.map((p) => (
+                <RecordCard
+                  key={p.id}
+                  badge={p.tipo}
+                  title={p.titulo}
+                  meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}`}
+                />
+              ))}
+            </section>
+          ))}
+        {tab === "producoes" && dados.producoes.length === 0 && (
+          <EmptyMsg text="Nenhuma produção registrada." />
         )}
         {tab === "financiamentos" && (
           <ListPanel

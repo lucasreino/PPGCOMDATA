@@ -47,6 +47,7 @@ import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
 import { PendingValidationModal } from "@/components/validation/PendingValidationModal";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
+import { groupProducoesByTipo } from "@/lib/producao-groups";
 import { printReportInPage } from "@/lib/report-print";
 import { sortEntityPayload } from "@/lib/sort-entities";
 import {
@@ -1124,6 +1125,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
     () => groupOrientacoesByTipo(orientacoes),
     [orientacoes]
   );
+  const producoesPorTipo = useMemo(
+    () => groupProducoesByTipo(producoes),
+    [producoes]
+  );
 
   if (authLoading || !user) {
     return (
@@ -1469,69 +1474,81 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               </div>
             ))}
 
-            {/* PRODUCTIONS VIEW */}
-            {activeTab === "producoes" && producoes.map((item) => (
-              <div 
-                key={item.id} 
-                className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
-                }`}
-              >
-                <div className="absolute top-0 left-0 right-0 h-1 flex">
-                  <div className={`w-full ${
-                    item.status_validacao === "confirmado" ? "bg-emerald-500" :
-                    item.status_validacao === "editado" ? "bg-indigo-500" :
-                    item.status_validacao === "descartado" ? "bg-rose-500" : "bg-slate-700"
-                  }`}></div>
+            {/* PRODUÇÕES — agrupadas por tipo */}
+            {activeTab === "producoes" && producoesPorTipo.map((group) => (
+              <section key={group.tipo} className="space-y-4">
+                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 bg-[#0b1120]/90 backdrop-blur-sm border-b border-slate-800/80">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                    {group.label}
+                  </h3>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">
+                    {group.items.length}
+                  </span>
                 </div>
-
-                <div className="flex justify-between items-start gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
-                      {item.tipo}
-                    </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-1">{item.titulo}</h3>
-                  </div>
-
-                  <ConfidenceBadge level={item.confianca_ia} />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">Ano</span>
-                    <span className="font-semibold">{item.ano}</span>
-                  </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2 md:col-span-1">
-                    <span className="text-[9px] text-slate-500 block">Veículo / Editora</span>
-                    <span className="font-semibold truncate block">{item.veiculo}</span>
-                  </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">DOI</span>
-                    <span className="font-semibold font-mono text-[10px] truncate block text-indigo-400">{item.doi || "N/D"}</span>
-                  </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
-                    <span className="text-[9px] text-slate-500 block">ISSN / ISBN</span>
-                    <span className="font-semibold font-mono text-[10px] truncate block">{item.issn || "N/D"}</span>
-                  </div>
-                  {item.qualis && (
-                    <div className="bg-indigo-950/40 p-2 rounded border border-indigo-900">
-                      <span className="text-[9px] text-indigo-400 block font-bold">Qualis</span>
-                      <span className="font-bold text-indigo-300">{item.qualis}</span>
+                {group.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
+                      item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
+                      item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
+                      item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                    }`}
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-1 flex">
+                      <div className={`w-full ${
+                        item.status_validacao === "confirmado" ? "bg-emerald-500" :
+                        item.status_validacao === "editado" ? "bg-indigo-500" :
+                        item.status_validacao === "descartado" ? "bg-rose-500" : "bg-slate-700"
+                      }`}></div>
                     </div>
-                  )}
-                </div>
 
-                <OriginalFragment text={item.trecho_original} />
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
+                          {item.tipo}
+                        </span>
+                        <h3 className="text-sm font-bold text-slate-200 mt-1">{item.titulo}</h3>
+                      </div>
 
-                <ActionPanel 
-                  status={item.status_validacao} 
-                  onConfirm={() => handleConfirm("producoes", item.id)}
-                  onEdit={() => handleOpenEdit("producoes", item)}
-                  onDiscard={() => handleDiscard("producoes", item.id)}
-                />
-              </div>
+                      <ConfidenceBadge level={item.confianca_ia} />
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-[11px] text-slate-300">
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">Ano</span>
+                        <span className="font-semibold">{item.ano}</span>
+                      </div>
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2 md:col-span-1">
+                        <span className="text-[9px] text-slate-500 block">Veículo / Editora</span>
+                        <span className="font-semibold truncate block">{item.veiculo}</span>
+                      </div>
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">DOI</span>
+                        <span className="font-semibold font-mono text-[10px] truncate block text-indigo-400">{item.doi || "N/D"}</span>
+                      </div>
+                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                        <span className="text-[9px] text-slate-500 block">ISSN / ISBN</span>
+                        <span className="font-semibold font-mono text-[10px] truncate block">{item.issn || "N/D"}</span>
+                      </div>
+                      {item.qualis && (
+                        <div className="bg-indigo-950/40 p-2 rounded border border-indigo-900">
+                          <span className="text-[9px] text-indigo-400 block font-bold">Qualis</span>
+                          <span className="font-bold text-indigo-300">{item.qualis}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <OriginalFragment text={item.trecho_original} />
+
+                    <ActionPanel
+                      status={item.status_validacao}
+                      onConfirm={() => handleConfirm("producoes", item.id)}
+                      onEdit={() => handleOpenEdit("producoes", item)}
+                      onDiscard={() => handleDiscard("producoes", item.id)}
+                    />
+                  </div>
+                ))}
+              </section>
             ))}
 
             {/* ORIENTAÇÕES — agrupadas por tipo */}
