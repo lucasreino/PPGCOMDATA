@@ -1,3 +1,4 @@
+import { sortByNewestFirst } from "@/lib/sort-entities";
 import type {
   Evento,
   Financiamento,
@@ -216,16 +217,28 @@ export function mapProfessorDados(raw: Record<string, unknown>): ProfessorDadosP
     (Array.isArray(raw[key]) ? raw[key] : []) as Record<string, unknown>[];
 
   return {
-    projetos: arr("projetos").map(mapProjeto),
-    eventos: arr("eventos").map(mapEvento),
-    producoes: arr("producoes").map(mapProducao),
-    financiamentos: arr("financiamentos").map(mapFinanciamento),
-    orientacoes: arr("orientacoes").map(mapOrientacao),
-    formacoes_academicas: arr("formacoes_academicas").map(mapFormacao),
-    bancas: arr("bancas").map(mapBanca),
-    producoes_tecnicas: arr("producoes_tecnicas").map(mapProducaoTecnica),
-    premios: arr("premios").map(mapPremio),
-    grupos_pesquisa: arr("grupos_pesquisa").map(mapGrupo),
+    projetos: sortByNewestFirst(arr("projetos").map(mapProjeto), "projetos"),
+    eventos: sortByNewestFirst(arr("eventos").map(mapEvento), "eventos"),
+    producoes: sortByNewestFirst(arr("producoes").map(mapProducao), "producoes"),
+    financiamentos: sortByNewestFirst(
+      arr("financiamentos").map(mapFinanciamento),
+      "financiamentos"
+    ),
+    orientacoes: sortByNewestFirst(arr("orientacoes").map(mapOrientacao), "orientacoes"),
+    formacoes_academicas: sortByNewestFirst(
+      arr("formacoes_academicas").map(mapFormacao),
+      "formacoes_academicas"
+    ),
+    bancas: sortByNewestFirst(arr("bancas").map(mapBanca), "bancas"),
+    producoes_tecnicas: sortByNewestFirst(
+      arr("producoes_tecnicas").map(mapProducaoTecnica),
+      "producoes_tecnicas"
+    ),
+    premios: sortByNewestFirst(arr("premios").map(mapPremio), "premios"),
+    grupos_pesquisa: sortByNewestFirst(
+      arr("grupos_pesquisa").map(mapGrupo),
+      "grupos_pesquisa"
+    ),
   };
 }
 

@@ -24,6 +24,7 @@ from app.models.data import (
 from app.models.enums import StatusValidacao
 from app.auth import require_staff, get_current_user
 from app.services.cache_invalidation import invalidate_indicator_caches
+from app.services.entity_sort import sort_entities_newest_first
 from app.services.upload_status import refresh_upload_validation_status
 
 router = APIRouter(prefix="/validacao", tags=["Validation & Human-in-the-Loop"])
@@ -65,7 +66,9 @@ async def listar_pendentes(
         if professor_id:
             statement = statement.where(model.professor_id == professor_id)
 
-        results[key] = session.exec(statement).all()
+        results[key] = sort_entities_newest_first(
+            session.exec(statement).all(), key
+        )
 
     statement_lacunas = select(AlertaLacuna).where(AlertaLacuna.resolvido == False)
     if curriculo_upload_id:
@@ -75,7 +78,9 @@ async def listar_pendentes(
     if professor_id:
         statement_lacunas = statement_lacunas.where(AlertaLacuna.professor_id == professor_id)
 
-    results["lacunas"] = session.exec(statement_lacunas).all()
+    results["lacunas"] = sort_entities_newest_first(
+        session.exec(statement_lacunas).all(), "lacunas"
+    )
 
     return results
 

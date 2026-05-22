@@ -28,6 +28,7 @@ from app.schemas.professor_resumo import (
 )
 from app.services.professor_lookup import find_professor, professor_dedupe_key
 from app.routes.validacao import ENTIDADES_MAP
+from app.services.entity_sort import sort_entities_newest_first
 
 router = APIRouter(prefix="/professores", tags=["Professores"])
 
@@ -183,7 +184,9 @@ async def get_professor_dados(
     }
     for key, model in ENTIDADES_MAP.items():
         rows = session.exec(select(model).where(model.professor_id == prof_id)).all()
-        payload[key] = _serialize_entities(rows, include_trecho=include_trecho)
+        payload[key] = _serialize_entities(
+            sort_entities_newest_first(rows, key), include_trecho=include_trecho
+        )
 
     return payload
 
@@ -215,13 +218,20 @@ async def get_resumo_academico(
     if not professor:
         raise HTTPException(status_code=404, detail="Professor não encontrado")
 
-    orientacoes = session.exec(
-        select(Orientacao).where(Orientacao.professor_id == prof_id)
-    ).all()
-    formacoes = session.exec(
-        select(FormacaoAcademica).where(FormacaoAcademica.professor_id == prof_id)
-    ).all()
-    bancas = session.exec(select(Banca).where(Banca.professor_id == prof_id)).all()
+    orientacoes = sort_entities_newest_first(
+        session.exec(select(Orientacao).where(Orientacao.professor_id == prof_id)).all(),
+        "orientacoes",
+    )
+    formacoes = sort_entities_newest_first(
+        session.exec(
+            select(FormacaoAcademica).where(FormacaoAcademica.professor_id == prof_id)
+        ).all(),
+        "formacoes_academicas",
+    )
+    bancas = sort_entities_newest_first(
+        session.exec(select(Banca).where(Banca.professor_id == prof_id)).all(),
+        "bancas",
+    )
 
     current_year = date.today().year
     cutoff = current_year - 5
@@ -283,7 +293,8 @@ async def list_orientacoes(
     professor = session.get(Professor, prof_id)
     if not professor:
         raise HTTPException(status_code=404, detail="Professor não encontrado")
-    return session.exec(select(Orientacao).where(Orientacao.professor_id == prof_id)).all()
+    rows = session.exec(select(Orientacao).where(Orientacao.professor_id == prof_id)).all()
+    return sort_entities_newest_first(rows, "orientacoes")
 
 
 @router.get("/{prof_id}/formacoes", response_model=List[FormacaoAcademica])
@@ -295,9 +306,10 @@ async def list_formacoes(
     professor = session.get(Professor, prof_id)
     if not professor:
         raise HTTPException(status_code=404, detail="Professor não encontrado")
-    return session.exec(
+    rows = session.exec(
         select(FormacaoAcademica).where(FormacaoAcademica.professor_id == prof_id)
     ).all()
+    return sort_entities_newest_first(rows, "formacoes_academicas")
 
 
 @router.put("/{prof_id}", response_model=Professor)

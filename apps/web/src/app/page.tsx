@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { 
   FileText, Upload, Check, Edit2, Trash2, AlertTriangle, 
   HelpCircle, CheckCircle, RefreshCw, BarChart2, Plus, 
-  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info, LogOut,
+  BookOpen, Calendar, DollarSign, Eye, EyeOff, Award, Clock, ArrowRight, UserPlus, Info,
   Users, GraduationCap, Wrench, Trophy, Network
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,8 +44,11 @@ function tabLabel(tab: EntityTab): string {
   return labels[tab];
 }
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
+import { PendingValidationModal } from "@/components/validation/PendingValidationModal";
+import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { printReportInPage } from "@/lib/report-print";
+import { sortEntityPayload } from "@/lib/sort-entities";
 import {
   ActionPanel,
   ConfidenceBadge,
@@ -57,7 +60,7 @@ import {
 export default function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   // Connection state
   const [apiConnected, setApiConnected] = useState<boolean>(false);
   const [aiModelLabel, setAiModelLabel] = useState<string>("OpenCode Go");
@@ -68,7 +71,18 @@ export default function Dashboard() {
 
   const apiUrl = getApiBaseUrl();
 
-  const [mainTab, setMainTab] = useState<MainTab>("validacao");
+  const mainTab: MainTab = (() => {
+    const v = searchParams.get("view");
+    if (v === "estatisticas" || v === "relatorios" || v === "validacao") return v;
+    return "validacao";
+  })();
+
+  const navigateMainTab = (tab: MainTab) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", tab);
+    const qs = params.toString();
+    router.replace(qs ? `/?${qs}` : `/?view=${tab}`, { scroll: false });
+  };
 
   // Research Lines state
   const [linhasPesquisa, setLinhasPesquisa] = useState<any[]>([]);
@@ -80,6 +94,7 @@ export default function Dashboard() {
   const [statsAnoFim, setStatsAnoFim] = useState<string>("2026");
   const [statsData, setStatsData] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState<boolean>(false);
+  const [showPendingValidationModal, setShowPendingValidationModal] = useState(false);
 
   // AI Report Generator filters, prompt & text
   const [reportProfessorId, setReportProfessorId] = useState<string>("todos");
@@ -212,6 +227,27 @@ export default function Dashboard() {
     if (pid) setSelectedProfId(pid);
   }, [searchParams]);
 
+  const handleReviewPendingItem = (professorId: string, tab: EntityTab) => {
+    setShowPendingValidationModal(false);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "validacao");
+    params.set("professor_id", professorId);
+    router.push(`/?${params.toString()}`, { scroll: false });
+    setSelectedProfId(professorId);
+    setActiveTab(tab);
+  };
+
+  const handleGoToValidationTab = () => {
+    setShowPendingValidationModal(false);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "validacao");
+    if (statsProfessorId !== "todos") {
+      params.set("professor_id", statsProfessorId);
+      setSelectedProfId(statsProfessorId);
+    }
+    router.push(`/?${params.toString()}`, { scroll: false });
+  };
+
   const reloadProfessorData = (profId: string) => {
     if (!apiConnected) return;
     setLoading(true);
@@ -222,7 +258,7 @@ export default function Dashboard() {
     ])
       .then(async ([pendentesRes, orientRes, formRes]) => {
         if (!pendentesRes.ok) throw new Error("Erro ao carregar dados do docente");
-        const data = await pendentesRes.json();
+        const data = sortEntityPayload(await pendentesRes.json());
         setProjetos(data.projetos || []);
         setEventos(data.eventos || []);
         setProducoes(data.producoes || []);
@@ -1099,91 +1135,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
   return (
     <div className="flex-1 flex flex-col min-h-screen">
-      {/* 🚀 Header */}
-      <header className="no-print border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-600/20">
-            <BarChart2 className="w-6 h-6 animate-pulse" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              PPGCOM<span className="text-indigo-400">DATA</span>
-              <span className="text-xs px-2 py-0.5 bg-indigo-950 border border-indigo-800 text-indigo-300 font-medium rounded-full">
-                v1.1.0
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400">Gestão e Análise de Indicadores Docentes</p>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="hidden md:flex items-center space-x-1 bg-slate-950 p-1 border border-slate-800 rounded-xl">
-          <button
-            onClick={() => setMainTab("validacao")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-              mainTab === "validacao"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Validação
-          </button>
-          <button
-            onClick={() => setMainTab("estatisticas")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-              mainTab === "estatisticas"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Estatísticas
-          </button>
-          <button
-            onClick={() => setMainTab("relatorios")}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              mainTab === "relatorios"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            Gerar Relatório com IA
-          </button>
-          <a
-            href="/dossie-apcn"
-            className="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 border border-transparent hover:border-indigo-800"
-          >
-            Dossiê APCN
-          </a>
-          <Link
-            href="/docentes"
-            className="px-4 py-2 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 border border-transparent hover:border-indigo-800"
-          >
-            Corpo Docente
-          </Link>
-        </div>
-
-        {/* API connection indicator */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-xs">
-            <span className={`w-2 h-2 rounded-full ${apiConnected ? "bg-emerald-500 animate-ping" : "bg-amber-500"}`}></span>
-            <span className="text-slate-300">
-              {apiConnected ? "API Conectada (FastAPI)" : "Simulação Local Premium"}
-            </span>
-          </div>
-
-          <div className="text-xs text-slate-400 hidden sm:block">
-            {user.name} · {user.role}
-          </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-900/60 px-3 py-1.5 rounded-lg transition-colors"
-            title="Sair"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sair
-          </button>
-        </div>
-      </header>
+      <AppShellHeader
+        section="operacao"
+        operacaoView={mainTab}
+        onOperacaoViewChange={navigateMainTab}
+        apiConnected={apiConnected}
+      />
 
       {/* 📊 Dashboard Core */}
       {mainTab === "validacao" && (
@@ -2032,8 +1989,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               onClick={() => {
                 // Force stats refresh
                 const currentTab = mainTab;
-                setMainTab("validacao");
-                setTimeout(() => setMainTab(currentTab), 50);
+                navigateMainTab("validacao");
+                setTimeout(() => navigateMainTab(currentTab), 50);
               }}
               className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs shadow-lg shadow-indigo-600/10 transition-all flex items-center justify-center gap-2 min-h-[38px]"
             >
@@ -2120,13 +2077,20 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       {Object.entries(statsData.producoes_por_qualis || {}).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Sem dados"}
                     </p>
                   </div>
-                  <div className="glow-card rounded-xl p-4 border border-slate-850">
+                  <button
+                    type="button"
+                    onClick={() => setShowPendingValidationModal(true)}
+                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-amber-700/60 hover:bg-amber-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50"
+                    title="Ver fila completa de itens aguardando validação"
+                  >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Validação pendente</span>
                     <p className="text-xl font-bold text-amber-300 mt-1">
                       {Object.values(statsData.validacao_pendentes || {}).reduce((a: number, b) => a + (b as number), 0)}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-1">itens aguardando revisão humana</p>
-                  </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      itens aguardando revisão humana · clique para abrir a fila
+                    </p>
+                  </button>
                 </div>
               )}
 
@@ -3067,6 +3031,18 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           </div>
         </div>
       )}
+
+      <PendingValidationModal
+        open={showPendingValidationModal}
+        onClose={() => setShowPendingValidationModal(false)}
+        professors={professors}
+        linhasPesquisa={linhasPesquisa}
+        statsProfessorId={statsProfessorId}
+        statsLinhaPesquisaId={statsLinhaPesquisaId}
+        breakdown={statsData?.validacao_pendentes}
+        onReview={handleReviewPendingItem}
+        onGoToValidation={handleGoToValidationTab}
+      />
     </div>
   );
 }

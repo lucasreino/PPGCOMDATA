@@ -1,4 +1,5 @@
 import type { Orientacao } from "@/lib/types";
+import { sortByNewestFirst } from "@/lib/sort-entities";
 
 export const ORIENTACAO_TIPO_ORDER = [
   "doutorado",
@@ -38,14 +39,22 @@ export function groupOrientacoesByTipo(
   for (const tipo of ORIENTACAO_TIPO_ORDER) {
     const list = map.get(tipo);
     if (list?.length) {
-      groups.push({ tipo, label: labelOrientacaoTipo(tipo), items: list });
+      groups.push({
+        tipo,
+        label: labelOrientacaoTipo(tipo),
+        items: sortByNewestFirst(list, "orientacoes"),
+      });
       seen.add(tipo);
     }
   }
 
   for (const [tipo, list] of Array.from(map.entries())) {
     if (!seen.has(tipo) && list.length) {
-      groups.push({ tipo, label: labelOrientacaoTipo(tipo), items: list });
+      groups.push({
+        tipo,
+        label: labelOrientacaoTipo(tipo),
+        items: sortByNewestFirst(list, "orientacoes"),
+      });
     }
   }
 

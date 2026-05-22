@@ -3,9 +3,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Suspense } from "react";
+import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import {
   AlertTriangle,
-  ArrowLeft,
   BarChart2,
   BookOpen,
   Calendar,
@@ -165,29 +166,21 @@ export default function DossieApcnPage() {
   const lac = lacunas as DossiePayload | null;
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="p-2 rounded-lg border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div className="bg-indigo-600 p-2 rounded-lg text-white">
-              <BarChart2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Dossiê APCN</h1>
-              <p className="text-xs text-slate-400">Proposta de Doutorado — PPGCOM</p>
-            </div>
-          </div>
+    <div className="min-h-screen flex flex-col bg-[#0b0f19]">
+      <Suspense fallback={<header className="border-b border-[#1e293b] h-[120px] animate-pulse" />}>
+        <AppShellHeader section="dossie" />
+      </Suspense>
+
+      <div className="border-b border-[#1e293b] bg-[#0f172a]/50 px-4 sm:px-6 py-3">
+        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-slate-400">
+            Proposta de Doutorado — PPGCOM · visão institucional
+          </p>
           <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
             Dados reais do banco
           </span>
         </div>
-        <div className="flex flex-wrap gap-1 mt-4 overflow-x-auto pb-1">
+        <div className="max-w-[1400px] mx-auto flex flex-wrap gap-1 mt-3 overflow-x-auto pb-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -204,7 +197,7 @@ export default function DossieApcnPage() {
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       <main className="flex-1 p-6 space-y-6 max-w-[1400px] mx-auto w-full">
         <DossieFiltersBar

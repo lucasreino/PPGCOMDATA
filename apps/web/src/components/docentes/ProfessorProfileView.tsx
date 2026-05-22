@@ -97,7 +97,7 @@ export function ProfessorProfileView({
               </a>
             )}
             <Link
-              href={`/?professor_id=${prof.id}`}
+              href={`/?view=validacao&professor_id=${prof.id}`}
               className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-200"
             >
               <Settings className="w-3 h-3" />
