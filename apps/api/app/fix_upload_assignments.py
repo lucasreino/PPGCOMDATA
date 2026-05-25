@@ -26,7 +26,7 @@ from app.services.upload_assignment import (
     reassign_upload_record,
     resolve_professor_for_filename,
 )
-from app.utils_fix_linhas import PROFESSOR_DATA
+from app.services.professor_oficial import get_official_professor_data
 
 if os.path.exists("/workspace/data/lattes"):
     LATTES_SRC_DIR = "/workspace/data/lattes"
@@ -49,8 +49,8 @@ def _delete_upload_cascade(session: Session, upload: CurriculoUpload) -> None:
 
 
 def _expected_filename_hint(email: str) -> str:
-    for data in PROFESSOR_DATA:
-        if data["email"].lower() == email.lower():
+    for data in get_official_professor_data():
+        if (data.get("email") or "").lower() == email.lower():
             return normalize_filename(data["nome_completo"])
     return ""
 

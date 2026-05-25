@@ -11,7 +11,7 @@ from app.database import engine
 from app.config import settings
 from app.models.core import Professor, LinhaPesquisa
 from app.services.professor_lookup import find_professor, normalize_text
-from app.utils_fix_linhas import PROFESSOR_DATA
+from app.services.professor_oficial import get_official_professor_data
 from app.models.data import CurriculoUpload
 from app.models.enums import StatusProcessamento, StatusValidacao
 from app.services.pdf_processor import process_curriculo_pdf
@@ -118,7 +118,7 @@ def bootstrap():
             
             prof = None
             nome_norm = normalize_text(clean_name)
-            for official in PROFESSOR_DATA:
+            for official in get_official_professor_data():
                 if normalize_text(official["nome_completo"]) == nome_norm:
                     prof = find_professor(
                         session,
@@ -128,7 +128,7 @@ def bootstrap():
                     )
                     break
             if not prof:
-                for official in PROFESSOR_DATA:
+                for official in get_official_professor_data():
                     official_norm = normalize_text(official["nome_completo"])
                     if nome_norm in official_norm or official_norm in nome_norm:
                         prof = find_professor(

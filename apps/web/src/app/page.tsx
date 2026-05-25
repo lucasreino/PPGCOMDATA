@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -48,6 +48,7 @@ import { PendingValidationModal } from "@/components/validation/PendingValidatio
 import { ArtigosQualisModal } from "@/components/analytics/ArtigosQualisModal";
 import { OrientacoesModal } from "@/components/analytics/OrientacoesModal";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
+import { NovoDocenteModal } from "@/components/admin/NovoDocenteModal";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { groupProducoesByTipo } from "@/lib/producao-groups";
 import { printReportInPage } from "@/lib/report-print";
@@ -100,6 +101,7 @@ export default function Dashboard() {
   const [showPendingValidationModal, setShowPendingValidationModal] = useState(false);
   const [showArtigosQualisModal, setShowArtigosQualisModal] = useState(false);
   const [showOrientacoesModal, setShowOrientacoesModal] = useState(false);
+  const [showNovoDocenteModal, setShowNovoDocenteModal] = useState(false);
 
   // AI Report Generator filters, prompt & text
   const [reportProfessorId, setReportProfessorId] = useState<string>("todos");
@@ -182,50 +184,52 @@ export default function Dashboard() {
       });
   }, [user]);
 
-  // Fetch all professors when API is connected
-  useEffect(() => {
+  const loadProfessors = useCallback(async (preferId?: string) => {
     if (!apiConnected) return;
 
-    apiFetch("/professores/")
-      .then(res => {
-        if (!res.ok) throw new Error("Erro ao carregar docentes");
-        return res.json();
-      })
-      .then((data: any[]) => {
-        const mapped = data.map(p => ({
-          id: p.id,
-          nome_completo: p.nome_completo,
-          email: p.email,
-          id_lattes: p.id_lattes,
-          linha:
-            p.linha_pesquisa?.nome ??
-            linhasPesquisa.find((l) => l.id === p.linha_pesquisa_id)?.nome ??
-            "Não especificada",
-          tipo: p.tipo_docente
-            ? p.tipo_docente.charAt(0).toUpperCase() + p.tipo_docente.slice(1)
-            : "Permanente",
-          status: (p.status ? "validado" : "pendente") as "validado" | "pendente"
-        }));
+    try {
+      const res = await apiFetch("/professores/");
+      if (!res.ok) throw new Error("Erro ao carregar docentes");
+      const data: any[] = await res.json();
+      const mapped = data.map((p) => ({
+        id: p.id,
+        nome_completo: p.nome_completo,
+        email: p.email,
+        id_lattes: p.id_lattes,
+        linha:
+          p.linha_pesquisa?.nome ??
+          linhasPesquisa.find((l) => l.id === p.linha_pesquisa_id)?.nome ??
+          "Não especificada",
+        tipo: p.tipo_docente
+          ? p.tipo_docente.charAt(0).toUpperCase() + p.tipo_docente.slice(1)
+          : "Permanente",
+        status: (p.status ? "validado" : "pendente") as "validado" | "pendente",
+      }));
 
-        const seen = new Set<string>();
-        const unique = mapped.filter((p) => {
-          const key = (p.email || p.id_lattes || p.nome_completo || p.id).toLowerCase();
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        if (unique.length > 0) {
-          setProfessors(unique);
-          if (!unique.some(p => p.id === selectedProfId)) {
-            setSelectedProfId(unique[0].id);
-          }
-        }
-      })
-      .catch(err => {
-        console.error("Falha ao buscar docentes da API:", err);
+      const seen = new Set<string>();
+      const unique = mapped.filter((p) => {
+        const key = (p.email || p.id_lattes || p.nome_completo || p.id).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
       });
-  }, [apiConnected, apiUrl, linhasPesquisa]);
+
+      if (unique.length > 0) {
+        setProfessors(unique);
+        if (preferId && unique.some((p) => p.id === preferId)) {
+          setSelectedProfId(preferId);
+        } else if (!unique.some((p) => p.id === selectedProfId)) {
+          setSelectedProfId(unique[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Falha ao buscar docentes da API:", err);
+    }
+  }, [apiConnected, linhasPesquisa]);
+
+  useEffect(() => {
+    loadProfessors();
+  }, [loadProfessors]);
 
   useEffect(() => {
     const pid = searchParams.get("professor_id");
@@ -1203,7 +1207,13 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               })}
             </div>
 
-            <button className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-slate-900/80 hover:bg-slate-800/80 border border-slate-800 rounded-lg text-xs font-semibold text-slate-300 transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowNovoDocenteModal(true)}
+              disabled={!apiConnected}
+              title={apiConnected ? "Cadastrar novo docente" : "Conecte-se à API para cadastrar"}
+              className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/60 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-semibold text-indigo-200 transition-colors"
+            >
               <UserPlus className="w-4.5 h-4.5" />
               Novo Docente
             </button>
@@ -3064,6 +3074,16 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           </div>
         </div>
       )}
+
+      <NovoDocenteModal
+        open={showNovoDocenteModal}
+        onClose={() => setShowNovoDocenteModal(false)}
+        linhasPesquisa={linhasPesquisa}
+        onSuccess={(professorId, nome) => {
+          loadProfessors(professorId);
+          addAuditLog("cadastro", `Novo docente: ${nome} (${professorId}).`);
+        }}
+      />
 
       <PendingValidationModal
         open={showPendingValidationModal}

@@ -1,5 +1,5 @@
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlmodel import Session, select, func
 from sqlalchemy.orm import selectinload
 from typing import Any, Dict, List
@@ -17,8 +17,10 @@ from app.models.data import (
     PremioTitulo,
     GrupoPesquisaDocente,
 )
-from app.models.enums import StatusOrientacao
+from app.models.enums import StatusOrientacao, TipoDocente
 from app.auth import require_staff, get_current_user
+from app.schemas.professor_cadastro import ProfessorCadastroResponse
+from app.services.professor_cadastro import cadastrar_professor
 from app.schemas.professor import ProfessorListItem
 from app.schemas.professor_catalog import ProfessorCatalogItem
 from app.schemas.professor_resumo import (
@@ -151,6 +153,70 @@ async def create_professor(
     session.commit()
     session.refresh(professor)
     return professor
+
+
+@router.post("/cadastro", response_model=ProfessorCadastroResponse, status_code=status.HTTP_201_CREATED)
+async def cadastrar_professor_completo(
+    nome_completo: str = Form(...),
+    email: str | None = Form(None),
+    link_lattes: str | None = Form(None),
+    id_lattes: str | None = Form(None),
+    tipo_docente: str = Form("permanente"),
+    linha_pesquisa_id: str | None = Form(None),
+    grupo_pesquisa: str | None = Form(None),
+    tematicas: str | None = Form(None),
+    xml_curriculo: UploadFile | None = File(None),
+    foto: UploadFile | None = File(None),
+    session: Session = Depends(get_session),
+    _user=Depends(require_staff),
+):
+    """Cadastra docente com identificação, foto e importação opcional de XML Lattes."""
+    try:
+        tipo = TipoDocente(tipo_docente.strip().lower())
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tipo_docente inválido. Use: permanente, colaborador, visitante ou externo.",
+        )
+
+    try:
+        payload = cadastrar_professor(
+            session,
+            nome_completo=nome_completo,
+            email=email,
+            link_lattes=link_lattes,
+            id_lattes=id_lattes,
+            tipo_docente=tipo,
+            linha_pesquisa_id=linha_pesquisa_id,
+            grupo_pesquisa=grupo_pesquisa,
+            tematicas=tematicas,
+            xml_file=xml_curriculo,
+            foto_file=foto,
+        )
+    except ValueError as exc:
+        msg = str(exc)
+        code = status.HTTP_409_CONFLICT if "já cadastrado" in msg.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=msg) from exc
+
+    mensagem = "Docente cadastrado com sucesso e incluído no cadastro oficial do PPGCOM."
+    if payload.get("xml_importado"):
+        mensagem += " Currículo XML importado."
+    if payload.get("foto_url"):
+        mensagem += " Foto salva."
+
+    return ProfessorCadastroResponse(
+        professor_id=payload["professor_id"],
+        nome_completo=payload["nome_completo"],
+        id_lattes=payload.get("id_lattes"),
+        foto_url=payload.get("foto_url"),
+        xml_importado=bool(payload.get("xml_importado")),
+        upload_id=payload.get("upload_id"),
+        upload_status=payload.get("upload_status"),
+        metrics=payload.get("metrics"),
+        cadastro_oficial=bool(payload.get("cadastro_oficial", True)),
+        linha_oficial=payload.get("linha_oficial"),
+        mensagem=mensagem,
+    )
 
 
 @router.get("/{prof_id}/catalog", response_model=ProfessorCatalogItem)

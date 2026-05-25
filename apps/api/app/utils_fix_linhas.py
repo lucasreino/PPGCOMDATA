@@ -16,6 +16,7 @@ from app.models.core import Professor, LinhaPesquisa
 from app.models.enums import TipoDocente
 from app.services.professor_lookup import find_professor
 from app.services.professor_dedupe import merge_duplicate_professors
+from app.services.professor_oficial import get_official_professor_data
 
 LINE1_NAME = "Tecnologias, Audiovisual e Processos Regionais de Comunicação"
 LINE2_NAME = "Processos Comunicacionais, Cidadania e Identidades"
@@ -126,7 +127,7 @@ PROFESSOR_DATA = [
         "link_lattes": "http://lattes.cnpq.br/6186532880175192",
         "id_lattes": "6186532880175192",
         "linha": "linha2",
-        "tipo_docente": TipoDocente.COLABORADOR,
+        "tipo_docente": TipoDocente.PERMANENTE,
         "grupo_pesquisa": "Grupo de Estudos Cultura e Identidade na Contemporaneidade (GECI)",
         "tematicas": "Cultura popular; mediações; identidades; gênero",
     },
@@ -146,7 +147,7 @@ PROFESSOR_DATA = [
         "link_lattes": "http://lattes.cnpq.br/4061348210902950",
         "id_lattes": "4061348210902950",
         "linha": "linha2",
-        "tipo_docente": TipoDocente.COLABORADOR,
+        "tipo_docente": TipoDocente.PERMANENTE,
         "grupo_pesquisa": "EsTreMa / Laborejo",
         "tematicas": "Gêneros, sexualidades, corpos, Epistemologias da Comunicação",
     },
@@ -214,14 +215,15 @@ def run_precision_seeding():
         session.commit()
         session.refresh(l1)
         session.refresh(l2)
-        print(f"Linha 1: {l1.nome} ({len([d for d in PROFESSOR_DATA if d['linha'] == 'linha1'])} docentes)")
-        print(f"Linha 2: {l2.nome} ({len([d for d in PROFESSOR_DATA if d['linha'] == 'linha2'])} docentes)")
+        official_data = get_official_professor_data()
+        print(f"Linha 1: {l1.nome} ({len([d for d in official_data if d['linha'] == 'linha1'])} docentes)")
+        print(f"Linha 2: {l2.nome} ({len([d for d in official_data if d['linha'] == 'linha2'])} docentes)")
 
         profs = list(session.exec(select(Professor)).all())
-        official_emails = {d["email"].lower() for d in PROFESSOR_DATA}
+        official_emails = {d["email"].lower() for d in official_data if d.get("email")}
 
         print("\n--- Atualizando / criando docentes ---")
-        for data in PROFESSOR_DATA:
+        for data in official_data:
             linha_id = l1.id if data["linha"] == "linha1" else l2.id
             prof = find_professor(
                 session,

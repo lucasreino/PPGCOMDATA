@@ -11,7 +11,10 @@ from sqlmodel import Session, select
 from app.models.core import Professor
 from app.models.data import CurriculoUpload, PdfPage, PdfSection
 from app.services.professor_lookup import find_professor, normalize_text
-from app.utils_fix_linhas import PROFESSOR_DATA
+from app.services.professor_oficial import (
+    filename_rules_from_official_data,
+    get_official_professor_data,
+)
 
 # Ordem importa: padrões mais específicos primeiro
 _FILENAME_RULES: list[tuple[str, str]] = [
@@ -43,9 +46,19 @@ def normalize_filename(filename: str) -> str:
     return normalize_text(base)
 
 
+def _all_filename_rules() -> list[tuple[str, str]]:
+    seen: set[tuple[str, str]] = set()
+    rules: list[tuple[str, str]] = []
+    for pair in _FILENAME_RULES + filename_rules_from_official_data():
+        if pair not in seen:
+            seen.add(pair)
+            rules.append(pair)
+    return rules
+
+
 def resolve_email_from_filename(filename: str) -> Optional[str]:
     norm = normalize_filename(filename)
-    for needle, email in _FILENAME_RULES:
+    for needle, email in _all_filename_rules():
         if needle in norm:
             return email
     return None
@@ -57,7 +70,10 @@ def resolve_professor_for_filename(
     email = resolve_email_from_filename(filename)
     if not email:
         return None
-    official = next((d for d in PROFESSOR_DATA if d["email"].lower() == email.lower()), None)
+    official = next(
+        (d for d in get_official_professor_data() if (d.get("email") or "").lower() == email.lower()),
+        None,
+    )
     return find_professor(
         session,
         email=email,
