@@ -65,7 +65,7 @@ export function ProfessorProfileView({
 
   return (
     <div className="space-y-6">
-      <div className="glow-card rounded-2xl p-6 border border-slate-800 flex flex-col md:flex-row gap-6 items-start">
+      <div className="glow-card rounded-2xl p-6 border border-slate-200 flex flex-col md:flex-row gap-6 items-start">
         <ProfessorAvatar
           nome={prof.nome_completo}
           id={prof.id}
@@ -75,9 +75,9 @@ export function ProfessorProfileView({
         />
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-slate-900">{prof.nome_completo}</h1>
-          <p className="text-sm text-slate-400 mt-1">{linha}</p>
+          <p className="text-sm text-slate-600 mt-1">{linha}</p>
           <div className="flex flex-wrap gap-2 mt-3 text-[10px]">
-            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold uppercase">
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold uppercase">
               {tipo}
             </span>
             {prof.titulacao_maxima && (
@@ -95,7 +95,7 @@ export function ProfessorProfileView({
                 href={prof.link_lattes}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-400 hover:text-indigo-300"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
               >
                 Currículo Lattes
                 <ExternalLink className="w-3 h-3" />
@@ -103,7 +103,7 @@ export function ProfessorProfileView({
             )}
             <Link
               href={`/?view=validacao&professor_id=${prof.id}`}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-200"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900"
             >
               <Settings className="w-3 h-3" />
               Validar e editar dados
@@ -114,7 +114,7 @@ export function ProfessorProfileView({
 
       {resumo && <ResumoAcademicoCard resumo={resumo} />}
 
-      <div className="flex flex-wrap gap-1.5 pb-1 border-b border-slate-800">
+      <div className="flex flex-wrap gap-1.5 pb-1 border-b border-slate-200">
         {TABS.map((t) => {
           const n = countFor(t.id, dados);
           if (t.id !== "resumo" && n === 0) return null;
@@ -126,7 +126,7 @@ export function ProfessorProfileView({
               className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors ${
                 tab === t.id
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               }`}
             >
               {t.label}
@@ -304,10 +304,10 @@ function ResumoTab({
         {stats.map((s) => (
           <div
             key={s.label}
-            className="glow-card rounded-xl p-4 border border-slate-800 text-center"
+            className="glow-card rounded-xl p-4 border border-slate-200 text-center bg-white"
           >
-            <p className="text-2xl font-bold text-indigo-300">{s.value}</p>
-            <p className="text-[10px] text-slate-500 uppercase font-semibold mt-1">
+            <p className="text-2xl font-bold text-indigo-600">{s.value}</p>
+            <p className="text-[10px] text-slate-600 uppercase font-semibold mt-1">
               {s.label}
             </p>
           </div>
@@ -352,14 +352,14 @@ function RecordCard({
   body?: string;
 }) {
   return (
-    <div className="glow-card rounded-xl p-4 border border-slate-800">
-      <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase text-slate-400">
+    <div className="glow-card rounded-xl p-4 border border-slate-200">
+      <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-200 rounded font-bold uppercase text-slate-600">
         {badge}
       </span>
-      <h3 className="text-sm font-bold text-slate-200 mt-2">{title}</h3>
-      {meta && <p className="text-[11px] text-slate-500 mt-1">{meta}</p>}
+      <h3 className="text-sm font-bold text-slate-900 mt-2">{title}</h3>
+      {meta && <p className="text-[11px] text-slate-600 mt-1">{meta}</p>}
       {body && (
-        <p className="text-xs text-slate-400 mt-2 leading-relaxed">{body}</p>
+        <p className="text-xs text-slate-600 mt-2 leading-relaxed">{body}</p>
       )}
     </div>
   );
@@ -367,7 +367,7 @@ function RecordCard({
 
 function EmptyMsg({ text }: { text: string }) {
   return (
-    <p className="text-sm text-slate-500 text-center py-12 border border-dashed border-slate-800 rounded-xl">
+    <p className="text-sm text-slate-600 text-center py-12 border border-dashed border-slate-300 rounded-xl bg-white">
       {text}
     </p>
   );

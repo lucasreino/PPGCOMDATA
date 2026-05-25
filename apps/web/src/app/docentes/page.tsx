@@ -37,28 +37,30 @@ export default function DocentesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Corpo Docente</h2>
-        <p className="text-sm text-slate-400 mt-1">
+        <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Corpo Docente</h2>
+        <p className="text-sm text-slate-600 mt-1">
           Selecione um professor para ver o dossiê completo de produção acadêmica.
         </p>
       </div>
 
       <div className="relative mb-8 max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input
           type="search"
           placeholder="Buscar por nome ou linha..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-sm text-slate-200 placeholder:text-slate-500 focus:border-indigo-700 focus:outline-none"
+          className="input-field pl-10 shadow-sm"
         />
       </div>
 
       {loading && (
-        <p className="text-sm text-slate-500 text-center py-16">Carregando docentes...</p>
+        <p className="text-sm text-slate-600 text-center py-16">Carregando docentes...</p>
       )}
       {error && (
-        <p className="text-sm text-rose-400 text-center py-16">{error}</p>
+        <p className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-center max-w-md mx-auto">
+          {error}
+        </p>
       )}
       {!loading && !error && filtered.length === 0 && (
         <p className="text-sm text-slate-500 text-center py-16">

@@ -42,7 +42,7 @@ export function ProfessorAvatar({
 
   return (
     <div
-      className={`relative rounded-full overflow-hidden shrink-0 ring-2 ring-slate-800 ${sizeClasses[size]} ${className}`}
+      className={`relative rounded-full overflow-hidden shrink-0 ring-2 ring-slate-200 ${sizeClasses[size]} ${className}`}
     >
       {src ? (
         <img

@@ -77,7 +77,7 @@ export default function DocenteProfilePage() {
     <div>
       <Link
         href="/docentes"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-indigo-300 mb-6 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 mb-6 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Voltar ao corpo docente
@@ -87,7 +87,9 @@ export default function DocenteProfilePage() {
         <p className="text-sm text-slate-500 text-center py-20">Carregando perfil...</p>
       )}
       {error && (
-        <p className="text-sm text-rose-400 text-center py-20">{error}</p>
+        <p className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-center max-w-lg mx-auto">
+          {error}
+        </p>
       )}
       {!loading && !error && prof && dados && (
         <ProfessorProfileView prof={prof} dados={dados} resumo={resumo} />

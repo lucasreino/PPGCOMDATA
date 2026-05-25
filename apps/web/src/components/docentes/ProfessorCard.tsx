@@ -28,8 +28,8 @@ export function ProfessorCard({ prof }: { prof: ProfessorCatalog }) {
         <h2 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
           {prof.nome_completo}
         </h2>
-        <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">{linha}</p>
-        <span className="text-[10px] mt-2 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase font-semibold tracking-wider">
+        <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">{linha}</p>
+        <span className="text-[10px] mt-2 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase font-semibold tracking-wider">
           {tipo}
         </span>
       </div>
@@ -59,12 +59,12 @@ function Stat({
   value: number;
 }) {
   return (
-    <div className="bg-slate-900/50 rounded-lg px-2 py-1.5 border border-slate-850">
-      <span className="text-slate-500 flex items-center gap-1">
-        <Icon className="w-3 h-3" />
+    <div className="bg-slate-50 rounded-lg px-2 py-1.5 border border-slate-200">
+      <span className="text-slate-600 flex items-center gap-1">
+        <Icon className="w-3 h-3 text-indigo-500" />
         {label}
       </span>
-      <span className="text-slate-200 font-bold block mt-0.5">{value}</span>
+      <span className="text-slate-900 font-bold block mt-0.5">{value}</span>
     </div>
   );
 }
