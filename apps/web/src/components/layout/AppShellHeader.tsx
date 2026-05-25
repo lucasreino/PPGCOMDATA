@@ -54,7 +54,7 @@ function NavGroup({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-600 px-1">
+      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 px-1">
         {label}
       </span>
       <div className="flex flex-wrap items-center gap-1">{children}</div>
@@ -65,8 +65,8 @@ function NavGroup({
 function navBtnClass(active: boolean) {
   return `flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
     active
-      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
-      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+      ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/15"
+      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
   }`;
 }
 
@@ -142,7 +142,7 @@ export function AppShellHeader({
   const desktopNav = (
     <nav className="hidden lg:flex items-end gap-5">
       <NavGroup label="Gestão de dados">{operacaoLinks}</NavGroup>
-      <div className="w-px h-10 bg-slate-800 self-end mb-0.5" aria-hidden />
+      <div className="w-px h-10 bg-slate-200 self-end mb-0.5" aria-hidden />
       <NavGroup label="Docentes">
         <Link
           href="/docentes"
@@ -152,7 +152,7 @@ export function AppShellHeader({
           Corpo docente
         </Link>
       </NavGroup>
-      <div className="w-px h-10 bg-slate-800 self-end mb-0.5" aria-hidden />
+      <div className="w-px h-10 bg-slate-200 self-end mb-0.5" aria-hidden />
       <NavGroup label="Institucional">
         <Link href="/dossie-apcn" className={navBtnClass(onDossie)}>
           <BookOpen className="w-3.5 h-3.5 shrink-0" />
@@ -163,7 +163,7 @@ export function AppShellHeader({
   );
 
   const mobileNav = mobileOpen && (
-    <div className="lg:hidden border-t border-slate-800 pt-4 mt-4 space-y-4">
+    <div className="lg:hidden border-t border-slate-200 pt-4 mt-4 space-y-4">
       <NavGroup label="Gestão de dados">{operacaoLinks}</NavGroup>
       <NavGroup label="Docentes">
         <Link href="/docentes" className={navBtnClass(onDocentes)} onClick={() => setMobileOpen(false)}>
@@ -181,20 +181,20 @@ export function AppShellHeader({
   );
 
   return (
-    <header className="no-print border-b border-[#1e293b] bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40">
+    <header className="no-print border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-40 shadow-sm">
       <div className="px-4 sm:px-6 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3 min-w-0 group">
-            <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-600/20 shrink-0">
+            <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-md shadow-indigo-600/20 shrink-0">
               <BarChart2 className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-white truncate flex items-center gap-2 flex-wrap">
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 truncate flex items-center gap-2 flex-wrap">
                 <span>
-                  PPGCOM<span className="text-indigo-400">DATA</span>
+                  PPGCOM<span className="text-indigo-600">DATA</span>
                 </span>
                 <span
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300 font-semibold"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold"
                   title={
                     apiVersion && apiVersion !== APP_VERSION_LABEL
                       ? `Web ${APP_VERSION_LABEL} · API ${apiVersion}`
@@ -204,7 +204,7 @@ export function AppShellHeader({
                   {apiVersion ?? APP_VERSION_LABEL}
                 </span>
               </h1>
-              <p className="text-[10px] text-slate-500 truncate group-hover:text-slate-400 transition-colors">
+              <p className="text-[10px] text-slate-500 truncate group-hover:text-slate-600 transition-colors">
                 {onDossie
                   ? "Dossiê institucional APCN"
                   : onDocentes
@@ -216,11 +216,11 @@ export function AppShellHeader({
 
           <div className="flex items-center gap-2 sm:gap-3">
             {apiConnected !== undefined && (
-              <div className="hidden sm:flex items-center gap-2 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full text-[10px]">
+              <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full text-[10px]">
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${apiConnected ? "bg-emerald-500" : "bg-amber-500"}`}
                 />
-                <span className="text-slate-400">
+                <span className="text-slate-600">
                   {apiConnected ? "API" : "Offline"}
                 </span>
               </div>
@@ -235,7 +235,7 @@ export function AppShellHeader({
             <button
               type="button"
               onClick={logout}
-              className="hidden sm:flex items-center gap-1 text-[10px] text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-900/60 px-2.5 py-1.5 rounded-lg transition-colors"
+              className="hidden sm:flex items-center gap-1 text-[10px] text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 px-2.5 py-1.5 rounded-lg transition-colors"
               title="Sair"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export function AppShellHeader({
 
             <button
               type="button"
-              className="lg:hidden p-2 rounded-lg border border-slate-800 text-slate-400 hover:text-white"
+              className="lg:hidden p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               onClick={() => setMobileOpen((o) => !o)}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}

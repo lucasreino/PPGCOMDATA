@@ -3,16 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b0f19;
-  --foreground: #f8fafc;
-  --card: #131b2e;
-  --border: #1e293b;
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
+  --background: #f1f5f9;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-muted: #f8fafc;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-soft: #eef2ff;
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
   --muted: #64748b;
+  --hero-bg: #e2e8f0;
 }
 
 body {
@@ -22,43 +29,63 @@ body {
   overflow-x: hidden;
 }
 
-/* Custom premium scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: #e2e8f0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #94a3b8;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #6366f1;
 }
 
-/* Glowing utilities */
 .glow-card {
-  box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  background: linear-gradient(135deg, rgba(19, 27, 46, 0.9) 0%, rgba(15, 23, 42, 0.8) 100%);
-  backdrop-filter: blur(10px);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+  border: 1px solid var(--border);
+  background: var(--card);
 }
 
 .glow-card:hover {
-  border-color: rgba(99, 102, 241, 0.2);
-  box-shadow: 0 0 35px -5px rgba(99, 102, 241, 0.15);
+  border-color: #c7d2fe;
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.05),
+    0 8px 20px rgba(79, 70, 229, 0.08);
 }
 
-/* Subtle pulse */
+@layer components {
+  .field-box {
+    @apply bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-700;
+  }
+
+  .input-field {
+    @apply w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none transition-shadow;
+    @apply focus:ring-2 focus:ring-indigo-500/25 focus:border-indigo-400;
+  }
+
+  .btn-secondary {
+    @apply border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400;
+  }
+
+  .section-sticky {
+    @apply sticky top-24 z-10 py-2 bg-white/95 backdrop-blur-sm border-b border-slate-200;
+  }
+}
+
 @keyframes soft-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.65;
     transform: scale(0.98);
   }
 }
@@ -67,7 +94,6 @@ body {
   animation: soft-pulse 2s infinite ease-in-out;
 }
 
-/* Relatório — impressão na própria página (fallback) */
 .print-only {
   display: none;
 }
@@ -150,7 +176,6 @@ body {
     border-color: #94a3b8 !important;
   }
 
-  /* Painel Artigos Qualis */
   body.ppgcomdata-printing-qualis .flex-1.flex.flex-col.min-h-screen > :not(.artigos-qualis-modal-overlay) {
     display: none !important;
   }
@@ -210,7 +235,6 @@ body {
     background: #e2e8f0 !important;
   }
 
-  /* Painel Orientações */
   body.ppgcomdata-printing-orientacoes .flex-1.flex.flex-col.min-h-screen > :not(.orientacoes-modal-overlay) {
     display: none !important;
   }

@@ -106,6 +106,79 @@ def test_extended_xml_structure(tmp_path):
     assert len(root.findall(".//LIVRO-PUBLICADO-OU-ORGANIZADO")) == 1
 
 
+OFFLINE_MINI_XML = """<?xml version="1.0" encoding="ISO-8859-1"?>
+<CURRICULO-VITAE NUMERO-IDENTIFICADOR="5487269670962081" DATA-ATUALIZACAO="13052026">
+  <DADOS-GERAIS NOME-COMPLETO="Lucas Teste">
+    <FORMACAO-ACADEMICA-TITULACAO>
+      <GRADUACAO NOME-CURSO="Comunicacao" NOME-INSTITUICAO="UFMA"
+        ANO-DE-INICIO="2000" ANO-DE-CONCLUSAO="2004"/>
+    </FORMACAO-ACADEMICA-TITULACAO>
+    <ATUACOES-PROFISSIONAIS>
+      <PROJETO-DE-PESQUISA NOME-DO-PROJETO="Projeto Offline" ANO-INICIO="2020"
+        SITUACAO="EM_ANDAMENTO" NATUREZA="PESQUISA"
+        DESCRICAO-DO-PROJETO="Descricao offline"/>
+    </ATUACOES-PROFISSIONAIS>
+  </DADOS-GERAIS>
+  <OUTRA-PRODUCAO>
+    <ORIENTACOES-CONCLUIDAS>
+      <ORIENTACOES-CONCLUIDAS-PARA-MESTRADO>
+        <DADOS-BASICOS-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO
+          TITULO="Tese Offline" ANO="2021" NATUREZA="Dissertacao de mestrado"/>
+        <DETALHAMENTO-DE-ORIENTACOES-CONCLUIDAS-PARA-MESTRADO
+          NOME-DO-ORIENTADO="Aluno Offline" NOME-DA-INSTITUICAO="UFMA"/>
+      </ORIENTACOES-CONCLUIDAS-PARA-MESTRADO>
+    </ORIENTACOES-CONCLUIDAS>
+  </OUTRA-PRODUCAO>
+  <DADOS-COMPLEMENTARES>
+    <PARTICIPACAO-EM-EVENTOS-CONGRESSOS>
+      <PARTICIPACAO-EM-CONGRESSO>
+        <DADOS-BASICOS-DA-PARTICIPACAO-EM-CONGRESSO
+          TITULO="Congresso Offline" ANO="2022" TIPO-PARTICIPACAO="Apresentacao"/>
+      </PARTICIPACAO-EM-CONGRESSO>
+    </PARTICIPACAO-EM-EVENTOS-CONGRESSOS>
+  </DADOS-COMPLEMENTARES>
+</CURRICULO-VITAE>
+"""
+
+
+def test_offline_xml_nested_sections(tmp_path):
+    from app.services.lattes_xml_importer import _find_first
+
+    xml_path = tmp_path / "offline.xml"
+    xml_path.write_text(OFFLINE_MINI_XML, encoding="iso-8859-1")
+    root = _load_xml_root(xml_path)
+
+    formacao = _find_first(
+        root,
+        "FORMACAO-ACADEMICA-TITULACAO",
+        "DADOS-GERAIS/FORMACAO-ACADEMICA-TITULACAO",
+    )
+    atuacoes = _find_first(
+        root,
+        "ATUACOES-PROFISSIONAIS",
+        "DADOS-GERAIS/ATUACOES-PROFISSIONAIS",
+    )
+    orient = _find_first(
+        root,
+        "ORIENTACOES-CONCLUIDAS",
+        "OUTRA-PRODUCAO/ORIENTACOES-CONCLUIDAS",
+    )
+    eventos = _find_first(
+        root,
+        "PARTICIPACAO-EM-EVENTOS-CONGRESSOS",
+        "DADOS-COMPLEMENTARES/PARTICIPACAO-EM-EVENTOS-CONGRESSOS",
+    )
+
+    assert formacao is not None
+    assert len(formacao.findall("GRADUACAO")) == 1
+    assert atuacoes is not None
+    assert len(atuacoes.findall(".//PROJETO-DE-PESQUISA")) == 1
+    assert orient is not None
+    assert len(orient.findall("ORIENTACOES-CONCLUIDAS-PARA-MESTRADO")) == 1
+    assert eventos is not None
+    assert len(eventos.findall("PARTICIPACAO-EM-CONGRESSO")) == 1
+
+
 def test_split_orientacao_citation():
     from app.services.lattes_xml_importer import _split_orientacao_citation
 

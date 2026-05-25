@@ -21,9 +21,9 @@ from app.services.upload_pipeline import run_full_pipeline
 
 
 def reprocess_upload(session: Session, upload_id: str, section_delay: float) -> dict:
-    """Reprocessa um upload com o mesmo pipeline da API (PDF + seções + IA paralela)."""
+    """Reprocessa um upload com o mesmo pipeline da API (PDF + XML + reconciliação)."""
     del section_delay  # legado: paralelismo substitui pausa entre seções
-    return run_full_pipeline(session, upload_id)
+    return run_full_pipeline(session, upload_id, xml_only_if_available=True)
 
 
 def main() -> None:
@@ -114,8 +114,14 @@ def main() -> None:
             try:
                 result = reprocess_upload(session, upload.id, args.delay)
                 metrics = result.get("extração_ia") or {}
+                xml = result.get("importacao_xml") or {}
+                rec = result.get("reconciliacao") or {}
+                rec_totais = rec.get("totais") or {}
                 print(
                     f"    ✓ {result.get('status')} | seções={result.get('secoes_detectadas', 0)} | "
+                    f"xml={bool(xml.get('xml_importado'))} | "
+                    f"xml_confirmados={rec_totais.get('xml_confirmados', 0)} | "
+                    f"pdf_descartados={rec_totais.get('pdf_descartados', 0)} | "
                     f"orientações={metrics.get('orientacoes_extraidas', 0)} | "
                     f"produções={metrics.get('producoes_extraidas', 0)}"
                 )

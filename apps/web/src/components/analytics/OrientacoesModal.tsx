@@ -81,7 +81,7 @@ function OrientacaoListItem({ item }: { item: OrientacaoItem }) {
           : null;
 
   return (
-    <li className="p-3 rounded-lg border border-slate-800 bg-slate-950/40 text-xs">
+    <li className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs">
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <span
           className="px-1.5 py-0.5 rounded font-bold text-[10px]"
@@ -125,7 +125,7 @@ function GrupoSection({
   emptyMessage: string;
 }) {
   return (
-    <section className="rounded-xl border border-slate-800 p-4 space-y-4">
+    <section className="rounded-xl border border-slate-200 p-4 space-y-4">
       <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{title}</h3>
       {grupos.length === 0 ? (
         <p className="text-xs text-slate-500 py-4 text-center">{emptyMessage}</p>
@@ -242,7 +242,7 @@ export function OrientacoesModal({
     >
       <div
         id="orientacoes-print-root"
-        className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-800 bg-[#0f172a] shadow-2xl"
+        className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl"
       >
         <div className="print-only px-5 pt-5 pb-3 border-b border-slate-300 text-slate-800 text-[10pt]">
           <p className="font-bold text-indigo-900 text-sm">PPGCOMDATA — Orientações</p>
@@ -252,11 +252,11 @@ export function OrientacoesModal({
           </p>
         </div>
 
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-800 shrink-0">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 shrink-0">
           <div>
             <h2
               id="orientacoes-title"
-              className="text-base font-bold text-white flex items-center gap-2"
+              className="text-base font-bold text-slate-900 flex items-center gap-2"
             >
               <Users className="w-5 h-5 text-indigo-400" />
               Orientações — detalhamento
@@ -279,7 +279,7 @@ export function OrientacoesModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
               aria-label="Fechar"
             >
               <X className="w-5 h-5" />
@@ -305,8 +305,8 @@ export function OrientacoesModal({
           {!loading && !error && data && (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-center">
-                  <p className="text-2xl font-bold text-white">{data.total}</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-slate-900">{data.total}</p>
                   <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Total</p>
                 </div>
                 <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-3 text-center">
@@ -322,19 +322,19 @@ export function OrientacoesModal({
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Por tipo
                   </h3>
                   <SimpleBarChart data={tipoBarData} maxBars={12} color="#818cf8" />
                 </section>
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Concluídas × em andamento
                   </h3>
                   <SimpleBarChart data={statusBarData} maxBars={5} color="#10b981" />
                 </section>
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Por ano
                   </h3>
@@ -343,7 +343,7 @@ export function OrientacoesModal({
               </div>
 
               {Object.keys(data.professor_por_tipo).length > 0 && (
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Docente × tipo de orientação
                   </h3>

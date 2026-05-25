@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date
 import json
 
 from app.database import get_session
@@ -42,6 +41,15 @@ ENTIDADES_MAP = {
     "premios": PremioTitulo,
     "grupos_pesquisa": GrupoPesquisaDocente,
 }
+
+EDIT_PROTECTED_FIELDS = frozenset(
+    {"id", "created_at", "updated_at", "status_validacao", "professor_id", "curriculo_upload_id"}
+)
+
+
+def _snapshot_entity(obj) -> str:
+    """Serializa entidade para log de auditoria (UUID, datas e enums como JSON)."""
+    return json.dumps(obj.model_dump(exclude={"created_at", "updated_at"}, mode="json"))
 
 
 def _maybe_refresh_upload_status(session: Session, obj) -> None:
@@ -167,24 +175,17 @@ async def editar_e_confirmar_registro(
             detail=f"Registro ID {id} não encontrado na entidade '{entidade}'.",
         )
 
-    old_val_dict = obj.model_dump(exclude={"created_at", "updated_at"})
-    for k, v in old_val_dict.items():
-        if isinstance(v, (date, datetime)):
-            old_val_dict[k] = v.isoformat()
-    old_value_str = json.dumps(old_val_dict)
+    old_value_str = _snapshot_entity(obj)
 
     for field, value in updates.items():
-        if hasattr(obj, field):
-            setattr(obj, field, value)
+        if field in EDIT_PROTECTED_FIELDS or not hasattr(obj, field):
+            continue
+        setattr(obj, field, value)
 
     obj.status_validacao = StatusValidacao.EDITADO
     session.add(obj)
 
-    new_val_dict = obj.model_dump(exclude={"created_at", "updated_at"})
-    for k, v in new_val_dict.items():
-        if isinstance(v, (date, datetime)):
-            new_val_dict[k] = v.isoformat()
-    new_value_str = json.dumps(new_val_dict)
+    new_value_str = _snapshot_entity(obj)
 
     log = LogValidacao(
         user_id=str(current_user.id),

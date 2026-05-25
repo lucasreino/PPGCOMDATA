@@ -132,11 +132,11 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
       aria-modal="true"
       aria-labelledby="novo-docente-title"
     >
-      <div className="glow-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-700 shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/95">
+      <div className="glow-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-slate-200 shadow-2xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-white/95">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-indigo-400" />
-            <h2 id="novo-docente-title" className="text-sm font-bold text-slate-100 uppercase tracking-wider">
+            <h2 id="novo-docente-title" className="text-sm font-bold text-slate-800 uppercase tracking-wider">
               Novo docente
             </h2>
           </div>
@@ -163,7 +163,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                   required
                   value={form.nome_completo}
                   onChange={(e) => setField("nome_completo", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                   placeholder="Ex.: Maria Silva Santos"
                 />
               </label>
@@ -173,7 +173,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                   type="email"
                   value={form.email}
                   onChange={(e) => setField("email", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                   placeholder="nome@ufma.br"
                 />
               </label>
@@ -182,7 +182,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 <select
                   value={form.tipo_docente}
                   onChange={(e) => setField("tipo_docente", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                 >
                   {TIPOS_DOCENTE.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -196,7 +196,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 <input
                   value={form.link_lattes}
                   onChange={(e) => setField("link_lattes", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                   placeholder="http://lattes.cnpq.br/..."
                 />
               </label>
@@ -205,7 +205,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 <input
                   value={form.id_lattes}
                   onChange={(e) => setField("id_lattes", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                   placeholder="Somente números"
                 />
               </label>
@@ -214,7 +214,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 <select
                   value={form.linha_pesquisa_id}
                   onChange={(e) => setField("linha_pesquisa_id", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                 >
                   <option value="">— Selecionar —</option>
                   {linhaOptions.map((l) => (
@@ -229,7 +229,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 <input
                   value={form.grupo_pesquisa}
                   onChange={(e) => setField("grupo_pesquisa", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800"
                 />
               </label>
               <label className="md:col-span-2 space-y-1">
@@ -238,7 +238,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                   rows={2}
                   value={form.tematicas}
                   onChange={(e) => setField("tematicas", e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 resize-y"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 resize-y"
                 />
               </label>
             </div>
@@ -249,7 +249,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
               Currículo e foto
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-indigo-700 hover:bg-indigo-950/20 transition-colors min-h-[120px]">
+              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-700 hover:bg-indigo-50 transition-colors min-h-[120px]">
                 <Upload className="w-6 h-6 text-indigo-400" />
                 <span className="text-xs font-semibold text-slate-300 text-center">
                   {xmlFile ? xmlFile.name : "XML do Lattes (.xml)"}
@@ -265,7 +265,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
                 />
               </label>
 
-              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-700 rounded-xl cursor-pointer hover:border-indigo-700 hover:bg-indigo-950/20 transition-colors min-h-[120px]">
+              <label className="flex flex-col items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-indigo-700 hover:bg-indigo-50 transition-colors min-h-[120px]">
                 {fotoPreview ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -301,7 +301,7 @@ export function NovoDocenteModal({ open, onClose, linhasPesquisa, onSuccess }: P
             </p>
           )}
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}

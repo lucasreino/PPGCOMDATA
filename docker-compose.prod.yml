@@ -47,6 +47,7 @@ services:
       - SECTION_CHUNK_MAX_ITEMS=${SECTION_CHUNK_MAX_ITEMS:-8}
       - STORAGE_PROVIDER=${STORAGE_PROVIDER:-local}
       - STORAGE_BUCKET=${STORAGE_BUCKET:-ppgcomdata-uploads}
+      - LATTES_XML_DIR=${LATTES_XML_DIR:-/workspace/data/lattes-xml}
     volumes:
       - prod_uploads:/workspace/uploads
       - ./data:/workspace/data

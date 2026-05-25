@@ -174,10 +174,10 @@ export function PendingValidationModal({
       aria-modal="true"
       aria-labelledby="pending-validation-title"
     >
-      <div className="glow-card w-full max-w-3xl max-h-[85vh] flex flex-col rounded-xl border border-slate-800 bg-[#0f172a] shadow-2xl">
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-800">
+      <div className="glow-card w-full max-w-3xl max-h-[85vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200">
           <div>
-            <h2 id="pending-validation-title" className="text-base font-bold text-white">
+            <h2 id="pending-validation-title" className="text-base font-bold text-slate-900">
               Fila de validação pendente
             </h2>
             <p className="text-xs text-slate-400 mt-1">
@@ -190,7 +190,7 @@ export function PendingValidationModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             aria-label="Fechar"
           >
             <X className="w-5 h-5" />
@@ -249,7 +249,7 @@ export function PendingValidationModal({
                     return (
                       <li
                         key={id || `${key}-${profId}-${itemTitle(key, item)}`}
-                        className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-800 bg-slate-950/50 hover:border-indigo-800/60 transition-colors"
+                        className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-indigo-800/60 transition-colors"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-slate-200 truncate">
@@ -278,7 +278,7 @@ export function PendingValidationModal({
             ))}
         </div>
 
-        <div className="p-4 border-t border-slate-800 flex justify-between items-center text-xs text-slate-500">
+        <div className="p-4 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500">
           <span>{totalCount} item(ns) na fila</span>
           <button
             type="button"

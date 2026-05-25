@@ -23,6 +23,9 @@ from app.services.upload_cleanup import (
     mark_all_sections_extracted,
 )
 from app.services.upload_status import refresh_upload_validation_status
+from app.services.xml_pdf_reconciler import reconcile_upload_xml_pdf
+from app.services.cache_invalidation import invalidate_indicator_caches
+from app.services.qualis_catalog import apply_qualis_to_producoes
 
 logger = logging.getLogger("ppgcomdata.upload_pipeline")
 
@@ -130,8 +133,15 @@ def run_full_pipeline(
                 elif err:
                     logger.error("Falha seção: %s", err)
 
+    reconcile_result = None
+    if xml_result.get("xml_importado"):
+        reconcile_result = reconcile_upload_xml_pdf(session, upload_id).to_dict()
+
+    qualis_stats = apply_qualis_to_producoes(session)
+
     refresh_upload_validation_status(session, upload_id)
     session.refresh(upload)
+    invalidate_indicator_caches()
 
     return {
         "status": "sucesso",
@@ -142,6 +152,8 @@ def run_full_pipeline(
         "secoes_xml_sem_ia": xml_sections_marked,
         "modo_somente_xml": xml_only_mode,
         "workers": workers,
+        "reconciliacao": reconcile_result,
+        "qualis": qualis_stats,
     }
 
 

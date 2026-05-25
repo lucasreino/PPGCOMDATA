@@ -34,47 +34,47 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-6 bg-hero-bg overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center p-6 bg-slate-100 overflow-hidden">
       <SplineHeroBackground />
-      <div className="relative z-10 w-full max-w-md glow-card rounded-2xl p-8 border border-slate-800">
+      <div className="relative z-10 w-full max-w-md glow-card rounded-2xl p-8 border border-slate-200 shadow-lg">
         <div className="flex items-center gap-3 mb-8">
           <div className="bg-indigo-600 p-2 rounded-lg text-white">
             <BarChart2 className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">PPGCOMDATA</h1>
-            <p className="text-xs text-slate-400">Acesso ao painel institucional</p>
+            <h1 className="text-xl font-bold text-slate-900">PPGCOMDATA</h1>
+            <p className="text-xs text-slate-600">Acesso ao painel institucional</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+            <label className="text-xs text-slate-600 font-semibold uppercase tracking-wider">
               E-mail
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-shadow"
+              className="input-field mt-1"
               required
             />
           </div>
           <div>
-            <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+            <label className="text-xs text-slate-600 font-semibold uppercase tracking-wider">
               Senha
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-shadow"
+              className="input-field mt-1"
               required
             />
           </div>
 
           {error && (
-            <p className="text-xs text-rose-400 bg-rose-950/30 border border-rose-900/50 rounded-lg px-3 py-2">
+            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
               {error}
             </p>
           )}
@@ -90,7 +90,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-[11px] text-slate-500 text-center">
           Primeiro acesso? Execute{" "}
-          <code className="text-indigo-300">python -m app.create_admin</code> na API.
+          <code className="text-indigo-700 bg-indigo-50 px-1 rounded">python -m app.create_admin</code> na API.
         </p>
       </div>
     </div>

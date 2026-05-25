@@ -13,14 +13,14 @@ import {
 
 export function ConfidenceBadge({ level }: { level: "alta" | "media" | "baixa" }) {
   const styles = {
-    alta: "bg-emerald-950/60 text-emerald-400 border-emerald-900/60",
-    media: "bg-amber-950/60 text-amber-400 border-amber-900/60",
-    baixa: "bg-purple-950/60 text-purple-400 border-purple-900/60",
+    alta: "bg-emerald-50 text-emerald-800 border-emerald-200",
+    media: "bg-amber-50 text-amber-800 border-amber-200",
+    baixa: "bg-violet-50 text-violet-800 border-violet-200",
   };
 
   return (
     <span
-      className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border shadow-sm ${styles[level]}`}
+      className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border ${styles[level]}`}
     >
       IA: {level}
     </span>
@@ -31,10 +31,10 @@ export function OriginalFragment({ text }: { text: string }) {
   const [show, setShow] = useState(false);
 
   return (
-    <div className="mt-4 pt-3.5 border-t border-slate-900/80">
+    <div className="mt-4 pt-3.5 border-t border-slate-200">
       <button
         onClick={() => setShow(!show)}
-        className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-indigo-400 font-semibold transition-colors outline-none"
+        className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-indigo-600 font-semibold transition-colors outline-none"
       >
         {show ? (
           <>
@@ -49,7 +49,7 @@ export function OriginalFragment({ text }: { text: string }) {
         )}
       </button>
       {show && (
-        <blockquote className="mt-2.5 p-3 rounded bg-slate-950 border-l-2 border-slate-800 text-[10.5px] italic text-slate-500 leading-relaxed font-mono">
+        <blockquote className="mt-2.5 p-3 rounded-lg bg-slate-50 border-l-4 border-indigo-300 text-[10.5px] italic text-slate-600 leading-relaxed font-mono">
           &quot;{text}&quot;
         </blockquote>
       )}
@@ -69,19 +69,19 @@ export function ActionPanel({
   onDiscard: () => void;
 }) {
   return (
-    <div className="mt-5 pt-3.5 border-t border-slate-900/80 flex flex-wrap justify-between items-center gap-3">
-      <div className="text-[10px] flex items-center gap-1 text-slate-500">
+    <div className="mt-5 pt-3.5 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3">
+      <div className="text-[10px] flex items-center gap-1 text-slate-600">
         <Info className="w-3.5 h-3.5" />
         Status da Validação:
         <span
-          className={`font-bold capitalize ml-0.5 px-1 rounded ${
+          className={`font-bold capitalize ml-0.5 px-1.5 py-0.5 rounded ${
             status === "confirmado"
-              ? "text-emerald-400 bg-emerald-950/30"
+              ? "text-emerald-800 bg-emerald-100"
               : status === "editado"
-              ? "text-indigo-400 bg-indigo-950/30"
+              ? "text-indigo-800 bg-indigo-100"
               : status === "descartado"
-              ? "text-rose-400 bg-rose-950/30"
-              : "text-amber-400 bg-amber-950/30"
+              ? "text-rose-800 bg-rose-100"
+              : "text-amber-800 bg-amber-100"
           }`}
         >
           {status}
@@ -91,7 +91,7 @@ export function ActionPanel({
         {status !== "descartado" && (
           <button
             onClick={onDiscard}
-            className="py-1 px-2.5 bg-slate-900/60 hover:bg-rose-950/20 border border-slate-800 hover:border-rose-900/60 text-[10px] text-slate-400 hover:text-rose-400 font-semibold rounded-lg transition-all flex items-center gap-1.5"
+            className="py-1 px-2.5 bg-white hover:bg-rose-50 border border-slate-300 hover:border-rose-300 text-[10px] text-slate-600 hover:text-rose-700 font-semibold rounded-lg transition-all flex items-center gap-1.5"
           >
             <Trash2 className="w-3.5 h-3.5" />
             Descartar
@@ -99,7 +99,7 @@ export function ActionPanel({
         )}
         <button
           onClick={onEdit}
-          className="py-1 px-2.5 bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-900/60 text-[10px] text-slate-400 hover:text-indigo-400 font-semibold rounded-lg transition-all flex items-center gap-1.5"
+          className="py-1 px-2.5 bg-white hover:bg-indigo-50 border border-slate-300 hover:border-indigo-300 text-[10px] text-slate-600 hover:text-indigo-700 font-semibold rounded-lg transition-all flex items-center gap-1.5"
         >
           <Edit2 className="w-3.5 h-3.5" />
           Corrigir
@@ -107,7 +107,7 @@ export function ActionPanel({
         {status === "pendente" && (
           <button
             onClick={onConfirm}
-            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white rounded-lg shadow-md shadow-emerald-950/20 transition-all flex items-center gap-1.5"
+            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white rounded-lg shadow-sm transition-all flex items-center gap-1.5"
           >
             <Check className="w-3.5 h-3.5" />
             Confirmar
@@ -120,8 +120,8 @@ export function ActionPanel({
 
 export function EmptyState({ tab }: { tab: string }) {
   return (
-    <div className="glow-card rounded-xl p-8 text-center text-slate-500 text-xs">
-      <FileText className="w-10 h-10 text-slate-600/80 mx-auto mb-3" />
+    <div className="glow-card rounded-xl p-8 text-center text-slate-600 text-xs">
+      <FileText className="w-10 h-10 text-slate-400 mx-auto mb-3" />
       Nenhum {tab} cadastrado ou processado ainda para este docente.
     </div>
   );
@@ -146,7 +146,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
       }
       if (matchText.startsWith("**") && matchText.endsWith("**")) {
         parts.push(
-          <strong key={matchIndex} className="text-white font-extrabold">
+          <strong key={matchIndex} className="text-slate-900 font-extrabold">
             {matchText.slice(2, -2)}
           </strong>
         );
@@ -154,7 +154,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
         parts.push(
           <code
             key={matchIndex}
-            className="bg-slate-900 border border-slate-800 text-indigo-300 font-mono px-1 rounded text-[11px]"
+            className="bg-slate-100 border border-slate-200 text-indigo-700 font-mono px-1 rounded text-[11px]"
           >
             {matchText.slice(1, -1)}
           </code>
@@ -178,7 +178,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
   const flushList = (key: string) => {
     if (inList && listItems.length > 0) {
       renderedBlocks.push(
-        <ul key={`ul-${key}`} className="list-disc pl-5 my-3 space-y-1.5 text-slate-350">
+        <ul key={`ul-${key}`} className="list-disc pl-5 my-3 space-y-1.5 text-slate-700">
           {listItems}
         </ul>
       );
@@ -190,27 +190,27 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
   const flushTable = (key: string) => {
     if (inTable && (tableHeaders.length > 0 || tableRows.length > 0)) {
       renderedBlocks.push(
-        <div key={`table-wrapper-${key}`} className="overflow-x-auto my-4 rounded-lg border border-slate-850">
-          <table className="min-w-full divide-y divide-slate-850 text-xs">
-            <thead className="bg-slate-900/60">
+        <div key={`table-wrapper-${key}`} className="overflow-x-auto my-4 rounded-lg border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 text-xs">
+            <thead className="bg-slate-100">
               <tr>
                 {tableHeaders.map((h, i) => (
                   <th
                     key={i}
-                    className="px-4 py-2 text-left font-bold text-slate-300 uppercase tracking-wider border-r border-slate-850 last:border-r-0"
+                    className="px-4 py-2 text-left font-bold text-slate-700 uppercase tracking-wider border-r border-slate-200 last:border-r-0"
                   >
                     {parseInline(h)}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900 bg-slate-950/20">
+            <tbody className="divide-y divide-slate-100 bg-white">
               {tableRows.map((row, ri) => (
-                <tr key={ri} className="hover:bg-slate-900/20 transition-colors">
+                <tr key={ri} className="hover:bg-slate-50 transition-colors">
                   {row.map((cell, ci) => (
                     <td
                       key={ci}
-                      className="px-4 py-2.5 text-slate-300 border-r border-slate-900 last:border-r-0"
+                      className="px-4 py-2.5 text-slate-700 border-r border-slate-100 last:border-r-0"
                     >
                       {parseInline(cell)}
                     </td>
@@ -264,7 +264,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
       renderedBlocks.push(
         <h1
           key={`h1-${i}`}
-          className="text-lg font-extrabold text-white mt-5 mb-3 pb-1.5 border-b border-slate-900 uppercase tracking-wide"
+          className="text-lg font-extrabold text-slate-900 mt-5 mb-3 pb-1.5 border-b border-slate-200 uppercase tracking-wide"
         >
           {parseInline(line.substring(2))}
         </h1>
@@ -273,7 +273,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
       renderedBlocks.push(
         <h2
           key={`h2-${i}`}
-          className="text-sm font-extrabold text-indigo-400 mt-4 mb-2 uppercase tracking-wider flex items-center gap-2"
+          className="text-sm font-extrabold text-indigo-700 mt-4 mb-2 uppercase tracking-wider flex items-center gap-2"
         >
           {parseInline(line.substring(3))}
         </h2>
@@ -282,7 +282,7 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
       renderedBlocks.push(
         <h3
           key={`h3-${i}`}
-          className="text-xs font-bold text-slate-300 mt-3 mb-1.5 uppercase tracking-widest"
+          className="text-xs font-bold text-slate-700 mt-3 mb-1.5 uppercase tracking-widest"
         >
           {parseInline(line.substring(4))}
         </h3>
@@ -291,16 +291,16 @@ export function SimpleMarkdownRenderer({ content }: { content: string }) {
       renderedBlocks.push(
         <blockquote
           key={`bq-${i}`}
-          className="my-3 p-3 bg-slate-900/40 border-l-2 border-indigo-600 rounded-r-lg text-slate-400 italic text-[11px] leading-relaxed"
+          className="my-3 p-3 bg-indigo-50 border-l-4 border-indigo-400 rounded-r-lg text-slate-600 italic text-[11px] leading-relaxed"
         >
           {parseInline(line.substring(2))}
         </blockquote>
       );
     } else if (line === "---") {
-      renderedBlocks.push(<hr key={`hr-${i}`} className="my-4 border-slate-900" />);
+      renderedBlocks.push(<hr key={`hr-${i}`} className="my-4 border-slate-200" />);
     } else if (line.length > 0) {
       renderedBlocks.push(
-        <p key={`p-${i}`} className="my-2.5 text-slate-350 leading-relaxed">
+        <p key={`p-${i}`} className="my-2.5 text-slate-700 leading-relaxed">
           {parseInline(line)}
         </p>
       );

@@ -262,38 +262,20 @@ export default function Dashboard() {
     setLoading(true);
     Promise.all([
       apiFetch(`/validacao/pendentes?professor_id=${profId}`),
-      apiFetch(`/professores/${profId}/orientacoes`),
-      apiFetch(`/professores/${profId}/formacoes`),
     ])
-      .then(async ([pendentesRes, orientRes, formRes]) => {
+      .then(async ([pendentesRes]) => {
         if (!pendentesRes.ok) throw new Error("Erro ao carregar dados do docente");
         const data = sortEntityPayload(await pendentesRes.json());
         setProjetos(data.projetos || []);
         setEventos(data.eventos || []);
         setProducoes(data.producoes || []);
         setFinanciamentos(data.financiamentos || []);
+        setOrientacoes(data.orientacoes || []);
+        setFormacoes(data.formacoes_academicas || []);
         setProducoesTecnicas(data.producoes_tecnicas || []);
         setPremios(data.premios || []);
         setGruposPesquisa(data.grupos_pesquisa || []);
         setLacunas(data.lacunas || []);
-
-        if (orientRes.ok) {
-          const orientData = await orientRes.json();
-          setOrientacoes(
-            orientData.length > 0 ? orientData : data.orientacoes || []
-          );
-        } else {
-          setOrientacoes(data.orientacoes || []);
-        }
-
-        if (formRes.ok) {
-          const formData = await formRes.json();
-          setFormacoes(
-            formData.length > 0 ? formData : data.formacoes_academicas || []
-          );
-        } else {
-          setFormacoes(data.formacoes_academicas || []);
-        }
 
         setLoading(false);
       })
@@ -681,8 +663,11 @@ export default function Dashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates)
       })
-        .then(res => {
-          if (!res.ok) throw new Error("Falha ao salvar edição");
+        .then(async (res) => {
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => ({}));
+            throw new Error(parseApiErrorDetail(errBody.detail, "Falha ao salvar edição"));
+          }
           return res.json();
         })
         .then(() => {
@@ -711,7 +696,7 @@ export default function Dashboard() {
         })
         .catch(err => {
           console.error("Erro ao salvar edição:", err);
-          alert("Erro ao salvar edição no servidor.");
+          alert(err instanceof Error ? err.message : "Erro ao salvar edição no servidor.");
         });
       return;
     }
@@ -1157,7 +1142,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
       {/* 📊 Dashboard Core */}
       {mainTab === "validacao" && (
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn">
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-50">
         
         {/* Left Side: Professor Selection & Lattes Upload (3 Cols) */}
         <div className="lg:col-span-3 space-y-6">
@@ -1165,8 +1150,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           {/* Professors Card */}
           <div className="glow-card rounded-xl p-5">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold tracking-wider text-slate-300 uppercase">Corpo Docente</h2>
-              <span className="text-xs px-2 py-0.5 bg-slate-800 rounded text-slate-400 font-semibold">{professors.length}</span>
+              <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase">Corpo Docente</h2>
+              <span className="text-xs px-2 py-0.5 bg-slate-100 rounded text-slate-400 font-semibold">{professors.length}</span>
             </div>
             
             <div className="space-y-3">
@@ -1178,26 +1163,26 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     onClick={() => setSelectedProfId(p.id)}
                     className={`w-full text-left p-3 rounded-lg border transition-all duration-200 flex flex-col ${
                       isSelected 
-                        ? "bg-indigo-950/40 border-indigo-700/80 shadow-md shadow-indigo-950/20" 
-                        : "bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/70"
+                        ? "bg-indigo-50 border-indigo-300 shadow-sm" 
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="font-semibold text-sm text-slate-200">{p.nome_completo}</span>
+                      <span className="font-semibold text-sm text-slate-900">{p.nome_completo}</span>
                       <span className={`w-2 h-2 rounded-full ${
                         p.status === "validado" ? "bg-emerald-500" : p.status === "processado" ? "bg-blue-500 animate-pulse" : "bg-amber-500"
                       }`}></span>
                     </div>
                     <span className="text-xs text-slate-400 mt-1">{p.linha}</span>
                     
-                    <div className="flex justify-between items-center w-full mt-2.5 pt-2 border-t border-slate-900 text-[10px]">
+                    <div className="flex justify-between items-center w-full mt-2.5 pt-2 border-t border-slate-200 text-[10px]">
                       <span className="text-slate-500 font-medium">{p.tipo}</span>
                       <span className={`px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
                         p.status === "validado" 
-                          ? "bg-emerald-950/60 text-emerald-400 border border-emerald-900/60" 
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200" 
                           : p.status === "processado" 
-                          ? "bg-blue-950/60 text-blue-400 border border-blue-900/60"
-                          : "bg-amber-950/60 text-amber-400 border border-amber-900/60"
+                          ? "bg-blue-50 text-blue-800 border border-blue-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
                       }`}>
                         {p.status}
                       </span>
@@ -1212,7 +1197,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               onClick={() => setShowNovoDocenteModal(true)}
               disabled={!apiConnected}
               title={apiConnected ? "Cadastrar novo docente" : "Conecte-se à API para cadastrar"}
-              className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-indigo-950/50 hover:bg-indigo-900/60 border border-indigo-800/60 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-semibold text-indigo-200 transition-colors"
+              className="w-full mt-4 flex items-center justify-center gap-2 py-2 px-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-xs font-semibold text-indigo-700 transition-colors"
             >
               <UserPlus className="w-4.5 h-4.5" />
               Novo Docente
@@ -1221,12 +1206,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
           {/* Lattes Upload Card */}
           <div className="glow-card rounded-xl p-5">
-            <h2 className="text-sm font-semibold tracking-wider text-slate-300 uppercase mb-4">Upload do Lattes</h2>
+            <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase mb-4">Upload do Lattes</h2>
             
             <div className="space-y-4">
               <div 
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-800 hover:border-indigo-800 hover:bg-indigo-950/10 rounded-xl p-6 text-center cursor-pointer transition-all duration-200"
+                className="border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 rounded-xl p-6 text-center cursor-pointer transition-all duration-200"
               >
                 <input 
                   type="file" 
@@ -1245,7 +1230,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               </div>
 
               {isProcessing && (
-                <div className="space-y-2 p-3 bg-slate-950 rounded-lg border border-slate-800">
+                <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-800">
                   <div className="flex justify-between items-center text-[10px]">
                     <span className="text-indigo-400 font-semibold">{processingStep}</span>
                     <span className="text-slate-400 font-bold">{uploadProgress}%</span>
@@ -1265,7 +1250,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 className={`w-full py-2.5 px-4 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 ${
                   selectedFile && !isProcessing
                     ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 cursor-pointer"
-                    : "bg-slate-800 text-slate-500 cursor-not-allowed"
+                    : "bg-slate-100 text-slate-500 cursor-not-allowed"
                 }`}
               >
                 {isProcessing ? (
@@ -1305,7 +1290,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           <ResumoAcademicoCard resumo={resumoAcademico} />
           
           {/* Tabs navigation */}
-          <div className="bg-[#0f172a]/50 p-1 border border-[#1e293b] rounded-xl flex flex-wrap gap-1">
+          <div className="bg-white p-1 border border-slate-200 shadow-sm rounded-xl flex flex-wrap gap-1">
             {VALIDATION_TABS.map((tab) => {
               const count =
                 tab === "projetos" ? projetos.length
@@ -1339,7 +1324,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   {tab === "grupos_pesquisa" && <Network className="w-3.5 h-3.5" />}
                   {tabLabel(tab)}
                   <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                    activeTab === tab ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400"
+                    activeTab === tab ? "bg-indigo-500 text-white" : "bg-slate-100 text-slate-400"
                   }`}>
                     {count}
                   </span>
@@ -1367,9 +1352,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div 
                 key={item.id} 
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40 hover:opacity-70" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60 hover:opacity-70" : "border-slate-200"
                 }`}
               >
                 {/* Visual Status Indicator tag */}
@@ -1383,29 +1368,29 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 text-slate-700 rounded font-bold uppercase tracking-wider">
                       {item.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-1">{item.titulo}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-1">{item.titulo}</h3>
                   </div>
 
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
 
-                <p className="text-xs text-slate-400 mt-3.5 leading-relaxed bg-slate-950/40 p-2.5 rounded border border-slate-900">
+                <p className="text-xs text-slate-400 mt-3.5 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                   {item.descricao}
                 </p>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Vigência</span>
                     <span className="font-semibold">{item.ano_inicio} — {item.ano_fim || "Atual"}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Papel</span>
                     <span className="font-semibold">{item.papel_docente}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2 md:col-span-1">
+                  <div className="field-box col-span-2 md:col-span-1">
                     <span className="text-[9px] text-slate-500 block">Fomento</span>
                     <span className={`font-semibold ${item.financiamento_mencionado ? "text-emerald-400" : "text-slate-400"}`}>
                       {item.agencia_fomento || (item.financiamento_mencionado ? "Sim (Verificar)" : "Nenhum")}
@@ -1431,9 +1416,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div 
                 key={item.id} 
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="absolute top-0 left-0 right-0 h-1 flex">
@@ -1446,30 +1431,30 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 text-slate-700 rounded font-bold uppercase tracking-wider">
                       {item.eh_organizacao ? "organização" : item.tipo_participacao}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-1">{item.nome_evento}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-1">{item.nome_evento}</h3>
                   </div>
 
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
 
-                <div className="text-xs text-slate-400 mt-3 bg-slate-950/40 p-2.5 rounded border border-slate-900">
+                <div className="text-xs text-slate-400 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                   <span className="text-[9px] text-slate-500 block mb-0.5">Trabalho Apresentado</span>
-                  <span className="font-semibold text-slate-200">"{item.titulo_trabalho}"</span>
+                  <span className="font-semibold text-slate-800">"{item.titulo_trabalho}"</span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3 mt-4 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Ano</span>
                     <span className="font-semibold">{item.ano}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Localidade</span>
                     <span className="font-semibold">{item.cidade}, {item.pais}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Auxílio Mobilidade</span>
                     <span className={`font-semibold ${item.financiamento_mencionado ? "text-emerald-400" : "text-slate-500"}`}>
                       {item.fonte_financiamento || "Não consta"}
@@ -1491,11 +1476,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             {/* PRODUÇÕES — agrupadas por tipo */}
             {activeTab === "producoes" && producoesPorTipo.map((group) => (
               <section key={group.tipo} className="space-y-4">
-                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 bg-[#0b1120]/90 backdrop-blur-sm border-b border-slate-800/80">
+                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 section-sticky">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
                     {group.label}
                   </h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 font-semibold">
                     {group.items.length}
                   </span>
                 </div>
@@ -1503,9 +1488,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <div
                     key={item.id}
                     className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
-                      item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                      item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                      item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                      item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                      item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                      item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                     }`}
                   >
                     <div className="absolute top-0 left-0 right-0 h-1 flex">
@@ -1518,34 +1503,34 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                     <div className="flex justify-between items-start gap-4">
                       <div className="space-y-1">
-                        <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 text-slate-700 rounded font-bold uppercase tracking-wider">
                           {item.tipo}
                         </span>
-                        <h3 className="text-sm font-bold text-slate-200 mt-1">{item.titulo}</h3>
+                        <h3 className="text-sm font-bold text-slate-900 mt-1">{item.titulo}</h3>
                       </div>
 
                       <ConfidenceBadge level={item.confianca_ia} />
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-[11px] text-slate-300">
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">Ano</span>
                         <span className="font-semibold">{item.ano}</span>
                       </div>
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2 md:col-span-1">
+                      <div className="field-box col-span-2 md:col-span-1">
                         <span className="text-[9px] text-slate-500 block">Veículo / Editora</span>
                         <span className="font-semibold truncate block">{item.veiculo}</span>
                       </div>
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">DOI</span>
                         <span className="font-semibold font-mono text-[10px] truncate block text-indigo-400">{item.doi || "N/D"}</span>
                       </div>
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">ISSN / ISBN</span>
                         <span className="font-semibold font-mono text-[10px] truncate block">{item.issn || "N/D"}</span>
                       </div>
                       {item.qualis && (
-                        <div className="bg-indigo-950/40 p-2 rounded border border-indigo-900">
+                        <div className="bg-indigo-50 p-2 rounded-lg border border-indigo-200">
                           <span className="text-[9px] text-indigo-400 block font-bold">Qualis</span>
                           <span className="font-bold text-indigo-300">{item.qualis}</span>
                         </div>
@@ -1568,11 +1553,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             {/* ORIENTAÇÕES — agrupadas por tipo */}
             {activeTab === "orientacoes" && orientacoesPorTipo.map((group) => (
               <section key={group.tipo} className="space-y-4">
-                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 bg-[#0b1120]/90 backdrop-blur-sm border-b border-slate-800/80">
+                <div className="flex items-center gap-2 sticky top-24 z-10 py-2 section-sticky">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-300">
                     {group.label}
                   </h3>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 font-semibold">
                     {group.items.length}
                   </span>
                 </div>
@@ -1580,17 +1565,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <div
                     key={item.id}
                     className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                      item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                      item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                      item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                      item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                      item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                      item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                     }`}
                   >
                     <div className="flex justify-between items-start gap-4">
                       <div>
-                        <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                        <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold uppercase">
                           {item.status}
                         </span>
-                        <h3 className="text-sm font-bold text-slate-200 mt-2">
+                        <h3 className="text-sm font-bold text-slate-900 mt-2">
                           {item.nome_orientando || "Orientando não identificado"}
                         </h3>
                         {item.titulo_trabalho && (
@@ -1600,15 +1585,15 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       <ConfidenceBadge level={item.confianca_ia} />
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">Início</span>
                         {item.ano_inicio ?? "—"}
                       </div>
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">Conclusão</span>
                         {item.ano_conclusao ?? "—"}
                       </div>
-                      <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                      <div className="field-box">
                         <span className="text-[9px] text-slate-500 block">Papel</span>
                         {item.papel}
                       </div>
@@ -1630,27 +1615,27 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div
                 key={item.id}
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold uppercase">
                       {item.nivel}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.curso || "Curso não informado"}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">{item.curso || "Curso não informado"}</h3>
                     <p className="text-[11px] text-slate-400">{item.instituicao}</p>
                   </div>
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Período</span>
                     {item.ano_inicio ?? "?"} — {item.ano_fim ?? "?"}
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Área</span>
                     {item.area_conhecimento || "—"}
                   </div>
@@ -1670,30 +1655,30 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div
                 key={item.id}
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold uppercase">
                       {item.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.titulo}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">{item.titulo}</h3>
                     {item.instituicao && <p className="text-[11px] text-slate-400 mt-1">{item.instituicao}</p>}
                   </div>
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
                 {item.descricao && (
-                  <p className="text-xs text-slate-400 mt-3 bg-slate-950/40 p-2.5 rounded border border-slate-900">{item.descricao}</p>
+                  <p className="text-xs text-slate-400 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{item.descricao}</p>
                 )}
                 <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Ano</span>
                     {item.ano ?? "—"}
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">URL</span>
                     <span className="truncate block text-indigo-400">{item.url || "—"}</span>
                   </div>
@@ -1713,17 +1698,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div
                 key={item.id}
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold uppercase">
                       {item.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.nome}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">{item.nome}</h3>
                     {item.instituicao_concedente && (
                       <p className="text-[11px] text-slate-400 mt-1">{item.instituicao_concedente}</p>
                     )}
@@ -1731,14 +1716,14 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
                 {item.descricao && (
-                  <p className="text-xs text-slate-400 mt-3 bg-slate-950/40 p-2.5 rounded border border-slate-900">{item.descricao}</p>
+                  <p className="text-xs text-slate-400 mt-3 bg-slate-50 p-2.5 rounded-lg border border-slate-200">{item.descricao}</p>
                 )}
                 <div className="grid grid-cols-2 gap-2 mt-3 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Ano</span>
                     {item.ano ?? "—"}
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Concedente</span>
                     {item.instituicao_concedente || "—"}
                   </div>
@@ -1758,17 +1743,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div
                 key={item.id}
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 rounded font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 rounded font-bold uppercase">
                       {item.papel}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-2">{item.nome_grupo}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-2">{item.nome_grupo}</h3>
                     {item.linha_tematica && (
                       <p className="text-[11px] text-slate-400 mt-1">{item.linha_tematica}</p>
                     )}
@@ -1776,11 +1761,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <ConfidenceBadge level={item.confianca_ia} />
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-3 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Código DGP</span>
                     {item.codigo_dgp || "—"}
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850 col-span-2">
+                  <div className="field-box col-span-2">
                     <span className="text-[9px] text-slate-500 block">Instituição</span>
                     {item.instituicao || "—"}
                   </div>
@@ -1800,9 +1785,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <div 
                 key={item.id} 
                 className={`glow-card rounded-xl p-5 border transition-all duration-300 relative overflow-hidden ${
-                  item.status_validacao === "confirmado" ? "border-emerald-700/60 bg-emerald-950/10" :
-                  item.status_validacao === "editado" ? "border-indigo-700/60 bg-indigo-950/10" :
-                  item.status_validacao === "descartado" ? "border-rose-950 bg-rose-950/5 opacity-40" : "border-slate-800"
+                  item.status_validacao === "confirmado" ? "border-emerald-300 bg-emerald-50" :
+                  item.status_validacao === "editado" ? "border-indigo-300 bg-indigo-50" :
+                  item.status_validacao === "descartado" ? "border-rose-200 bg-rose-50 opacity-60" : "border-slate-200"
                 }`}
               >
                 <div className="absolute top-0 left-0 right-0 h-1 flex">
@@ -1815,29 +1800,29 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 <div className="flex justify-between items-start gap-4">
                   <div className="space-y-1">
-                    <span className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded font-bold uppercase tracking-wider">
+                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-300 text-slate-700 rounded font-bold uppercase tracking-wider">
                       {item.tipo}
                     </span>
-                    <h3 className="text-sm font-bold text-slate-200 mt-1">{item.fonte}</h3>
+                    <h3 className="text-sm font-bold text-slate-900 mt-1">{item.fonte}</h3>
                   </div>
 
                   <ConfidenceBadge level={item.confianca} />
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-[11px] text-slate-300">
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Agência</span>
                     <span className="font-semibold block truncate">{item.agencia}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Edital</span>
                     <span className="font-semibold block truncate">{item.edital || "Não identificado"}</span>
                   </div>
-                  <div className="bg-slate-900/40 p-2 rounded border border-slate-850">
+                  <div className="field-box">
                     <span className="text-[9px] text-slate-500 block">Processo</span>
                     <span className="font-semibold block font-mono text-[10px]">{item.numero_processo || "Não consta"}</span>
                   </div>
-                  <div className="bg-slate-950 p-2 rounded border border-emerald-950">
+                  <div className="bg-slate-50 p-2 rounded border border-emerald-950">
                     <span className="text-[9px] text-emerald-500 block font-bold">Valor Captado</span>
                     <span className="font-bold text-emerald-400 text-xs">{item.valor}</span>
                   </div>
@@ -1862,7 +1847,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           {/* AI Gap Detection Card */}
           <div className="glow-card rounded-xl p-5">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
                 Lacunas de Informação
               </h2>
@@ -1883,8 +1868,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     key={gap.id}
                     className={`p-3 rounded-lg border transition-all duration-300 ${
                       gap.resolvido 
-                        ? "bg-slate-950/40 border-slate-900/60 opacity-30" 
-                        : "bg-slate-950 border-slate-850 hover:border-slate-800"
+                        ? "bg-slate-50/40 border-slate-200/60 opacity-30" 
+                        : "bg-slate-50 border-slate-200 hover:border-slate-800"
                     }`}
                   >
                     <div className="flex justify-between items-center w-full">
@@ -1902,7 +1887,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">{gap.descricao}</p>
                     
                     {!gap.resolvido && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-900 flex justify-between items-center">
+                      <div className="mt-2.5 pt-2 border-t border-slate-200 flex justify-between items-center">
                         <span className="text-[9px] text-slate-500 max-w-[70%] leading-snug">{gap.acao_recomendada}</span>
                         <button 
                           onClick={() => handleResolveGap(gap.id)}
@@ -1914,7 +1899,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     )}
 
                     {gap.resolvido && (
-                      <div className="mt-2.5 pt-2 border-t border-slate-900 flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold">
+                      <div className="mt-2.5 pt-2 border-t border-slate-200 flex items-center gap-1.5 text-[10px] text-emerald-500 font-bold">
                         <Check className="w-3.5 h-3.5" />
                         Resolvido
                       </div>
@@ -1927,7 +1912,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
           {/* Audit Log Card */}
           <div className="glow-card rounded-xl p-5">
-            <h2 className="text-sm font-semibold tracking-wider text-slate-300 uppercase mb-4 flex items-center gap-2">
+            <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase mb-4 flex items-center gap-2">
               <Clock className="w-4 h-4 text-indigo-400" />
               Logs de Validação
             </h2>
@@ -1939,7 +1924,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 </div>
               ) : (
                 auditLogs.map((log) => (
-                  <div key={log.id} className="text-[10px] bg-slate-950 p-2.5 border border-slate-900 rounded-lg flex flex-col gap-1">
+                  <div key={log.id} className="text-[10px] bg-slate-50 p-2.5 border border-slate-200 rounded-lg flex flex-col gap-1">
                     <div className="flex justify-between items-center text-slate-500">
                       <span className={`font-bold uppercase tracking-wider px-1 py-0.2 rounded text-[8px] ${
                         log.acao === "confirmar" ? "bg-emerald-950/80 text-emerald-400 border border-emerald-900/80" :
@@ -1965,15 +1950,15 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 📊 Aba Estatísticas */}
       {/* ========================================================================= */}
       {mainTab === "estatisticas" && (
-        <main className="flex-1 p-6 space-y-6 animate-fadeIn bg-slate-950/20">
+        <main className="flex-1 p-6 space-y-6 animate-fadeIn bg-slate-50">
           {/* Barra de Filtros */}
-          <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
+          <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px] space-y-1.5">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Docente</label>
               <select
                 value={statsProfessorId}
                 onChange={(e) => setStatsProfessorId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                className="input-field text-xs"
               >
                 <option value="todos">Todos os Docentes</option>
                 {professors.map((p) => (
@@ -1987,7 +1972,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               <select
                 value={statsLinhaPesquisaId}
                 onChange={(e) => setStatsLinhaPesquisaId(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                className="input-field text-xs"
               >
                 <option value="todas">Todas as Linhas</option>
                 {linhasPesquisa.map((l) => (
@@ -2002,7 +1987,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 type="number"
                 value={statsAnoInicio}
                 onChange={(e) => setStatsAnoInicio(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                className="input-field text-xs"
               />
             </div>
 
@@ -2012,7 +1997,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 type="number"
                 value={statsAnoFim}
                 onChange={(e) => setStatsAnoFim(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                className="input-field text-xs"
               />
             </div>
 
@@ -2039,19 +2024,19 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             <div className="space-y-6">
               {/* KPIs Highlights */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-indigo-950/20 to-slate-900/30">
-                  <div className="bg-indigo-950/80 border border-indigo-800/60 p-3 rounded-xl text-indigo-400">
+                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-indigo-50 to-white">
+                  <div className="bg-indigo-100 border border-indigo-200 p-3 rounded-xl text-indigo-600">
                     <FileText className="w-6 h-6" />
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total de Produções</span>
-                    <h3 className="text-2xl font-bold text-white mt-0.5">{statsData.total_producoes}</h3>
+                    <h3 className="text-2xl font-bold text-slate-900 mt-0.5">{statsData.total_producoes}</h3>
                     <span className="text-[9px] text-slate-400 block mt-0.5">Artigos, livros e capítulos</span>
                   </div>
                 </div>
 
-                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-emerald-950/20 to-slate-900/30">
-                  <div className="bg-emerald-950/80 border border-emerald-800/60 p-3 rounded-xl text-emerald-400">
+                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-emerald-50 to-white">
+                  <div className="bg-emerald-100 border border-emerald-200 p-3 rounded-xl text-emerald-600">
                     <DollarSign className="w-6 h-6" />
                   </div>
                   <div>
@@ -2065,8 +2050,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   </div>
                 </div>
 
-                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-purple-950/20 to-slate-900/30">
-                  <div className="bg-purple-950/80 border border-purple-800/60 p-3 rounded-xl text-purple-400">
+                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-violet-50 to-white">
+                  <div className="bg-violet-100 border border-violet-200 p-3 rounded-xl text-violet-600">
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div>
@@ -2076,8 +2061,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   </div>
                 </div>
 
-                <div className="glow-card rounded-xl p-5 border border-slate-850 flex items-center space-x-4 bg-gradient-to-br from-amber-950/20 to-slate-900/30">
-                  <div className="bg-amber-950/80 border border-amber-800/60 p-3 rounded-xl text-amber-400">
+                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-amber-50 to-white">
+                  <div className="bg-amber-100 border border-amber-200 p-3 rounded-xl text-amber-600">
                     <AlertTriangle className="w-6 h-6" />
                   </div>
                   <div>
@@ -2095,11 +2080,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <button
                     type="button"
                     onClick={() => setShowOrientacoesModal(true)}
-                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                    className="glow-card rounded-xl p-4 border border-slate-200 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                     title="Abrir painel de orientações por professor, tipo, ano e situação"
                   >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Orientações</span>
-                    <p className="text-xl font-bold text-white mt-1">{statsData.total_orientacoes}</p>
+                    <p className="text-xl font-bold text-slate-900 mt-1">{statsData.total_orientacoes}</p>
                     <p className="text-[10px] text-slate-400 mt-1">
                       {statsData.orientacoes_concluidas} concluídas · {statsData.orientacoes_em_andamento} em andamento
                       {" · clique para detalhar"}
@@ -2108,7 +2093,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <button
                     type="button"
                     onClick={() => setShowArtigosQualisModal(true)}
-                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                    className="glow-card rounded-xl p-4 border border-slate-200 text-left w-full cursor-pointer transition-all hover:border-indigo-700/60 hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
                     title="Abrir painel de artigos por estrato Qualis, revistas e docentes"
                   >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Qualis (artigos)</span>
@@ -2123,7 +2108,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <button
                     type="button"
                     onClick={() => setShowPendingValidationModal(true)}
-                    className="glow-card rounded-xl p-4 border border-slate-850 text-left w-full cursor-pointer transition-all hover:border-amber-700/60 hover:bg-amber-950/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50"
+                    className="glow-card rounded-xl p-4 border border-slate-200 text-left w-full cursor-pointer transition-all hover:border-amber-700/60 hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50"
                     title="Ver fila completa de itens aguardando validação"
                   >
                     <span className="text-[10px] text-slate-500 uppercase font-bold">Validação pendente</span>
@@ -2142,7 +2127,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 
                 {/* 1. Evolução Histórica das Produções */}
                 <div className="glow-card rounded-xl p-5 space-y-4">
-                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-600 uppercase flex items-center gap-2 border-b border-slate-200 pb-3">
                     <Calendar className="w-4 h-4 text-indigo-400" />
                     Evolução Histórica das Produções
                   </h3>
@@ -2162,9 +2147,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                           </defs>
 
                           {/* Grid Lines */}
-                          <line x1="0" y1="50" x2="500" y2="50" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
-                          <line x1="0" y1="100" x2="500" y2="100" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
-                          <line x1="0" y1="150" x2="500" y2="150" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
+                          <line x1="0" y1="50" x2="500" y2="50" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
+                          <line x1="0" y1="100" x2="500" y2="100" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
+                          <line x1="0" y1="150" x2="500" y2="150" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
 
                           {(() => {
                             const years = Object.keys(statsData.producoes_por_ano);
@@ -2239,7 +2224,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 {/* 2. Proporção por Tipo de Produção */}
                 <div className="glow-card rounded-xl p-5 space-y-4">
-                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-600 uppercase flex items-center gap-2 border-b border-slate-200 pb-3">
                     <FileText className="w-4 h-4 text-indigo-400" />
                     Mix de Produção Acadêmica
                   </h3>
@@ -2281,7 +2266,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                                   {val} <span className="text-[10px] text-slate-500 font-normal">({pct}%)</span>
                                 </span>
                               </div>
-                              <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-900">
+                              <div className="w-full bg-slate-50 h-3 rounded-full overflow-hidden border border-slate-200">
                                 <div 
                                   className={`bg-gradient-to-r ${barColors[idx % barColors.length]} h-full rounded-full transition-all duration-1000`}
                                   style={{ width: `${pct}%` }}
@@ -2297,7 +2282,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 {/* 3. Distribuição de Fomento por Agência Financiadora */}
                 <div className="glow-card rounded-xl p-5 space-y-4">
-                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-600 uppercase flex items-center gap-2 border-b border-slate-200 pb-3">
                     <Award className="w-4 h-4 text-indigo-400" />
                     Distribuição de Fomento por Agência
                   </h3>
@@ -2329,7 +2314,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                           return (
                             <div className="relative w-44 h-44">
                               <svg viewBox="0 0 42 42" className="w-full h-full transform -rotate-90">
-                                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#0f172a" strokeWidth="4.5" />
+                                <circle cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#e2e8f0" strokeWidth="4.5" />
                                 {slices.map((slice, index) => (
                                   <circle
                                     key={slice.name}
@@ -2347,7 +2332,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                               </svg>
                               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Aprovado</span>
-                                <span className="text-sm font-extrabold text-white mt-0.5">
+                                <span className="text-sm font-extrabold text-slate-900 mt-0.5">
                                   {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(total)}
                                 </span>
                               </div>
@@ -2368,7 +2353,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                             const val = values[idx];
                             const pct = total > 0 ? Math.round((val / total) * 100) : 0;
                             return (
-                              <div key={ag} className="flex justify-between items-center bg-slate-950/40 p-2 border border-slate-900 rounded-lg animate-fadeIn">
+                              <div key={ag} className="flex justify-between items-center bg-slate-50/40 p-2 border border-slate-200 rounded-lg animate-fadeIn">
                                 <div className="flex items-center gap-2">
                                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colorPalette[idx % colorPalette.length] }}></span>
                                   <span className="text-[11px] font-bold text-slate-300">{ag}</span>
@@ -2388,7 +2373,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                 {/* 4. Gravidade de Alertas & Gaps */}
                 <div className="glow-card rounded-xl p-5 space-y-4">
-                  <h3 className="text-sm font-semibold tracking-wider text-slate-300 uppercase flex items-center gap-2 border-b border-slate-900 pb-3">
+                  <h3 className="text-sm font-semibold tracking-wider text-slate-600 uppercase flex items-center gap-2 border-b border-slate-200 pb-3">
                     <AlertTriangle className="w-4 h-4 text-indigo-400" />
                     Gravidade de Lacunas Pendentes
                   </h3>
@@ -2398,7 +2383,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   ) : (
                     <div className="space-y-4 pt-1">
                       {/* Visual summary of gaps */}
-                      <div className="flex bg-slate-950 h-4.5 rounded-full overflow-hidden border border-slate-900 p-0.5">
+                      <div className="flex bg-slate-50 h-4.5 rounded-full overflow-hidden border border-slate-200 p-0.5">
                         {(() => {
                           const high = statsData.lacunas?.por_gravidade?.alta || 0;
                           const med = statsData.lacunas?.por_gravidade?.media || 0;
@@ -2421,21 +2406,21 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
                       {/* Detail list */}
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                        <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider block">Gravidade Alta</span>
-                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.alta || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{statsData.lacunas?.por_gravidade?.alta || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Exige ação imediata</span>
                         </div>
 
-                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                        <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">Gravidade Média</span>
-                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.media || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{statsData.lacunas?.por_gravidade?.media || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Revisão recomendada</span>
                         </div>
 
-                        <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 text-center">
+                        <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider block">Gravidade Baixa</span>
-                          <span className="text-xl font-extrabold text-white block mt-1">{statsData.lacunas?.por_gravidade?.baixa || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{statsData.lacunas?.por_gravidade?.baixa || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Ajustes informacionais</span>
                         </div>
                       </div>
@@ -2455,12 +2440,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 🤖 Aba Gerador de Relatórios com IA */}
       {/* ========================================================================= */}
       {mainTab === "relatorios" && (
-        <main className="report-print-layout flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-950/20">
+        <main className="report-print-layout flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-50">
           
           {/* Lado Esquerdo: Configuração da Geração (4 colunas) */}
           <div className="no-print lg:col-span-4 space-y-6">
-            <div className="glow-card rounded-xl p-5 space-y-5 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
-              <div className="flex items-center space-x-2 border-b border-slate-900 pb-3">
+            <div className="glow-card rounded-xl p-5 space-y-5 border border-slate-200">
+              <div className="flex items-center space-x-2 border-b border-slate-200 pb-3">
                 <BarChart2 className="w-5 h-5 text-indigo-400 animate-pulse" />
                 <h2 className="text-sm font-bold tracking-wider text-slate-300 uppercase">Configurar Relatório</h2>
               </div>
@@ -2472,7 +2457,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <select
                     value={reportProfessorId}
                     onChange={(e) => setReportProfessorId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                    className="input-field text-xs"
                   >
                     <option value="todos">Todos os Docentes (Geral)</option>
                     {professors.map((p) => (
@@ -2486,7 +2471,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <select
                     value={reportLinhaPesquisaId}
                     onChange={(e) => setReportLinhaPesquisaId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                    className="input-field text-xs"
                   >
                     <option value="todas">Todas as Linhas</option>
                     {linhasPesquisa.map((l) => (
@@ -2502,7 +2487,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="number"
                       value={reportAnoInicio}
                       onChange={(e) => setReportAnoInicio(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                      className="input-field text-xs"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -2511,31 +2496,31 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="number"
                       value={reportAnoFim}
                       onChange={(e) => setReportAnoFim(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 outline-none p-2.5 rounded text-xs text-slate-200"
+                      className="input-field text-xs"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Templates Rápidos */}
-              <div className="space-y-2.5 pt-2 border-t border-slate-900">
+              <div className="space-y-2.5 pt-2 border-t border-slate-200">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Presets e Templates Rápidos</label>
                 <div className="flex flex-col gap-2">
                   <button
                     onClick={() => setReportPrompt("Gere um relatório abrangente contendo o balanço de fomento recebido (CNPq, CAPES, FAPEMA), discriminando os valores por agência e o percentual de captação de cada docente.")}
-                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                    className="w-full text-left p-2 bg-slate-50 border border-slate-200 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
                   >
                     💰 Balanço de Fomento & Captação
                   </button>
                   <button
                     onClick={() => setReportPrompt("Redija uma síntese acadêmica detalhada das produções, destacando os artigos de periódicos mais relevantes e a aderência deles à linha de pesquisa correspondente.")}
-                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                    className="w-full text-left p-2 bg-slate-50 border border-slate-200 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
                   >
                     📚 Síntese de Periódicos & Publicações
                   </button>
                   <button
                     onClick={() => setReportPrompt("Gere um sumário executivo focado nos alertas e gaps de informação nos currículos. Explique quais são as principais inconsistências encontradas e forneça recomendações para a coordenação resolvê-las.")}
-                    className="w-full text-left p-2 bg-slate-950 border border-slate-850 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
+                    className="w-full text-left p-2 bg-slate-50 border border-slate-200 hover:border-indigo-900 rounded text-[10.5px] text-slate-400 hover:text-indigo-300 font-medium transition-colors"
                   >
                     ⚠️ Sumário Executivo de Gaps/Incoerências
                   </button>
@@ -2543,14 +2528,14 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
               </div>
 
               {/* Instruções do Coordenador */}
-              <div className="space-y-2 pt-2 border-t border-slate-900">
+              <div className="space-y-2 pt-2 border-t border-slate-200">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">O que você precisa focar no relatório?</label>
                 <textarea
                   rows={4}
                   value={reportPrompt}
                   onChange={(e) => setReportPrompt(e.target.value)}
                   placeholder="Ex: Faça uma análise comparativa do fomento ativo e o volume de publicações recentes em periódicos..."
-                  className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200 placeholder-slate-600 resize-none leading-relaxed"
+                  className="w-full bg-slate-50 border border-slate-800 hover:border-slate-300 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200 placeholder-slate-600 resize-none leading-relaxed"
                 />
               </div>
 
@@ -2580,11 +2565,11 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
           {/* Lado Direito: Visualizador de Markdown Executivo (8 colunas) */}
           <div className="report-print-panel lg:col-span-8 flex flex-col h-full min-h-[580px] space-y-6">
-            <div className="glow-card rounded-xl p-5 flex flex-col flex-1 bg-[#0f172a]/60 border border-[#1e293b] backdrop-blur-md">
+            <div className="glow-card rounded-xl p-5 flex flex-col flex-1 border border-slate-200">
               
-              <div className="no-print flex justify-between items-center border-b border-slate-900 pb-4">
+              <div className="no-print flex justify-between items-center border-b border-slate-200 pb-4">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-200 tracking-wider uppercase">Relatório Gerado por IA</h3>
+                  <h3 className="text-sm font-bold text-slate-900 tracking-wider uppercase">Relatório Gerado por IA</h3>
                   {reportModelUsed && (
                     <span className="text-[10px] text-indigo-400 font-bold font-mono block mt-0.5">
                       Modelo: {reportModelUsed}
@@ -2596,7 +2581,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                   <div className="flex gap-2">
                     <button
                       onClick={copyToClipboard}
-                      className="py-1.5 px-3 bg-slate-950 border border-slate-850 hover:border-slate-750 text-xs font-semibold text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+                      className="py-1.5 px-3 bg-slate-50 border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors flex items-center gap-1.5"
                       title="Copiar Relatório"
                     >
                       <Check className="w-3.5 h-3.5" />
@@ -2604,7 +2589,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     </button>
                     <button
                       onClick={downloadMarkdown}
-                      className="py-1.5 px-3 bg-slate-950 border border-slate-850 hover:border-slate-750 text-xs font-semibold text-slate-300 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+                      className="py-1.5 px-3 bg-slate-50 border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg transition-colors flex items-center gap-1.5"
                       title="Baixar Markdown (.md)"
                     >
                       <FileText className="w-3.5 h-3.5" />
@@ -2641,7 +2626,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                     </div>
 
                     {/* Generation Logs Console */}
-                    <div className="w-full max-w-sm bg-slate-950 border border-slate-900 rounded-lg p-3 text-left font-mono text-[10px] text-slate-400 space-y-1.5 h-28 overflow-y-auto">
+                    <div className="w-full max-w-sm bg-slate-50 border border-slate-200 rounded-lg p-3 text-left font-mono text-[10px] text-slate-400 space-y-1.5 h-28 overflow-y-auto">
                       {reportLogs.map((log, index) => (
                         <div key={index} className="flex gap-2">
                           <span className="text-indigo-500 font-bold select-none">&gt;</span>
@@ -2653,7 +2638,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 ) : reportText ? (
                   <div
                     id="report-print-root"
-                    className="bg-slate-950/45 p-6 rounded-xl border border-slate-900/60 leading-relaxed text-slate-300 text-xs overflow-wrap-break text-left"
+                    className="bg-slate-50/45 p-6 rounded-xl border border-slate-200/60 leading-relaxed text-slate-300 text-xs overflow-wrap-break text-left"
                   >
                     <div className="print-only mb-4 pb-3 border-b border-slate-300 text-slate-800 text-[10pt]">
                       <p className="font-bold text-indigo-900 text-sm">PPGCOMDATA — Relatório analítico</p>
@@ -2686,9 +2671,9 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 📝 Edit Item Modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl shadow-2xl max-w-lg w-full overflow-hidden glow-card">
-            <div className="border-b border-[#1e293b] p-4 flex justify-between items-center">
-              <h3 className="font-bold text-sm text-slate-200 flex items-center gap-2">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden glow-card">
+            <div className="border-b border-slate-200 p-4 flex justify-between items-center">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Edit2 className="w-4.5 h-4.5 text-indigo-400" />
                 Editar e Corrigir {({
                   projetos: "Projeto",
@@ -2721,7 +2706,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.titulo} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, titulo: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200"
+                      className="w-full bg-slate-50 border border-slate-800 hover:border-slate-300 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -2731,7 +2716,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="number" 
                         value={editingItem.item.ano_inicio} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano_inicio: parseInt(e.target.value) } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2741,7 +2726,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         value={editingItem.item.ano_fim || ""} 
                         placeholder="Atual"
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano_fim: e.target.value ? parseInt(e.target.value) : null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                   </div>
@@ -2751,7 +2736,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       rows={3}
                       value={editingItem.item.descricao} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, descricao: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 hover:border-slate-700 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200"
+                      className="w-full bg-slate-50 border border-slate-800 hover:border-slate-300 focus:border-indigo-600 outline-none p-2.5 rounded text-xs text-slate-200"
                     />
                   </div>
                   <div className="space-y-1">
@@ -2760,7 +2745,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.agencia_fomento || ""} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, agencia_fomento: e.target.value, financiamento_mencionado: !!e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                 </>
@@ -2775,7 +2760,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.nome_evento} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, nome_evento: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -2784,7 +2769,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.titulo_trabalho} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, titulo_trabalho: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
@@ -2794,7 +2779,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="number" 
                         value={editingItem.item.ano} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: parseInt(e.target.value) } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2803,7 +2788,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text" 
                         value={editingItem.item.cidade} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, cidade: e.target.value } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2812,7 +2797,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text" 
                         value={editingItem.item.pais} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, pais: e.target.value } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                   </div>
@@ -2828,7 +2813,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.titulo} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, titulo: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -2837,7 +2822,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.veiculo} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, veiculo: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-3 gap-3">
@@ -2847,7 +2832,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="number" 
                         value={editingItem.item.ano} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: parseInt(e.target.value) } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1 col-span-2">
@@ -2856,7 +2841,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text" 
                         value={editingItem.item.doi || ""} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, doi: e.target.value || null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
                       />
                     </div>
                   </div>
@@ -2871,7 +2856,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.titulo}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, titulo: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -2881,7 +2866,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text"
                         value={editingItem.item.tipo}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, tipo: e.target.value } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2890,7 +2875,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="number"
                         value={editingItem.item.ano ?? ""}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: e.target.value ? parseInt(e.target.value) : null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                   </div>
@@ -2900,7 +2885,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.instituicao || ""}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao: e.target.value || null } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -2909,7 +2894,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       rows={2}
                       value={editingItem.item.descricao || ""}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, descricao: e.target.value || null } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                 </>
@@ -2923,7 +2908,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.nome}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, nome: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -2933,7 +2918,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text"
                         value={editingItem.item.tipo}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, tipo: e.target.value } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2942,7 +2927,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="number"
                         value={editingItem.item.ano ?? ""}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, ano: e.target.value ? parseInt(e.target.value) : null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                   </div>
@@ -2952,7 +2937,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.instituicao_concedente || ""}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao_concedente: e.target.value || null } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                 </>
@@ -2966,7 +2951,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.nome_grupo}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, nome_grupo: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -2976,7 +2961,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text"
                         value={editingItem.item.papel}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, papel: e.target.value } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2985,7 +2970,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text"
                         value={editingItem.item.codigo_dgp || ""}
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, codigo_dgp: e.target.value || null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
                       />
                     </div>
                   </div>
@@ -2995,7 +2980,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.linha_tematica || ""}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, linha_tematica: e.target.value || null } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -3004,7 +2989,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text"
                       value={editingItem.item.instituicao || ""}
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, instituicao: e.target.value || null } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                 </>
@@ -3019,7 +3004,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.fonte} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, fonte: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="space-y-1">
@@ -3028,7 +3013,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                       type="text" 
                       value={editingItem.item.agencia} 
                       onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, agencia: e.target.value } })}
-                      className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -3038,7 +3023,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text" 
                         value={editingItem.item.numero_processo || ""} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, numero_processo: e.target.value || null } })}
-                        className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
+                        className="w-full bg-slate-50 border border-slate-800 p-2.5 rounded text-xs text-slate-200 outline-none font-mono"
                       />
                     </div>
                     <div className="space-y-1">
@@ -3047,7 +3032,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                         type="text" 
                         value={editingItem.item.valor} 
                         onChange={(e) => setEditingItem({ ...editingItem, item: { ...editingItem.item, valor: e.target.value } })}
-                        className="w-full bg-slate-950 border border-emerald-950 p-2.5 rounded text-xs text-slate-200 outline-none font-bold text-emerald-400"
+                        className="w-full bg-slate-50 border border-emerald-950 p-2.5 rounded text-xs text-slate-200 outline-none font-bold text-emerald-400"
                       />
                     </div>
                   </div>
@@ -3056,7 +3041,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
 
             </div>
 
-            <div className="border-t border-[#1e293b] p-4 flex justify-end gap-3 bg-[#0f172a]/55">
+            <div className="border-t border-slate-200 p-4 flex justify-end gap-3 bg-slate-50">
               <button 
                 onClick={() => setEditingItem(null)}
                 className="py-1.5 px-3 bg-slate-900 border border-slate-800 text-xs font-semibold text-slate-400 rounded-lg hover:text-slate-200 transition-colors"

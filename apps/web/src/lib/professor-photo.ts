@@ -75,7 +75,16 @@ export function getProfessorPhotoCandidates(prof: {
   const seen = new Set<string>();
 
   const add = (url: string) => {
-    const u = url.startsWith("/") && !url.startsWith("//") ? url : professorPhotoAssetUrl(url);
+    let u = url;
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      u = url;
+    } else if (url.startsWith("/api/")) {
+      u = professorPhotoAssetUrl(url);
+    } else if (url.startsWith("/") && !url.startsWith("//")) {
+      u = url;
+    } else {
+      u = professorPhotoAssetUrl(url);
+    }
     if (u && !seen.has(u)) {
       seen.add(u);
       urls.push(u);
@@ -83,12 +92,14 @@ export function getProfessorPhotoCandidates(prof: {
   };
 
   if (prof.foto_url?.trim()) {
-    const publicPath = fotoUrlToPublicPath(prof.foto_url.trim());
-    if (publicPath) {
+    const trimmed = prof.foto_url.trim();
+    const publicPath = fotoUrlToPublicPath(trimmed);
+    // API-hosted fotos exist only on the backend; /fotos/* in public is optional.
+    if (publicPath && !trimmed.includes("/api/")) {
       add(publicPath);
       return urls;
     }
-    add(prof.foto_url.trim());
+    add(trimmed);
     return urls;
   }
 

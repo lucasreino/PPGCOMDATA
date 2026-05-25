@@ -195,3 +195,57 @@ def lookup_qualis(
             return estrato, "titulo_parcial"
 
     return None, "none"
+
+
+def apply_qualis_to_producoes(
+    session,
+    *,
+    tipos: frozenset[str] | None = None,
+    xlsx_path: Path | None = None,
+) -> dict[str, int]:
+    """
+    Cruza artigos/anais com o catálogo Qualis e grava estrato em Producao.qualis.
+    """
+    from collections import Counter
+    from sqlmodel import select
+
+    from app.models.data import Producao
+
+    path = xlsx_path or default_qualis_xlsx_path()
+    if not path.is_file():
+        return {"atualizado": 0, "ja_ok": 0, "sem_match": 0}
+
+    _, by_issn, by_titulo = load_qualis_catalog(path)
+    manual_issn, manual_veiculo = load_manual_overrides()
+    allowed = tipos or frozenset({"artigo", "anais"})
+    stats: Counter = Counter()
+
+    for prod in session.exec(select(Producao)).all():
+        if (prod.tipo or "").lower() not in allowed:
+            continue
+        estrato, _ = lookup_qualis(
+            prod.issn,
+            prod.veiculo,
+            by_issn,
+            by_titulo,
+            manual_issn,
+            manual_veiculo,
+        )
+        if not estrato:
+            stats["sem_match"] += 1
+            continue
+        if normalize_estrato(prod.qualis) == estrato:
+            stats["ja_ok"] += 1
+            continue
+        prod.qualis = estrato
+        session.add(prod)
+        stats["atualizado"] += 1
+
+    if stats["atualizado"]:
+        session.commit()
+
+    return {
+        "atualizado": stats["atualizado"],
+        "ja_ok": stats["ja_ok"],
+        "sem_match": stats["sem_match"],
+    }

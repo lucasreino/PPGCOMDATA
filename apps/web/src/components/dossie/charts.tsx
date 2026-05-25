@@ -106,13 +106,13 @@ export function SimpleLineChart({ data, color = "#6366f1" }: LineChartProps) {
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        <line x1="0" y1="50" x2="500" y2="50" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
-        <line x1="0" y1="100" x2="500" y2="100" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
-        <line x1="0" y1="150" x2="500" y2="150" stroke="#1e293b" strokeDasharray="3 3" strokeWidth="0.5" />
+        <line x1="0" y1="50" x2="500" y2="50" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
+        <line x1="0" y1="100" x2="500" y2="100" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
+        <line x1="0" y1="150" x2="500" y2="150" stroke="#cbd5e1" strokeDasharray="3 3" strokeWidth="0.5" />
         <path d={areaPath} fill="url(#dossieLineGrad)" />
         <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" />
         {points.map((p) => (
-          <circle key={p.year} cx={p.x} cy={p.y} r="4" fill={color} stroke="#0f172a" strokeWidth="2" />
+          <circle key={p.year} cx={p.x} cy={p.y} r="4" fill={color} stroke="#e2e8f0" strokeWidth="2" />
         ))}
       </svg>
       <div className="flex justify-between text-[9px] text-slate-500 px-1">
@@ -198,14 +198,14 @@ export function KpiCard({
   accent?: "indigo" | "emerald" | "purple" | "amber" | "rose";
 }) {
   const colors: Record<string, string> = {
-    indigo: "from-indigo-950/30 text-indigo-400 border-indigo-800/40",
-    emerald: "from-emerald-950/30 text-emerald-400 border-emerald-800/40",
-    purple: "from-purple-950/30 text-purple-400 border-purple-800/40",
-    amber: "from-amber-950/30 text-amber-400 border-amber-800/40",
-    rose: "from-rose-950/30 text-rose-400 border-rose-800/40",
+    indigo: "from-indigo-50 text-indigo-700 border-indigo-200",
+    emerald: "from-emerald-50 text-emerald-700 border-emerald-200",
+    purple: "from-violet-50 text-violet-700 border-violet-200",
+    amber: "from-amber-50 text-amber-700 border-amber-200",
+    rose: "from-rose-50 text-rose-700 border-rose-200",
   };
   return (
-    <div className={`glow-card rounded-xl p-5 border bg-gradient-to-br to-slate-900/30 ${colors[accent]}`}>
+    <div className={`glow-card rounded-xl p-5 border bg-gradient-to-br to-white ${colors[accent]}`}>
       <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{label}</span>
       <h3 className={`text-2xl font-bold mt-1 ${colors[accent].split(" ")[1]}`}>{value}</h3>
       {sub && <p className="text-[9px] text-slate-400 mt-1">{sub}</p>}

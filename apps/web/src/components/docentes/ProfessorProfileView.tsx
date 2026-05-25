@@ -74,14 +74,14 @@ export function ProfessorProfileView({
           size="xl"
         />
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold text-white">{prof.nome_completo}</h1>
+          <h1 className="text-xl font-bold text-slate-900">{prof.nome_completo}</h1>
           <p className="text-sm text-slate-400 mt-1">{linha}</p>
           <div className="flex flex-wrap gap-2 mt-3 text-[10px]">
             <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-semibold uppercase">
               {tipo}
             </span>
             {prof.titulacao_maxima && (
-              <span className="px-2 py-0.5 rounded-full bg-indigo-950/60 text-indigo-300 border border-indigo-900/50 capitalize">
+              <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 capitalize">
                 {prof.titulacao_maxima}
               </span>
             )}

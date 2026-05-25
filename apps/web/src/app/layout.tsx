@@ -30,7 +30,7 @@ export default function RootLayout({
         <AuthProvider>
           <Suspense
             fallback={
-              <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+              <div className="min-h-screen flex items-center justify-center text-slate-600 text-sm bg-slate-50">
                 Carregando...
               </div>
             }

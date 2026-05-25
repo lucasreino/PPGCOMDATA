@@ -149,7 +149,7 @@ export function ArtigosQualisModal({
     >
       <div
         id="artigos-qualis-print-root"
-        className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-800 bg-[#0f172a] shadow-2xl qualis-print-panel"
+        className="glow-card w-full max-w-5xl max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white shadow-2xl qualis-print-panel"
       >
         <div className="print-only px-5 pt-5 pb-3 border-b border-slate-300 text-slate-800 text-[10pt]">
           <p className="font-bold text-indigo-900 text-sm">PPGCOMDATA — Artigos e estratificação Qualis</p>
@@ -159,11 +159,11 @@ export function ArtigosQualisModal({
           </p>
         </div>
 
-        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-800 shrink-0">
+        <div className="flex items-start justify-between gap-4 p-5 border-b border-slate-200 shrink-0">
           <div>
             <h2
               id="artigos-qualis-title"
-              className="text-base font-bold text-white flex items-center gap-2"
+              className="text-base font-bold text-slate-900 flex items-center gap-2"
             >
               <BookOpen className="w-5 h-5 text-indigo-400" />
               Artigos — estratificação Qualis
@@ -187,7 +187,7 @@ export function ArtigosQualisModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100"
               aria-label="Fechar"
             >
               <X className="w-5 h-5" />
@@ -213,8 +213,8 @@ export function ArtigosQualisModal({
           {!loading && !error && data && (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-center">
-                  <p className="text-2xl font-bold text-white">{data.total_artigos}</p>
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
+                  <p className="text-2xl font-bold text-slate-900">{data.total_artigos}</p>
                   <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">
                     Artigos únicos
                   </p>
@@ -228,11 +228,11 @@ export function ArtigosQualisModal({
                   <p className="text-2xl font-bold text-emerald-300">{data.com_qualis}</p>
                   <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Com Qualis</p>
                 </div>
-                <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-center">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-center">
                   <p className="text-2xl font-bold text-slate-400">{data.sem_qualis}</p>
                   <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Sem Qualis</p>
                 </div>
-                <div className="rounded-lg border border-indigo-900/50 bg-indigo-950/20 p-3 text-center">
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-center">
                   <p className="text-2xl font-bold text-indigo-300">
                     {data.estratos.filter((e) => e !== "Sem Qualis").length}
                   </p>
@@ -250,7 +250,7 @@ export function ArtigosQualisModal({
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Percentual por estrato Qualis
                   </h3>
@@ -286,7 +286,7 @@ export function ArtigosQualisModal({
                   )}
                 </section>
 
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     % por estrato (barras)
                   </h3>
@@ -298,7 +298,7 @@ export function ArtigosQualisModal({
                 </section>
               </div>
 
-              <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+              <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Revistas / periódicos (top)
                 </h3>
@@ -306,7 +306,7 @@ export function ArtigosQualisModal({
               </section>
 
               {Object.keys(data.professor_por_estrato).length > 0 && (
-                <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Docente × estrato Qualis (participações)
                   </h3>
@@ -319,7 +319,7 @@ export function ArtigosQualisModal({
               )}
 
               {(data.publicacoes_por_docente?.length ?? 0) > 0 && (
-                <section className="rounded-xl border border-slate-800 p-4 space-y-2">
+                <section className="rounded-xl border border-slate-200 p-4 space-y-2">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     Publicações por docente
                   </h3>
@@ -336,7 +336,7 @@ export function ArtigosQualisModal({
                 </section>
               )}
 
-              <section className="rounded-xl border border-slate-800 p-4 space-y-3">
+              <section className="rounded-xl border border-slate-200 p-4 space-y-3">
                 <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   Lista de artigos ({data.artigos.length}
                   {data.total_artigos > data.artigos.length ? ` de ${data.total_artigos}` : ""})
@@ -345,11 +345,11 @@ export function ArtigosQualisModal({
                   {data.artigos.map((a) => (
                     <li
                       key={`${a.id}-${a.titulo}`}
-                      className="p-3 rounded-lg border border-slate-800 bg-slate-950/40 text-xs"
+                      className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs"
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         {a.qualis ? (
-                          <span className="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 font-bold text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[10px]">
                             {a.qualis}
                           </span>
                         ) : (

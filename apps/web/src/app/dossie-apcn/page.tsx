@@ -166,17 +166,17 @@ export default function DossieApcnPage() {
   const lac = lacunas as DossiePayload | null;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0f19]">
-      <Suspense fallback={<header className="border-b border-[#1e293b] h-[120px] animate-pulse" />}>
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <Suspense fallback={<header className="border-b border-slate-200 h-[120px] animate-pulse bg-white" />}>
         <AppShellHeader section="dossie" />
       </Suspense>
 
-      <div className="border-b border-[#1e293b] bg-[#0f172a]/50 px-4 sm:px-6 py-3">
+      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 py-3">
         <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-400">
             Proposta de Doutorado — PPGCOM · visão institucional
           </p>
-          <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-950 border border-indigo-800 text-indigo-300">
+          <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700">
             Dados reais do banco
           </span>
         </div>
@@ -189,7 +189,7 @@ export default function DossieApcnPage() {
               className={`px-3 py-2 rounded-lg text-[11px] font-bold whitespace-nowrap flex items-center gap-1.5 transition-all ${
                 tab === id
                   ? "bg-indigo-600 text-white"
-                  : "text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800"
+                  : "text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -667,17 +667,17 @@ export default function DossieApcnPage() {
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                       <div>
                         <span className="text-slate-500">Relação candidato/vaga</span>
-                        <p className="text-lg font-bold text-white">{demanda.relacao_media_candidato_vaga as number}</p>
+                        <p className="text-lg font-bold text-slate-900">{demanda.relacao_media_candidato_vaga as number}</p>
                       </div>
                       <div>
                         <span className="text-slate-500">Taxa aprovação</span>
-                        <p className="text-lg font-bold text-white">
+                        <p className="text-lg font-bold text-slate-900">
                           {((demanda.taxa_aprovacao as number) * 100).toFixed(1)}%
                         </p>
                       </div>
                       <div>
                         <span className="text-slate-500">Taxa matrícula</span>
-                        <p className="text-lg font-bold text-white">
+                        <p className="text-lg font-bold text-slate-900">
                           {((demanda.taxa_matricula as number) * 100).toFixed(1)}%
                         </p>
                       </div>
@@ -762,7 +762,7 @@ export default function DossieApcnPage() {
 
             {tab === "exportacoes" && (
               <section className="glow-card rounded-xl p-8 space-y-6">
-                <h3 className="text-lg font-semibold text-white">Exportações</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Exportações</h3>
                 <p className="text-sm text-slate-400">
                   Baixe CSVs, gráficos PNG e o resumo em Markdown para colar na proposta de doutorado.
                 </p>

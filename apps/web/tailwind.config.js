@@ -17,7 +17,7 @@ module.exports = {
         warning: "var(--warning)",
         danger: "var(--danger)",
         muted: "var(--muted)",
-        "hero-bg": "#141414",
+        "hero-bg": "#e2e8f0",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "Inter", "sans-serif"],

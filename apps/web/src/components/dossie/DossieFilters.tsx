@@ -30,13 +30,13 @@ export function DossieFiltersBar({
   const set = (patch: Partial<FilterState>) => onChange({ ...filters, ...patch });
 
   return (
-    <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end bg-[#0f172a]/60 border border-[#1e293b]">
+    <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end">
       <div className="flex-1 min-w-[180px] space-y-1.5">
         <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Docente</label>
         <select
           value={filters.professorId}
           onChange={(e) => set({ professorId: e.target.value })}
-          className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
         >
           <option value="">Todos</option>
           {professores.map((p) => (
@@ -51,7 +51,7 @@ export function DossieFiltersBar({
         <select
           value={filters.linhaId}
           onChange={(e) => set({ linhaId: e.target.value })}
-          className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
         >
           <option value="">Todas</option>
           {linhas.map((l) => (
@@ -67,7 +67,7 @@ export function DossieFiltersBar({
           type="number"
           value={filters.anoInicio}
           onChange={(e) => set({ anoInicio: e.target.value })}
-          className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
           placeholder="2015"
         />
       </div>
@@ -77,7 +77,7 @@ export function DossieFiltersBar({
           type="number"
           value={filters.anoFim}
           onChange={(e) => set({ anoFim: e.target.value })}
-          className="w-full bg-slate-950 border border-slate-800 p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
           placeholder="2026"
         />
       </div>

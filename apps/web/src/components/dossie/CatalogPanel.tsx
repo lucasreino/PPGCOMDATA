@@ -82,7 +82,7 @@ export function CatalogPanel({ kind, onImported }: Props) {
       <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
         Cadastro — {LABELS[kind]}
       </h4>
-      <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg cursor-pointer hover:border-indigo-600 text-xs text-slate-300 w-fit">
+      <label className="flex items-center gap-2 px-4 py-2.5 input-field rounded-lg cursor-pointer hover:border-indigo-600 text-xs text-slate-300 w-fit">
         <Upload className="w-4 h-4" />
         Importar CSV
         <input
@@ -102,31 +102,31 @@ export function CatalogPanel({ kind, onImported }: Props) {
             placeholder="Nome (ex: SIMCOM)"
             value={eventoForm.nome}
             onChange={(e) => setEventoForm({ ...eventoForm, nome: e.target.value })}
-            className="bg-slate-950 border border-slate-800 rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs"
           />
           <input
             placeholder="Edição"
             value={eventoForm.edicao}
             onChange={(e) => setEventoForm({ ...eventoForm, edicao: e.target.value })}
-            className="bg-slate-950 border border-slate-800 rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs"
           />
           <input
             placeholder="Ano"
             value={eventoForm.ano}
             onChange={(e) => setEventoForm({ ...eventoForm, ano: e.target.value })}
-            className="bg-slate-950 border border-slate-800 rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs"
           />
           <input
             placeholder="Inscritos"
             value={eventoForm.numero_inscritos}
             onChange={(e) => setEventoForm({ ...eventoForm, numero_inscritos: e.target.value })}
-            className="bg-slate-950 border border-slate-800 rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs"
           />
           <input
             placeholder="Agências financiadoras"
             value={eventoForm.agencias_financiadoras}
             onChange={(e) => setEventoForm({ ...eventoForm, agencias_financiadoras: e.target.value })}
-            className="bg-slate-950 border border-slate-800 rounded p-2 text-xs md:col-span-2"
+            className="input-field rounded p-2 text-xs md:col-span-2"
           />
           <button
             type="button"

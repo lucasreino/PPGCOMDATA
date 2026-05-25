@@ -21,6 +21,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.database import engine
 from app.models.data import Producao
 from app.services.qualis_catalog import (
+    apply_qualis_to_producoes,
     default_qualis_xlsx_path,
     load_manual_overrides,
     load_qualis_catalog,
@@ -62,10 +63,7 @@ def main() -> None:
             f"{len(manual_veiculo)} veículo"
         )
 
-    tipos = {t.strip().lower() for t in args.tipos.split(",") if t.strip()}
-    stats = Counter()
-    samples: list[str] = []
-    unmatched_samples: list[str] = []
+    tipos = frozenset(t.strip().lower() for t in args.tipos.split(",") if t.strip())
 
     with Session(engine) as session:
         producoes = [
@@ -75,42 +73,42 @@ def main() -> None:
         ]
         print(f"\nProduções a avaliar ({', '.join(sorted(tipos))}): {len(producoes)}")
 
-        for prod in producoes:
-            estrato, metodo = lookup_qualis(
-                prod.issn,
-                prod.veiculo,
-                by_issn,
-                by_titulo,
-                manual_issn,
-                manual_veiculo,
-            )
-            if not estrato:
-                stats["sem_match"] += 1
-                if len(unmatched_samples) < 15:
-                    unmatched_samples.append(
-                        f"  - {prod.veiculo or '(sem veículo)'} | ISSN={prod.issn or '—'} | {prod.titulo[:60]}"
-                    )
-                continue
-
-            stats[metodo] += 1
-            atual = normalize_estrato(prod.qualis)
-            if atual == estrato:
-                stats["ja_ok"] += 1
-                continue
-
-            stats["atualizado"] += 1
-            if len(samples) < 20:
-                samples.append(
-                    f"  [{metodo}] {estrato} ← {prod.veiculo or prod.titulo[:40]} "
-                    f"(antes: {atual or '—'})"
+        if args.dry_run:
+            stats = Counter()
+            samples: list[str] = []
+            unmatched_samples: list[str] = []
+            for prod in producoes:
+                estrato, metodo = lookup_qualis(
+                    prod.issn,
+                    prod.veiculo,
+                    by_issn,
+                    by_titulo,
+                    manual_issn,
+                    manual_veiculo,
                 )
-
-            if not args.dry_run:
-                prod.qualis = estrato
-                session.add(prod)
-
-        if not args.dry_run:
-            session.commit()
+                if not estrato:
+                    stats["sem_match"] += 1
+                    if len(unmatched_samples) < 15:
+                        unmatched_samples.append(
+                            f"  - {prod.veiculo or '(sem veículo)'} | ISSN={prod.issn or '—'} | {prod.titulo[:60]}"
+                        )
+                    continue
+                stats[metodo] += 1
+                atual = normalize_estrato(prod.qualis)
+                if atual == estrato:
+                    stats["ja_ok"] += 1
+                    continue
+                stats["atualizado"] += 1
+                if len(samples) < 20:
+                    samples.append(
+                        f"  [{metodo}] {estrato} ← {prod.veiculo or prod.titulo[:40]} "
+                        f"(antes: {atual or '—'})"
+                    )
+        else:
+            result = apply_qualis_to_producoes(session, tipos=tipos, xlsx_path=xlsx_path)
+            stats = Counter(result)
+            samples = []
+            unmatched_samples = []
 
     print("\n--- Resultado ---")
     print(f"  Atualizados: {stats['atualizado']}")
