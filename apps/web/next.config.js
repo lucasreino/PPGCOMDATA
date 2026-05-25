@@ -2,6 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  transpilePackages: ["@splinetool/react-spline", "@splinetool/runtime"],
 };
 
 module.exports = nextConfig;
