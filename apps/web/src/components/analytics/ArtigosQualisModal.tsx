@@ -22,12 +22,14 @@ const ESTRATO_COLORS: Record<string, string> = {
 
 export interface ArtigosQualisPayload {
   total_artigos: number;
+  total_registros?: number;
   com_qualis: number;
   sem_qualis: number;
   estratos: string[];
   por_estrato: Record<string, { count: number; percent: number }>;
   por_revista: { veiculo: string; count: number; percent: number }[];
   professor_por_estrato: Record<string, Record<string, number>>;
+  publicacoes_por_docente?: { docente: string; publicacoes: number }[];
   artigos: {
     id: string;
     professor_id: string;
@@ -37,6 +39,10 @@ export interface ArtigosQualisPayload {
     qualis: string | null;
     ano: number | null;
     doi?: string | null;
+    docentes_ppgcom?: string[];
+    num_docentes_ppgcom?: number;
+    eh_coautoria?: boolean;
+    autores_lattes?: string | null;
   }[];
 }
 
@@ -163,7 +169,8 @@ export function ArtigosQualisModal({
               Artigos — estratificação Qualis
             </h2>
             <p className="text-xs text-slate-400 mt-1">
-              Percentual por estrato, revistas e docente × estrato (filtros da aba Indicadores)
+              Obras únicas (coautorias contam uma vez no total). Percentual por estrato, revistas e
+              participações por docente.
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0 no-print">
@@ -208,7 +215,14 @@ export function ArtigosQualisModal({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-3 text-center">
                   <p className="text-2xl font-bold text-white">{data.total_artigos}</p>
-                  <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Artigos</p>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">
+                    Artigos únicos
+                  </p>
+                  {data.total_registros != null && data.total_registros > data.total_artigos && (
+                    <p className="text-[9px] text-slate-600 mt-1">
+                      {data.total_registros} registros em currículos
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg border border-emerald-900/50 bg-emerald-950/20 p-3 text-center">
                   <p className="text-2xl font-bold text-emerald-300">{data.com_qualis}</p>
@@ -294,13 +308,31 @@ export function ArtigosQualisModal({
               {Object.keys(data.professor_por_estrato).length > 0 && (
                 <section className="rounded-xl border border-slate-800 p-4 space-y-3">
                   <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Docente × estrato Qualis
+                    Docente × estrato Qualis (participações)
                   </h3>
                   <StackedBarChart
                     data={data.professor_por_estrato}
                     keys={stackedKeys}
                     colors={stackedKeys.map((k) => ESTRATO_COLORS[k] ?? "#6366f1")}
                   />
+                </section>
+              )}
+
+              {(data.publicacoes_por_docente?.length ?? 0) > 0 && (
+                <section className="rounded-xl border border-slate-800 p-4 space-y-2">
+                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Publicações por docente
+                  </h3>
+                  <ul className="space-y-1 text-xs text-slate-300">
+                    {data.publicacoes_por_docente!.map((row) => (
+                      <li key={row.docente} className="flex justify-between gap-4">
+                        <span className="truncate">{row.docente}</span>
+                        <span className="font-bold text-indigo-300 shrink-0">
+                          {row.publicacoes}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
 
@@ -312,7 +344,7 @@ export function ArtigosQualisModal({
                 <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 qualis-print-scroll">
                   {data.artigos.map((a) => (
                     <li
-                      key={a.id}
+                      key={`${a.id}-${a.titulo}`}
                       className="p-3 rounded-lg border border-slate-800 bg-slate-950/40 text-xs"
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -333,7 +365,19 @@ export function ArtigosQualisModal({
                       <p className="text-slate-500 mt-1 truncate" title={a.veiculo}>
                         {a.veiculo}
                       </p>
-                      <p className="text-slate-600 mt-0.5">{a.professor_nome}</p>
+                      {a.eh_coautoria && (a.docentes_ppgcom?.length ?? 0) > 1 ? (
+                        <p className="text-slate-600 mt-0.5">
+                          Coautoria PPGCOM ({a.num_docentes_ppgcom}):{" "}
+                          {a.docentes_ppgcom!.join(" · ")}
+                        </p>
+                      ) : (
+                        <p className="text-slate-600 mt-0.5">{a.professor_nome}</p>
+                      )}
+                      {a.autores_lattes && (
+                        <p className="text-slate-500 mt-0.5 text-[10px] line-clamp-2">
+                          Autores (Lattes): {a.autores_lattes}
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>

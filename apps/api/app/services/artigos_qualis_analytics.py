@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Callable, Dict, List, Optional
 
-from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.models.core import Professor
 from app.models.data import Producao
+from app.services.producao_coautoria import (
+    build_artigo_work_insights,
+    group_artigos_by_work,
+    is_artigo_tipo,
+)
 
 ESTRATO_ORDER = ("A1", "A2", "A3", "A4", "B1", "B2", "B3", "B4", "B5", "C")
 
@@ -27,10 +31,6 @@ def _estrato_sort_key(estrato: str) -> tuple:
         return (ESTRATO_ORDER.index(estrato), estrato)
     except ValueError:
         return (50, estrato)
-
-
-def _is_artigo(tipo: Optional[str]) -> bool:
-    return (tipo or "").lower().strip() in ("artigo", "artigos")
 
 
 def build_artigos_qualis_insights(
@@ -55,39 +55,44 @@ def build_artigos_qualis_insights(
         for p in session.exec(select(Professor)).all()
     }
 
-    artigos: List[Dict[str, Any]] = []
+    artigo_rows = [p for p in producoes if is_artigo_tipo(p.tipo)]
+    total_registros = len(artigo_rows)
+    groups = group_artigos_by_work(artigo_rows)
+    obras, participacoes_por_docente = build_artigo_work_insights(groups, prof_cache)
+
     por_estrato: Dict[str, int] = defaultdict(int)
     por_revista: Dict[str, int] = defaultdict(int)
     prof_estrato: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
-    prof_nomes: Dict[str, str] = {}
 
-    for prod in producoes:
-        pid = str(prod.professor_id)
-        nome = prof_cache.get(pid, "Docente")
-        if not _is_artigo(prod.tipo):
-            continue
-        estrato = _norm_estrato(prod.qualis)
-        veiculo = (prod.veiculo or "Revista não informada").strip()
-        prof_nomes[pid] = nome
+    artigos: List[Dict[str, Any]] = []
 
+    for obra in obras:
+        estrato = _norm_estrato(obra.get("qualis"))
+        veiculo = obra["veiculo"]
         por_estrato[estrato] += 1
         por_revista[veiculo] += 1
-        prof_estrato[pid][estrato] += 1
+
+        for nome in obra["docentes_ppgcom"]:
+            prof_estrato[nome][estrato] += 1
 
         artigos.append(
             {
-                "id": str(prod.id),
-                "professor_id": pid,
-                "professor_nome": prof_nomes[pid],
-                "titulo": prod.titulo,
+                "id": obra["id"],
+                "professor_id": obra["professor_id"],
+                "professor_nome": obra["professor_nome"],
+                "titulo": obra["titulo"],
                 "veiculo": veiculo,
                 "qualis": estrato if estrato != "Sem Qualis" else None,
-                "ano": prod.ano,
-                "doi": prod.doi,
+                "ano": obra["ano"],
+                "doi": obra["doi"],
+                "docentes_ppgcom": obra["docentes_ppgcom"],
+                "num_docentes_ppgcom": obra["num_docentes_ppgcom"],
+                "eh_coautoria": obra["eh_coautoria"],
+                "autores_lattes": obra.get("autores_lattes"),
             }
         )
 
-    total = len(artigos)
+    total = len(obras)
     com_qualis = sum(1 for a in artigos if a.get("qualis"))
     estratos_sorted = sorted(por_estrato.keys(), key=_estrato_sort_key)
 
@@ -106,21 +111,27 @@ def build_artigos_qualis_insights(
     ]
 
     professor_por_estrato: Dict[str, Dict[str, int]] = {}
-    for pid, counts in prof_estrato.items():
-        label = prof_nomes.get(pid, pid)
-        professor_por_estrato[label] = {
+    for nome, counts in prof_estrato.items():
+        professor_por_estrato[nome] = {
             e: counts.get(e, 0) for e in estratos_sorted if counts.get(e, 0)
         }
 
-    artigos.sort(key=lambda a: (a.get("ano") or 0), reverse=True)
+    publicacoes_por_docente = sorted(
+        participacoes_por_docente.items(),
+        key=lambda x: (-x[1], x[0]),
+    )
 
     return {
         "total_artigos": total,
+        "total_registros": total_registros,
         "com_qualis": com_qualis,
         "sem_qualis": total - com_qualis,
         "estratos": estratos_sorted,
         "por_estrato": por_estrato_pct,
         "por_revista": por_revista_list,
         "professor_por_estrato": professor_por_estrato,
+        "publicacoes_por_docente": [
+            {"docente": nome, "publicacoes": n} for nome, n in publicacoes_por_docente
+        ],
         "artigos": artigos[:120],
     }

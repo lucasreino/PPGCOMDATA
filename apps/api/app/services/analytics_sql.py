@@ -21,6 +21,11 @@ from app.models.data import (
     Projeto,
 )
 from app.models.enums import StatusOrientacao, StatusValidacao
+from app.services.producao_coautoria import (
+    group_artigos_by_work,
+    is_artigo_tipo,
+    pick_representative_producao,
+)
 
 
 def _apply_scope(
@@ -108,18 +113,17 @@ def build_analytics_stats_sql(
         not_null_col=Producao.ano,
     )
     producoes_por_ano = {str(k): v for k, v in producoes_por_ano.items()}
-    producoes_por_qualis_raw = group_count(
-        session,
-        Producao,
-        Producao.qualis,
-        apply_prof,
-        apply_validacao,
-        "ano",
-        ano_inicio,
-        ano_fim,
-        not_null_col=Producao.qualis,
+    stmt_art = select(Producao)
+    stmt_art = _apply_scope(
+        stmt_art, Producao, apply_prof, apply_validacao, "ano", ano_inicio, ano_fim
     )
-    producoes_por_qualis = {k.upper().strip(): v for k, v in producoes_por_qualis_raw.items()}
+    artigo_rows = [p for p in session.exec(stmt_art).all() if is_artigo_tipo(p.tipo)]
+    producoes_por_qualis: Dict[str, int] = {}
+    for items in group_artigos_by_work(artigo_rows).values():
+        rep = pick_representative_producao(items)
+        q = (rep.qualis or "").strip().upper()
+        if q:
+            producoes_por_qualis[q] = producoes_por_qualis.get(q, 0) + 1
 
     projetos_por_situacao: Dict[str, int] = {}
     stmt_proj = select(Projeto.situacao, func.count(Projeto.id))

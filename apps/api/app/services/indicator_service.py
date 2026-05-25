@@ -26,6 +26,7 @@ from app.models.data import (
     ProcessoSeletivo,
 )
 from app.services.analytics_sql import build_analytics_stats_sql
+from app.services.producao_coautoria import group_artigos_by_work, is_artigo_tipo
 from app.services.proposal_lacuna_service import merge_gaps_with_db
 from app.models.enums import (
     StatusValidacao,
@@ -256,9 +257,18 @@ class IndicatorService:
 
         por_docente_detalhe: Dict[str, Dict[str, int]] = {}
 
+        artigo_groups = group_artigos_by_work(
+            [p for p in producoes if is_artigo_tipo(p.tipo)]
+        )
+        totals["artigos_unicos"] = len(artigo_groups)
+        totals["artigos_participacoes"] = sum(
+            1 for p in producoes if is_artigo_tipo(p.tipo)
+        )
+
         for p in producoes:
             cat = _norm_tipo_producao(p.tipo)
-            totals[cat] = totals.get(cat, 0) + 1
+            if cat != "artigos":
+                totals[cat] = totals.get(cat, 0) + 1
             por_tipo[p.tipo] = por_tipo.get(p.tipo, 0) + 1
             if p.ano:
                 por_ano[str(p.ano)] = por_ano.get(str(p.ano), 0) + 1
@@ -355,6 +365,8 @@ class IndicatorService:
                 producao_linha_tipo[linha] = {}
             producao_linha_tipo[linha][cat] = producao_linha_tipo[linha].get(cat, 0) + 1
 
+        totals["artigos"] = totals.get("artigos_unicos", 0)
+
         return {
             "totais": totals,
             "producao_por_tipo": por_tipo,
@@ -373,6 +385,8 @@ class IndicatorService:
         return {
             "totais": {
                 "artigos": 0,
+                "artigos_unicos": 0,
+                "artigos_participacoes": 0,
                 "livros": 0,
                 "capitulos": 0,
                 "anais": 0,
