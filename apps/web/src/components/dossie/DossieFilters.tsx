@@ -32,11 +32,11 @@ export function DossieFiltersBar({
   return (
     <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end">
       <div className="flex-1 min-w-[180px] space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Docente</label>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Docente</label>
         <select
           value={filters.professorId}
           onChange={(e) => set({ professorId: e.target.value })}
-          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-800 bg-white"
         >
           <option value="">Todos</option>
           {professores.map((p) => (
@@ -47,11 +47,11 @@ export function DossieFiltersBar({
         </select>
       </div>
       <div className="flex-1 min-w-[180px] space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Linha</label>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Linha</label>
         <select
           value={filters.linhaId}
           onChange={(e) => set({ linhaId: e.target.value })}
-          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-800 bg-white"
         >
           <option value="">Todas</option>
           {linhas.map((l) => (
@@ -62,31 +62,31 @@ export function DossieFiltersBar({
         </select>
       </div>
       <div className="w-[100px] space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano início</label>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Ano início</label>
         <input
           type="number"
           value={filters.anoInicio}
           onChange={(e) => set({ anoInicio: e.target.value })}
-          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-800"
           placeholder="2015"
         />
       </div>
       <div className="w-[100px] space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ano fim</label>
+        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Ano fim</label>
         <input
           type="number"
           value={filters.anoFim}
           onChange={(e) => set({ anoFim: e.target.value })}
-          className="w-full input-field p-2.5 rounded text-xs text-slate-200"
+          className="w-full input-field p-2.5 rounded text-xs text-slate-800"
           placeholder="2026"
         />
       </div>
-      <label className="flex items-center gap-2 text-xs text-slate-300 pb-2 cursor-pointer">
+      <label className="flex items-center gap-2 text-xs text-slate-700 pb-2 cursor-pointer">
         <input
           type="checkbox"
           checked={filters.apenasValidados}
           onChange={(e) => set({ apenasValidados: e.target.checked })}
-          className="rounded border-slate-600"
+          className="rounded border-slate-300"
         />
         Só validados
       </label>

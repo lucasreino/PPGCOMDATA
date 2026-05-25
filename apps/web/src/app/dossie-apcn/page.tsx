@@ -152,7 +152,7 @@ export default function DossieApcnPage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+      <div className="min-h-screen flex items-center justify-center text-slate-600 text-sm">
         Carregando sessão...
       </div>
     );
@@ -173,7 +173,7 @@ export default function DossieApcnPage() {
 
       <div className="border-b border-slate-200 bg-white px-4 sm:px-6 py-3">
         <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600">
             Proposta de Doutorado — PPGCOM · visão institucional
           </p>
           <span className="text-[10px] px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700">
@@ -210,13 +210,13 @@ export default function DossieApcnPage() {
         />
 
         {error && (
-          <div className="rounded-lg border border-rose-800 bg-rose-950/40 text-rose-300 text-sm px-4 py-3">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 text-rose-700 text-sm px-4 py-3">
             {error}
           </div>
         )}
 
         {loading && !overview ? (
-          <div className="text-center py-20 text-slate-400 text-sm">Carregando indicadores...</div>
+          <div className="text-center py-20 text-slate-600 text-sm">Carregando indicadores...</div>
         ) : (
           <>
             {tab === "visao" && ov && (
@@ -256,7 +256,7 @@ export default function DossieApcnPage() {
                 )}
                 {demanda && (demanda.por_ano as Record<string, Record<string, number>>) && (
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Demanda discente por ano</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Demanda discente por ano</h3>
                     <StackedBarChart
                       data={Object.fromEntries(
                         Object.entries(demanda.por_ano as Record<string, Record<string, number>>).map(
@@ -280,7 +280,7 @@ export default function DossieApcnPage() {
                   </div>
                 )}
                 {narrativas?.visao_geral && (
-                  <div className="glow-card rounded-xl p-5 text-sm text-slate-300 leading-relaxed">
+                  <div className="glow-card rounded-xl p-5 text-sm text-slate-700 leading-relaxed">
                     {narrativas.visao_geral}
                   </div>
                 )}
@@ -298,7 +298,7 @@ export default function DossieApcnPage() {
                 </div>
                 <div className="glow-card rounded-xl overflow-hidden">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-900/80 text-slate-400 uppercase text-[10px]">
+                    <thead className="bg-slate-100 text-slate-600 uppercase text-[10px]">
                       <tr>
                         <th className="text-left p-3">Docente</th>
                         <th className="text-left p-3">Linha</th>
@@ -309,12 +309,12 @@ export default function DossieApcnPage() {
                     </thead>
                     <tbody>
                       {((corpo.tabela as Array<Record<string, unknown>>) || []).map((row) => (
-                        <tr key={String(row.id)} className="border-t border-slate-800/80 hover:bg-slate-900/40">
-                          <td className="p-3 text-slate-200">{String(row.nome)}</td>
-                          <td className="p-3 text-slate-400">{String(row.linha)}</td>
-                          <td className="p-3 text-right text-indigo-300">{String(row.producoes)}</td>
-                          <td className="p-3 text-right">{String(row.projetos)}</td>
-                          <td className="p-3 text-right text-amber-400">{String(row.lacunas_abertas)}</td>
+                        <tr key={String(row.id)} className="border-t border-slate-200 hover:bg-slate-50">
+                          <td className="p-3 text-slate-900 font-medium">{String(row.nome)}</td>
+                          <td className="p-3 text-slate-600">{String(row.linha)}</td>
+                          <td className="p-3 text-right text-indigo-600">{String(row.producoes)}</td>
+                          <td className="p-3 text-right text-slate-700">{String(row.projetos)}</td>
+                          <td className="p-3 text-right text-amber-600">{String(row.lacunas_abertas)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -373,7 +373,7 @@ export default function DossieApcnPage() {
                 {(prod.producao_por_linha_e_tipo as Record<string, Record<string, number>>) &&
                   Object.keys(prod.producao_por_linha_e_tipo as object).length > 0 && (
                     <div className="glow-card rounded-xl p-5">
-                      <h3 className="text-sm font-semibold text-slate-300 mb-3">
+                      <h3 className="text-sm font-semibold text-slate-900 mb-3">
                         Produção por linha e tipo
                       </h3>
                       <StackedBarChart
@@ -384,7 +384,7 @@ export default function DossieApcnPage() {
                   )}
                 <div className="glow-card rounded-xl overflow-x-auto">
                   <table className="w-full text-xs min-w-[700px]">
-                    <thead className="bg-slate-900/80 text-slate-400 text-[10px] uppercase">
+                    <thead className="bg-slate-100 text-slate-600 text-[10px] uppercase">
                       <tr>
                         {["Docente", "Linha", "Art.", "Liv.", "Cap.", "Anais", "Téc.", "Total", "Pend."].map(
                           (h) => (
@@ -397,16 +397,16 @@ export default function DossieApcnPage() {
                     </thead>
                     <tbody>
                       {(prod.tabela_por_docente || []).map((row) => (
-                        <tr key={String(row.professor_id)} className="border-t border-slate-800">
-                          <td className="p-3">{String(row.docente)}</td>
-                          <td className="p-3 text-slate-400">{String(row.linha)}</td>
-                          <td className="p-3 text-right">{row.artigos}</td>
-                          <td className="p-3 text-right">{row.livros}</td>
-                          <td className="p-3 text-right">{row.capitulos}</td>
-                          <td className="p-3 text-right">{row.anais}</td>
-                          <td className="p-3 text-right">{row.producao_tecnica}</td>
-                          <td className="p-3 text-right font-bold text-indigo-300">{row.total}</td>
-                          <td className="p-3 text-right text-amber-400">{row.pendencias}</td>
+                        <tr key={String(row.professor_id)} className="border-t border-slate-200">
+                          <td className="p-3 text-slate-900 font-medium">{String(row.docente)}</td>
+                          <td className="p-3 text-slate-600">{String(row.linha)}</td>
+                          <td className="p-3 text-right text-slate-700">{row.artigos}</td>
+                          <td className="p-3 text-right text-slate-700">{row.livros}</td>
+                          <td className="p-3 text-right text-slate-700">{row.capitulos}</td>
+                          <td className="p-3 text-right text-slate-700">{row.anais}</td>
+                          <td className="p-3 text-right text-slate-700">{row.producao_tecnica}</td>
+                          <td className="p-3 text-right font-bold text-indigo-600">{row.total}</td>
+                          <td className="p-3 text-right text-amber-600">{row.pendencias}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -430,14 +430,14 @@ export default function DossieApcnPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Pesquisa × extensão por ano</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Pesquisa × extensão por ano</h3>
                     <StackedBarChart
                       data={(projetos.pesquisa_extensao_por_ano as Record<string, Record<string, number>>) || {}}
                       keys={["pesquisa", "extensao"]}
                     />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por território</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Por território</h3>
                     <SimpleBarChart
                       data={(projetos.projetos_por_territorio as Record<string, number>) || {}}
                       color="#10b981"
@@ -446,11 +446,11 @@ export default function DossieApcnPage() {
                 </div>
                 {(projetos.tabela_relatorios as Array<Record<string, unknown>>)?.length > 0 && (
                   <div className="glow-card rounded-xl overflow-x-auto">
-                    <h3 className="text-sm font-semibold text-slate-300 p-4 border-b border-slate-800">
+                    <h3 className="text-sm font-semibold text-slate-900 p-4 border-b border-slate-200">
                       Relatórios complementares (impacto / extensão)
                     </h3>
                     <table className="w-full text-xs min-w-[800px]">
-                      <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase">
+                      <thead className="bg-slate-100 text-slate-600 text-[10px] uppercase">
                         <tr>
                           <th className="p-2 text-left">Título</th>
                           <th className="p-2">Docente</th>
@@ -462,11 +462,11 @@ export default function DossieApcnPage() {
                       </thead>
                       <tbody>
                         {(projetos.tabela_relatorios as Array<Record<string, unknown>>).map((row, i) => (
-                          <tr key={i} className="border-t border-slate-800">
-                            <td className="p-2">{String(row.titulo)}</td>
-                            <td className="p-2">{String(row.docente)}</td>
-                            <td className="p-2 text-slate-400">{String(row.tema ?? "—")}</td>
-                            <td className="p-2 text-slate-400">{String(row.publico ?? "—")}</td>
+                          <tr key={i} className="border-t border-slate-200">
+                            <td className="p-2 text-slate-900">{String(row.titulo)}</td>
+                            <td className="p-2 text-slate-900 font-medium">{String(row.docente)}</td>
+                            <td className="p-2 text-slate-600">{String(row.tema ?? "—")}</td>
+                            <td className="p-2 text-slate-600">{String(row.publico ?? "—")}</td>
                             <td className="p-2">{String(row.territorio ?? "—")}</td>
                             <td className="p-2 text-center">{String(row.financiamento)}</td>
                           </tr>
@@ -542,7 +542,7 @@ export default function DossieApcnPage() {
                   )}
                 <div className="glow-card rounded-xl overflow-x-auto max-h-[400px]">
                   <table className="w-full text-xs min-w-[800px]">
-                    <thead className="sticky top-0 bg-slate-900 text-slate-400 text-[10px] uppercase">
+                    <thead className="sticky top-0 bg-slate-100 text-slate-600 text-[10px] uppercase">
                       <tr>
                         <th className="p-2 text-left">Agência</th>
                         <th className="p-2">Ano</th>
@@ -554,17 +554,17 @@ export default function DossieApcnPage() {
                     </thead>
                     <tbody>
                       {(fin.matriz_fomento || []).slice(0, 50).map((row, i) => (
-                        <tr key={i} className="border-t border-slate-800">
-                          <td className="p-2">{String(row.agencia ?? "—")}</td>
-                          <td className="p-2 text-center">{String(row.ano ?? "—")}</td>
-                          <td className="p-2">{String(row.docente ?? "")}</td>
-                          <td className="p-2 text-slate-400 max-w-[200px] truncate">{String(row.vinculo ?? "")}</td>
+                        <tr key={i} className="border-t border-slate-200">
+                          <td className="p-2 text-slate-700">{String(row.agencia ?? "—")}</td>
+                          <td className="p-2 text-center text-slate-700">{String(row.ano ?? "—")}</td>
+                          <td className="p-2 text-slate-900 font-medium">{String(row.docente ?? "")}</td>
+                          <td className="p-2 text-slate-600 max-w-[200px] truncate">{String(row.vinculo ?? "")}</td>
                           <td className="p-2 text-center">
                             <span
                               className={`px-1.5 py-0.5 rounded text-[9px] ${
                                 row.origem === "confirmado"
-                                  ? "bg-emerald-950 text-emerald-400"
-                                  : "bg-amber-950 text-amber-400"
+                                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  : "bg-amber-50 text-amber-700 border border-amber-200"
                               }`}
                             >
                               {String(row.origem)}
@@ -599,11 +599,11 @@ export default function DossieApcnPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Lattes — por ano</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Lattes — por ano</h3>
                     <SimpleLineChart data={(eventos.eventos_por_ano as Record<string, number>) || {}} color="#a855f7" />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Inscritos por edição (SIMCOM…)</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Inscritos por edição (SIMCOM…)</h3>
                     <SimpleBarChart
                       data={(eventos.inscritos_por_edicao as Record<string, number>) || {}}
                       color="#a855f7"
@@ -613,7 +613,7 @@ export default function DossieApcnPage() {
                 {(eventos.eventos_institucionais_tabela as Array<Record<string, unknown>>)?.length > 0 && (
                   <div className="glow-card rounded-xl overflow-x-auto">
                     <table className="w-full text-xs">
-                      <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase">
+                      <thead className="bg-slate-100 text-slate-600 text-[10px] uppercase">
                         <tr>
                           <th className="p-2 text-left">Evento</th>
                           <th className="p-2">Edição</th>
@@ -625,12 +625,12 @@ export default function DossieApcnPage() {
                       <tbody>
                         {(eventos.eventos_institucionais_tabela as Array<Record<string, unknown>>).map(
                           (row, i) => (
-                            <tr key={i} className="border-t border-slate-800">
-                              <td className="p-2">{String(row.nome)}</td>
-                              <td className="p-2 text-center">{String(row.edicao ?? "—")}</td>
-                              <td className="p-2 text-center">{String(row.ano ?? "—")}</td>
-                              <td className="p-2 text-right">{String(row.inscritos ?? "—")}</td>
-                              <td className="p-2 text-right">{String(row.trabalhos ?? "—")}</td>
+                            <tr key={i} className="border-t border-slate-200">
+                              <td className="p-2 text-slate-900">{String(row.nome)}</td>
+                              <td className="p-2 text-center text-slate-600">{String(row.edicao ?? "—")}</td>
+                              <td className="p-2 text-center text-slate-600">{String(row.ano ?? "—")}</td>
+                              <td className="p-2 text-right text-slate-700">{String(row.inscritos ?? "—")}</td>
+                              <td className="p-2 text-right text-slate-700">{String(row.trabalhos ?? "—")}</td>
                             </tr>
                           )
                         )}
@@ -652,18 +652,18 @@ export default function DossieApcnPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por ano de conclusão</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Por ano de conclusão</h3>
                     <SimpleBarChart data={(egressos.egressos_por_ano as Record<string, number>) || {}} />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por setor</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Por setor</h3>
                     <SimpleBarChart data={(egressos.egressos_por_setor as Record<string, number>) || {}} color="#10b981" />
                   </div>
                 </div>
                 <CatalogPanel kind="processos-seletivos" onImported={loadData} />
                 {demanda && (
                   <div className="glow-card rounded-xl p-5 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-300">Demanda discente (seleção)</h3>
+                    <h3 className="text-sm font-semibold text-slate-900">Demanda discente (seleção)</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
                       <div>
                         <span className="text-slate-500">Relação candidato/vaga</span>
@@ -698,17 +698,17 @@ export default function DossieApcnPage() {
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por tipo</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Por tipo</h3>
                     <SimpleBarChart data={lac.lacunas_por_tipo || {}} color="#f59e0b" />
                   </div>
                   <div className="glow-card rounded-xl p-5">
-                    <h3 className="text-sm font-semibold text-slate-300 mb-3">Por seção do documento</h3>
+                    <h3 className="text-sm font-semibold text-slate-900 mb-3">Por seção do documento</h3>
                     <SimpleBarChart data={(lac.lacunas_por_secao as Record<string, number>) || {}} color="#ef4444" />
                   </div>
                 </div>
                 <div className="glow-card rounded-xl overflow-x-auto max-h-[360px]">
                   <table className="w-full text-xs min-w-[700px]">
-                    <thead className="bg-slate-900 text-slate-400 text-[10px] uppercase sticky top-0">
+                    <thead className="bg-slate-100 text-slate-600 text-[10px] uppercase sticky top-0">
                       <tr>
                         <th className="p-2 text-left">Tipo</th>
                         <th className="p-2 text-left">Seção</th>
@@ -719,10 +719,10 @@ export default function DossieApcnPage() {
                     </thead>
                     <tbody>
                       {(lac.tabela || []).slice(0, 80).map((row, i) => (
-                        <tr key={i} className="border-t border-slate-800">
-                          <td className="p-2 font-mono text-[10px]">{String(row.tipo_lacuna ?? row.tipo)}</td>
-                          <td className="p-2 text-slate-400">{String(row.secao_documento ?? "—")}</td>
-                          <td className="p-2 text-slate-300 max-w-xs truncate" title={String(row.descricao)}>
+                        <tr key={i} className="border-t border-slate-200">
+                          <td className="p-2 font-mono text-[10px] text-slate-700">{String(row.tipo_lacuna ?? row.tipo)}</td>
+                          <td className="p-2 text-slate-600">{String(row.secao_documento ?? "—")}</td>
+                          <td className="p-2 text-slate-800 max-w-xs truncate" title={String(row.descricao)}>
                             {String(row.descricao)}
                           </td>
                           <td className="p-2 text-center">{String(row.gravidade)}</td>
@@ -736,7 +736,7 @@ export default function DossieApcnPage() {
                             ) : row.id ? (
                               <button
                                 type="button"
-                                className="text-[10px] px-2 py-0.5 bg-emerald-800 rounded text-emerald-200"
+                                className="text-[10px] px-2 py-0.5 bg-emerald-600 rounded text-white hover:bg-emerald-500"
                                 onClick={async () => {
                                   await apiFetch(`/lacunas/${row.id}`, {
                                     method: "PATCH",
@@ -763,18 +763,18 @@ export default function DossieApcnPage() {
             {tab === "exportacoes" && (
               <section className="glow-card rounded-xl p-8 space-y-6">
                 <h3 className="text-lg font-semibold text-slate-900">Exportações</h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-600">
                   Baixe CSVs, gráficos PNG e o resumo em Markdown para colar na proposta de doutorado.
                 </p>
                 <ExportButtons query={buildDossieQuery(filters)} />
-                <div className="pt-4 border-t border-slate-800 space-y-2">
+                <div className="pt-4 border-t border-slate-200 space-y-2">
                   <p className="text-[10px] text-slate-500 uppercase font-bold">Gráficos PNG (filtros atuais)</p>
                   <div className="flex flex-wrap gap-2">
                     {producao?.producao_por_ano &&
                       Object.keys(producao.producao_por_ano as object).length > 0 && (
                         <button
                           type="button"
-                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          className="px-3 py-2 btn-secondary rounded-lg text-xs hover:border-indigo-400"
                           onClick={() =>
                             downloadChartPng({
                               kind: "line",
@@ -790,7 +790,7 @@ export default function DossieApcnPage() {
                       Object.keys(financiamento.financiamentos_por_agencia as object).length > 0 && (
                         <button
                           type="button"
-                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          className="px-3 py-2 btn-secondary rounded-lg text-xs hover:border-indigo-400"
                           onClick={() =>
                             downloadChartPng({
                               kind: "bar",
@@ -807,7 +807,7 @@ export default function DossieApcnPage() {
                       Object.keys(lacunas.lacunas_por_tipo as object).length > 0 && (
                         <button
                           type="button"
-                          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+                          className="px-3 py-2 btn-secondary rounded-lg text-xs hover:border-indigo-400"
                           onClick={() =>
                             downloadChartPng({
                               kind: "bar",
@@ -826,12 +826,12 @@ export default function DossieApcnPage() {
                   </p>
                 </div>
                 {narrativas && (
-                  <div className="space-y-4 pt-4 border-t border-slate-800">
+                  <div className="space-y-4 pt-4 border-t border-slate-200">
                     <div className="flex items-center justify-between gap-4">
-                      <h4 className="text-sm font-semibold text-slate-300">Textos-síntese (narrativas)</h4>
+                      <h4 className="text-sm font-semibold text-slate-900">Textos-síntese (narrativas)</h4>
                       <button
                         type="button"
-                        className="text-xs px-3 py-1.5 border border-slate-700 rounded-lg hover:border-indigo-600"
+                        className="text-xs px-3 py-1.5 btn-secondary rounded-lg hover:border-indigo-400"
                         onClick={() => {
                           const text = Object.entries(narrativas)
                             .map(([k, v]) => `## ${k}\n\n${v}`)
@@ -843,8 +843,8 @@ export default function DossieApcnPage() {
                       </button>
                     </div>
                     {Object.entries(narrativas).map(([key, text]) => (
-                      <div key={key} className="text-xs text-slate-400 leading-relaxed">
-                        <span className="text-indigo-400 font-bold uppercase block mb-1">{key}</span>
+                      <div key={key} className="text-xs text-slate-600 leading-relaxed">
+                        <span className="text-indigo-600 font-bold uppercase block mb-1">{key}</span>
                         {text}
                       </div>
                     ))}

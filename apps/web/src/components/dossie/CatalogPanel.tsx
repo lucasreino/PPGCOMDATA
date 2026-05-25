@@ -78,11 +78,11 @@ export function CatalogPanel({ kind, onImported }: Props) {
   };
 
   return (
-    <div className="glow-card rounded-xl p-4 space-y-4 border border-slate-800">
-      <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+    <div className="glow-card rounded-xl p-4 space-y-4 border border-slate-200">
+      <h4 className="text-xs font-bold uppercase text-slate-600 tracking-wider">
         Cadastro — {LABELS[kind]}
       </h4>
-      <label className="flex items-center gap-2 px-4 py-2.5 input-field rounded-lg cursor-pointer hover:border-indigo-600 text-xs text-slate-300 w-fit">
+      <label className="flex items-center gap-2 px-4 py-2.5 input-field rounded-lg cursor-pointer hover:border-indigo-400 text-xs text-slate-700 w-fit">
         <Upload className="w-4 h-4" />
         Importar CSV
         <input
@@ -102,31 +102,31 @@ export function CatalogPanel({ kind, onImported }: Props) {
             placeholder="Nome (ex: SIMCOM)"
             value={eventoForm.nome}
             onChange={(e) => setEventoForm({ ...eventoForm, nome: e.target.value })}
-            className="input-field rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs text-slate-800"
           />
           <input
             placeholder="Edição"
             value={eventoForm.edicao}
             onChange={(e) => setEventoForm({ ...eventoForm, edicao: e.target.value })}
-            className="input-field rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs text-slate-800"
           />
           <input
             placeholder="Ano"
             value={eventoForm.ano}
             onChange={(e) => setEventoForm({ ...eventoForm, ano: e.target.value })}
-            className="input-field rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs text-slate-800"
           />
           <input
             placeholder="Inscritos"
             value={eventoForm.numero_inscritos}
             onChange={(e) => setEventoForm({ ...eventoForm, numero_inscritos: e.target.value })}
-            className="input-field rounded p-2 text-xs"
+            className="input-field rounded p-2 text-xs text-slate-800"
           />
           <input
             placeholder="Agências financiadoras"
             value={eventoForm.agencias_financiadoras}
             onChange={(e) => setEventoForm({ ...eventoForm, agencias_financiadoras: e.target.value })}
-            className="input-field rounded p-2 text-xs md:col-span-2"
+            className="input-field rounded p-2 text-xs text-slate-800 md:col-span-2"
           />
           <button
             type="button"
@@ -138,7 +138,7 @@ export function CatalogPanel({ kind, onImported }: Props) {
           </button>
         </div>
       )}
-      {msg && <p className="text-xs text-slate-400">{msg}</p>}
+      {msg && <p className="text-xs text-slate-600">{msg}</p>}
       <p className="text-[10px] text-slate-500">
         CSV com cabeçalho na primeira linha. Colunas devem corresponder aos campos do cadastro.
       </p>
@@ -192,7 +192,7 @@ export function ExportButtons({ query }: { query: string }) {
               key={path}
               type="button"
               onClick={() => download(`/dossie-apcn/export/${path}`, file)}
-              className="px-3 py-2 bg-slate-900 border border-dashed border-slate-600 rounded-lg text-xs"
+              className="px-3 py-2 btn-secondary border-dashed rounded-lg text-xs text-slate-700"
             >
               {file}
             </button>
@@ -207,7 +207,7 @@ export function ExportButtons({ query }: { query: string }) {
           key={path}
           type="button"
           onClick={() => download(`/dossie-apcn/export/${path}`, file)}
-          className="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs hover:border-indigo-600"
+          className="px-3 py-2 btn-secondary rounded-lg text-xs hover:border-indigo-400"
         >
           {file}
         </button>

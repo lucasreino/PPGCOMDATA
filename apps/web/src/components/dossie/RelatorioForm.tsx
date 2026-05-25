@@ -84,7 +84,7 @@ export function RelatorioForm({ professores, linhas, onSaved }: Props) {
         <select
           value={form.professor_id}
           onChange={(e) => setForm({ ...form, professor_id: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800 bg-white"
         >
           <option value="">Docente</option>
           {professores.map((p) => (
@@ -96,7 +96,7 @@ export function RelatorioForm({ professores, linhas, onSaved }: Props) {
         <select
           value={form.linha_pesquisa_id}
           onChange={(e) => setForm({ ...form, linha_pesquisa_id: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800 bg-white"
         >
           <option value="">Linha (opcional)</option>
           {linhas.map((l) => (
@@ -109,40 +109,40 @@ export function RelatorioForm({ professores, linhas, onSaved }: Props) {
           placeholder="Título do projeto/ação"
           value={form.titulo}
           onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-          className="input-field rounded p-2 text-xs md:col-span-2"
+          className="input-field rounded p-2 text-xs text-slate-800 md:col-span-2"
         />
         <input
           placeholder="Tema principal"
           value={form.tema_principal}
           onChange={(e) => setForm({ ...form, tema_principal: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800"
         />
         <input
           placeholder="Público atendido"
           value={form.publico_atendido}
           onChange={(e) => setForm({ ...form, publico_atendido: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800"
         />
         <input
           placeholder="Território impactado"
           value={form.territorio_impactado}
           onChange={(e) => setForm({ ...form, territorio_impactado: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800"
         />
         <input
           placeholder="Produto gerado"
           value={form.produto_gerado}
           onChange={(e) => setForm({ ...form, produto_gerado: e.target.value })}
-          className="input-field rounded p-2 text-xs"
+          className="input-field rounded p-2 text-xs text-slate-800"
         />
         <textarea
           placeholder="Resumo do impacto social"
           value={form.impacto_social}
           onChange={(e) => setForm({ ...form, impacto_social: e.target.value })}
-          className="input-field rounded p-2 text-xs md:col-span-2 min-h-[60px]"
+          className="input-field rounded p-2 text-xs text-slate-800 md:col-span-2 min-h-[60px]"
         />
       </div>
-      <label className="flex items-center gap-2 text-xs text-slate-300">
+      <label className="flex items-center gap-2 text-xs text-slate-700">
         <input
           type="checkbox"
           checked={form.possui_financiamento_confirmado}
@@ -163,7 +163,7 @@ export function RelatorioForm({ professores, linhas, onSaved }: Props) {
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="px-4 py-2 border border-slate-700 rounded text-xs text-slate-400"
+          className="px-4 py-2 btn-secondary rounded text-xs"
         >
           Fechar
         </button>
