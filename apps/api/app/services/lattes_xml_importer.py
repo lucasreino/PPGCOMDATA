@@ -20,6 +20,7 @@ from app.models.data import (
     Evento,
     FormacaoAcademica,
     Financiamento,
+    GrupoPesquisaDocente,
     Orientacao,
     PdfSection,
     PerfilLattes,
@@ -51,6 +52,10 @@ from app.services.dedupe import (
 from app.services.extraction_registry import (
     resolve_extraction_profile,
     should_extract_producoes,
+)
+from app.services.grupo_pesquisa_lattes import (
+    import_grupos_from_atuacoes_xml,
+    is_lattes_projeto_grupo_pesquisa,
 )
 from app.services.professor_lookup import normalize_lattes_id
 
@@ -249,6 +254,8 @@ def should_skip_section_ai(session: Session, section: PdfSection) -> bool:
             return _count_xml_entities(session, upload_id, Producao) > 0
         if "projeto" in nome:
             return _count_xml_entities(session, upload_id, Projeto) > 0
+        if profile == "grupos_pesquisa":
+            return _count_xml_entities(session, upload_id, GrupoPesquisaDocente) > 0
         if "evento" in nome or "participação" in nome or "participacao" in nome:
             return _count_xml_entities(session, upload_id, Evento) > 0
         if "organização" in nome or "organizacao" in nome:
@@ -289,6 +296,7 @@ def import_lattes_xml(
         "orientacoes_extraidas": 0,
         "bancas_extraidas": 0,
         "eventos_extraidos": 0,
+        "grupos_extraidos": 0,
     }
 
     dados = root.find("DADOS-GERAIS")
@@ -341,6 +349,15 @@ def import_lattes_xml(
         "DADOS-GERAIS/ATUACOES-PROFISSIONAIS",
     )
     if atuacoes is not None:
+        metrics["grupos_extraidos"] += import_grupos_from_atuacoes_xml(
+            session,
+            upload,
+            atuacoes,
+            attr_fn=_attr,
+            trecho_fn=_trecho_xml,
+            fonte=_XML_SOURCE,
+            confianca=_XML_CONF,
+        )
         metrics["projetos_extraidos"] += _import_projetos(session, upload, atuacoes)
         metrics["financiamentos_extraidos"] += _import_financiamentos_formacao(
             session, upload, formacao_root
@@ -525,6 +542,10 @@ def _import_projetos(
             if desc_el is not None
             else _attr(proj, "DESCRICAO-DO-PROJETO")
         )
+        if is_lattes_projeto_grupo_pesquisa(
+            titulo, _attr(proj, "NATUREZA"), descricao or ""
+        ):
+            continue
         natureza = _attr(proj, "NATUREZA").upper()
         tipo = TipoProjeto.PESQUISA
         if natureza == "EXTENSAO":
