@@ -341,11 +341,11 @@ export function ArtigosQualisModal({
                   Lista de artigos ({data.artigos.length}
                   {data.total_artigos > data.artigos.length ? ` de ${data.total_artigos}` : ""})
                 </h3>
-                <ul className="space-y-2 max-h-64 overflow-y-auto pr-1 qualis-print-scroll">
+                <ul className="space-y-3 max-h-64 overflow-y-auto pr-1 qualis-print-scroll text-sm">
                   {data.artigos.map((a) => (
                     <li
                       key={`${a.id}-${a.titulo}`}
-                      className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-xs"
+                      className="p-4 rounded-lg border border-slate-200 bg-white text-slate-700"
                     >
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         {a.qualis ? (
@@ -353,28 +353,28 @@ export function ArtigosQualisModal({
                             {a.qualis}
                           </span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 text-[10px]">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 text-[10px]">
                             Sem Qualis
                           </span>
                         )}
                         {a.ano != null && (
-                          <span className="text-slate-500">{a.ano}</span>
+                          <span className="text-slate-600">{a.ano}</span>
                         )}
                       </div>
-                      <p className="font-semibold text-slate-200 leading-snug">{a.titulo}</p>
-                      <p className="text-slate-500 mt-1 truncate" title={a.veiculo}>
+                      <p className="font-semibold text-slate-900 leading-snug text-[13px]">{a.titulo}</p>
+                      <p className="text-slate-600 mt-1 truncate" title={a.veiculo}>
                         {a.veiculo}
                       </p>
                       {a.eh_coautoria && (a.docentes_ppgcom?.length ?? 0) > 1 ? (
-                        <p className="text-slate-600 mt-0.5">
+                        <p className="text-slate-700 mt-1">
                           Coautoria PPGCOM ({a.num_docentes_ppgcom}):{" "}
                           {a.docentes_ppgcom!.join(" · ")}
                         </p>
                       ) : (
-                        <p className="text-slate-600 mt-0.5">{a.professor_nome}</p>
+                        <p className="text-slate-700 mt-1">{a.professor_nome}</p>
                       )}
                       {a.autores_lattes && (
-                        <p className="text-slate-500 mt-0.5 text-[10px] line-clamp-2">
+                        <p className="text-slate-600 mt-1 text-xs line-clamp-2">
                           Autores (Lattes): {a.autores_lattes}
                         </p>
                       )}
