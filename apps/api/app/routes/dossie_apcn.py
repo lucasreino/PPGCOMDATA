@@ -101,6 +101,20 @@ async def dossie_projetos(
     return _svc(session, filters).get_project_indicators()
 
 
+@router.get("/grupos-pesquisa")
+async def dossie_grupos_pesquisa(
+    session: Session = Depends(get_session),
+    filters: IndicatorFilters = Depends(_filters),
+    _user=Depends(require_staff),
+):
+    key = _dossie_cache_key("grupos", filters)
+    return cached_call(
+        key,
+        _DOSSIE_CACHE_TTL_SEC,
+        lambda: _svc(session, filters).get_grupos_pesquisa_indicators(),
+    )
+
+
 @router.get("/financiamento")
 async def dossie_financiamento(
     session: Session = Depends(get_session),

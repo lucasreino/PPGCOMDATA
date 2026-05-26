@@ -98,6 +98,7 @@ export default function DossieApcnPage() {
       corpo,
       producao,
       projetos,
+      grupos: null,
       financiamento,
       eventos,
       lacunas,

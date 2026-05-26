@@ -933,6 +933,48 @@ class IndicatorService:
             "filtros": self.filters.query_params(),
         }
 
+    def _empty_grupos_pesquisa(self) -> Dict[str, Any]:
+        return {
+            "total_grupos": 0,
+            "grupos_por_papel": {},
+            "tabela": [],
+            "filtros": self.filters.query_params(),
+        }
+
+    def get_grupos_pesquisa_indicators(self) -> Dict[str, Any]:
+        """Vínculos em grupos CNPq (distintos de projetos de pesquisa/extensão)."""
+        if self._prof_ids is not None and not self._prof_ids:
+            return self._empty_grupos_pesquisa()
+
+        grupos = self._fetch(GrupoPesquisaDocente)
+        profs = {p.id: p for p in self._professores()}
+        por_papel: Dict[str, int] = {}
+        tabela: List[Dict[str, Any]] = []
+
+        for g in grupos:
+            papel = _enum_val(g.papel)
+            por_papel[papel] = por_papel.get(papel, 0) + 1
+            prof = profs.get(g.professor_id)
+            tabela.append(
+                {
+                    "id": g.id,
+                    "nome_grupo": g.nome_grupo,
+                    "docente": prof.nome_completo if prof else "—",
+                    "papel": papel,
+                    "codigo_dgp": g.codigo_dgp,
+                    "linha_tematica": g.linha_tematica,
+                    "instituicao": g.instituicao,
+                    "status_validacao": _enum_val(g.status_validacao),
+                }
+            )
+
+        return {
+            "total_grupos": len(tabela),
+            "grupos_por_papel": por_papel,
+            "tabela": sorted(tabela, key=lambda x: (x["nome_grupo"], x["docente"])),
+            "filtros": self.filters.query_params(),
+        }
+
     def get_egress_indicators(self) -> Dict[str, Any]:
         egressos = list(self.session.exec(select(Egresso)).all())
         por_ano: Dict[str, int] = {}

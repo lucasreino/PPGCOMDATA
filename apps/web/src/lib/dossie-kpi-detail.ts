@@ -19,6 +19,7 @@ export type DossieDataContext = {
   corpo: Record<string, unknown> | null;
   producao: Record<string, unknown> | null;
   projetos: Record<string, unknown> | null;
+  grupos: Record<string, unknown> | null;
   financiamento: Record<string, unknown> | null;
   eventos: Record<string, unknown> | null;
   lacunas: Record<string, unknown> | null;
@@ -30,6 +31,7 @@ export const EMPTY_DOSSIE_CTX: DossieDataContext = {
   corpo: null,
   producao: null,
   projetos: null,
+  grupos: null,
   financiamento: null,
   eventos: null,
   lacunas: null,
@@ -64,6 +66,26 @@ const COL_PROJETO: KpiDetailColumn[] = [
   { key: "tipo", label: "Tipo" },
   { key: "ano", label: "Ano", align: "center" },
   { key: "financiamento", label: "Financ.", align: "center" },
+];
+
+const PAPEL_GRUPO_LABEL: Record<string, string> = {
+  lider: "Líder",
+  vice_lider: "Vice-líder",
+  membro: "Membro",
+  outro: "Outro",
+};
+
+const COL_GRUPO: KpiDetailColumn[] = [
+  { key: "nome_grupo", label: "Grupo", truncate: true },
+  { key: "docente", label: "Docente" },
+  {
+    key: "papel",
+    label: "Papel",
+    align: "center",
+    format: (v) => PAPEL_GRUPO_LABEL[String(v)] ?? str(v),
+  },
+  { key: "codigo_dgp", label: "DGP", align: "center", mono: true },
+  { key: "linha_tematica", label: "Linha temática", truncate: true },
 ];
 
 const COL_RELATORIO: KpiDetailColumn[] = [
@@ -280,9 +302,23 @@ export function resolveDossieKpiDetail(
     if (key === "todos") {
       return {
         title: "Todos os projetos",
-        subtitle: "Pesquisa e extensão no período filtrado",
+        subtitle:
+          "Projetos de pesquisa e extensão (não inclui vínculos em grupos CNPq)",
         columns: COL_PROJETO,
         rows: tabela,
+      };
+    }
+  }
+
+  if (section === "grupos" && ctx.grupos) {
+    const tabela = rows<Record<string, unknown>>(ctx.grupos.tabela);
+    if (key === "total" || key === "todos") {
+      return {
+        title: "Grupos de pesquisa",
+        subtitle: "Vínculos em grupos CNPq por docente (distinto de projetos)",
+        columns: COL_GRUPO,
+        rows: tabela,
+        emptyMessage: "Nenhum grupo cadastrado para os filtros aplicados.",
       };
     }
   }
@@ -460,6 +496,7 @@ export function mergeDossiePathIntoContext(
   if (path === "corpo-docente") next.corpo = data;
   else if (path === "producao") next.producao = data;
   else if (path === "projetos") next.projetos = data;
+  else if (path === "grupos-pesquisa") next.grupos = data;
   else if (path === "financiamento") next.financiamento = data;
   else if (path === "eventos") next.eventos = data;
   else if (path === "lacunas") next.lacunas = data;

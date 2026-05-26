@@ -14,6 +14,7 @@ import { KpiDetailModal } from "@/components/dossie/KpiDetailModal";
 import { apiFetch } from "@/lib/api";
 import { cacheKey, cachedJson } from "@/lib/api-cache";
 import type { KpiDetailState } from "@/lib/dossie-kpi-detail";
+import { EMPTY_DOSSIE_CTX } from "@/lib/dossie-kpi-detail";
 import {
   STATS_KPI_FETCH,
   buildStatsDossieQuery,
@@ -65,20 +66,7 @@ export function EstatisticasView() {
           }
         )) as Record<string, unknown>;
 
-        let ctx = mergeStatsFetchIntoContext(
-          {
-            corpo: null,
-            producao: null,
-            projetos: null,
-            financiamento: null,
-            eventos: null,
-            lacunas: null,
-            egressos: null,
-            demanda: null,
-          },
-          spec.path,
-          data
-        );
+        let ctx = mergeStatsFetchIntoContext(EMPTY_DOSSIE_CTX, spec.path, data);
         const detail = resolveStatsKpiFromDossie(kpiId, ctx);
         if (detail) {
           setKpiDetail(detail);
@@ -179,7 +167,7 @@ export function EstatisticasView() {
           ) : d.statsData ? (
             <div className="space-y-6">
               {/* KPIs Highlights */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
                 <KpiCard
                   label="Total de Produções"
                   value={d.statsData.total_producoes}
@@ -199,9 +187,17 @@ export function EstatisticasView() {
                 <KpiCard
                   label="Projetos Ativos"
                   value={d.statsData.total_projetos}
-                  sub="Pesquisa e extensão no período filtrado"
+                  sub="Pesquisa e extensão — não inclui grupos CNPq"
                   accent="purple"
                   onClick={() => openStatsKpi("stats.projetos")}
+                  interactive={kpiLoading}
+                />
+                <KpiCard
+                  label="Grupos de Pesquisa"
+                  value={d.statsData.total_grupos_pesquisa ?? 0}
+                  sub="Vínculos em grupos CNPq por docente"
+                  accent="rose"
+                  onClick={() => openStatsKpi("stats.grupos")}
                   interactive={kpiLoading}
                 />
                 <KpiCard

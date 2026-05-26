@@ -20,6 +20,7 @@ export const STATS_KPI_FETCH: Record<
   "stats.producoes": { path: "producao", detailKpiId: "producao.total" },
   "stats.fomento": { path: "financiamento", detailKpiId: "fin.aprovado" },
   "stats.projetos": { path: "projetos", detailKpiId: "projetos.todos" },
+  "stats.grupos": { path: "grupos-pesquisa", detailKpiId: "grupos.total" },
   "stats.lacunas": { path: "lacunas", detailKpiId: "lacunas.abertas" },
 };
 
@@ -104,10 +105,25 @@ export function resolveStatsKpiFromAggregates(
     const porSituacao = stats.projetos_por_situacao as Record<string, number> | undefined;
     return {
       title: "Projetos por situação",
-      subtitle: "Resumo agregado (títulos individuais via API dossiê)",
+      subtitle:
+        "Projetos de pesquisa/extensão — não inclui grupos CNPq (lista via API dossiê)",
       columns: COL_BREAKDOWN,
       rows: mapCountRecord(porSituacao),
       emptyMessage: "Nenhum projeto no período filtrado.",
+    };
+  }
+
+  if (kpiId === "stats.grupos") {
+    const total = Number(stats.total_grupos_pesquisa ?? 0);
+    return {
+      title: "Grupos de pesquisa",
+      subtitle:
+        total > 0
+          ? `${total} vínculo(s) em grupo — detalhes por docente via API`
+          : "Vínculos em grupos CNPq (distinto de projetos)",
+      columns: COL_BREAKDOWN,
+      rows: [{ nome: "Total de vínculos em grupo", valor: total }],
+      emptyMessage: "Nenhum grupo cadastrado.",
     };
   }
 
