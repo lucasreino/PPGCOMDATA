@@ -78,6 +78,23 @@ docker compose exec api python -m app.create_admin --email admin@ppgcom.edu --pa
 
 ---
 
+## 🚢 Deploy (VPS)
+
+Produção na VPS com Docker Compose (`docker-compose.prod.yml`). Deploy automatizado via GitHub Actions ao fazer push em `main` (paths: `apps/web`, `apps/api`, compose de produção).
+
+1. Configure os secrets no GitHub: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` (opcional: `VPS_PORT`).
+2. Garanta que a VPS consiga `git fetch` do repositório (deploy key ou repo público).
+3. Dispare manualmente em **Actions → Deploy to VPS** se precisar de rebuild sem cache.
+
+Detalhes, checklist de primeira instalação e deploy manual: **[DEPLOY.md](DEPLOY.md)**.
+
+```bash
+# Fallback manual na VPS
+bash scripts/deploy-vps.sh
+```
+
+---
+
 ## 📝 Licença
 
 Este projeto é de uso restrito e confidencial para fins institucionais de pós-graduação.
@@ -91,4 +108,3 @@ cd apps/api
 pip install -r requirements.txt
 pytest
 ```
-# PPGCOMDATA
