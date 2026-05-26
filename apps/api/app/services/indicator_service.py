@@ -107,6 +107,8 @@ class IndicatorService:
         return stmt
 
     def _apply_validacao(self, stmt, model):
+        if hasattr(model, "status_validacao"):
+            stmt = stmt.where(model.status_validacao != StatusValidacao.DESCARTADO)
         if self.filters.apenas_validados:
             return stmt.where(model.status_validacao.in_(VALIDATED))
         return stmt
