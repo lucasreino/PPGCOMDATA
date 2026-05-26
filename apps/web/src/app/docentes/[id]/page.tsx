@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { cacheKey, cachedJson, isCacheValid } from "@/lib/api-cache";
 import type { ProfessorCatalog, ProfessorResumo } from "@/lib/types";
 import {
   mapProfessorDados,
@@ -24,38 +25,51 @@ export default function DocenteProfilePage() {
 
   useEffect(() => {
     if (!id) return;
-    setLoading(true);
+    const allCached =
+      isCacheValid(cacheKey("professor", "catalog", id)) &&
+      isCacheValid(cacheKey("professor", "dados", id)) &&
+      isCacheValid(cacheKey("professor", "resumo", id));
+    if (!allCached) setLoading(true);
     setError("");
 
     (async () => {
       try {
-        const [catalogRes, dadosRes, resumoRes] = await Promise.all([
-          apiFetch(`/professores/${id}/catalog`),
-          apiFetch(`/professores/${id}/dados`),
-          apiFetch(`/professores/${id}/resumo-academico`),
-        ]);
-        if (!catalogRes.ok) {
-          throw new Error("Professor não encontrado.");
-        }
-        const found: ProfessorCatalog = await catalogRes.json();
+        const found = await cachedJson(
+          cacheKey("professor", "catalog", id),
+          async () => {
+            const catalogRes = await apiFetch(`/professores/${id}/catalog`);
+            if (!catalogRes.ok) throw new Error("Professor não encontrado.");
+            return catalogRes.json() as Promise<ProfessorCatalog>;
+          }
+        );
 
-        if (!dadosRes.ok) {
-          const errBody = await dadosRes.json().catch(() => ({}));
-          const detail =
-            typeof errBody.detail === "string"
-              ? errBody.detail
-              : `Erro ${dadosRes.status} ao carregar dados do docente.`;
-          throw new Error(detail);
-        }
+        const rawDados = await cachedJson(
+          cacheKey("professor", "dados", id),
+          async () => {
+            const dadosRes = await apiFetch(`/professores/${id}/dados`);
+            if (!dadosRes.ok) {
+              const errBody = await dadosRes.json().catch(() => ({}));
+              const detail =
+                typeof errBody.detail === "string"
+                  ? errBody.detail
+                  : `Erro ${dadosRes.status} ao carregar dados do docente.`;
+              throw new Error(detail);
+            }
+            return dadosRes.json();
+          }
+        );
 
-        const rawDados = await dadosRes.json();
+        const resumoRaw = await cachedJson(
+          cacheKey("professor", "resumo", id),
+          async () => {
+            const resumoRes = await apiFetch(`/professores/${id}/resumo-academico`);
+            return resumoRes.ok ? resumoRes.json() : null;
+          }
+        );
+
         setProf(found);
         setDados(mapProfessorDados(rawDados));
-        if (resumoRes.ok) {
-          setResumo(resumoFromApi(await resumoRes.json()));
-        } else {
-          setResumo(null);
-        }
+        setResumo(resumoRaw ? resumoFromApi(resumoRaw) : null);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Erro ao carregar perfil.";
         if (msg === "Failed to fetch") {

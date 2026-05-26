@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { cacheKey, fetchJsonCached } from "@/lib/api-cache";
 import type { ProfessorCatalog } from "@/lib/types";
 import { ProfessorCard } from "@/components/docentes/ProfessorCard";
 
@@ -13,12 +13,10 @@ export default function DocentesPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    apiFetch("/professores/catalog")
-      .then((res) => {
-        if (!res.ok) throw new Error("Não foi possível carregar o corpo docente.");
-        return res.json();
-      })
-      .then((data: ProfessorCatalog[]) => setProfessors(data))
+    fetchJsonCached<ProfessorCatalog[]>("/professores/catalog", {
+      cacheKey: cacheKey("professores", "catalog"),
+    })
+      .then((data) => setProfessors(data))
       .catch((e) => setError(e instanceof Error ? e.message : "Erro ao carregar."))
       .finally(() => setLoading(false));
   }, []);

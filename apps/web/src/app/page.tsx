@@ -17,6 +17,13 @@ import {
   parseApiErrorDetail,
   SESSION_EXPIRED_MESSAGE,
 } from "@/lib/api";
+import {
+  cacheKey,
+  cachedJson,
+  fetchJsonCached,
+  invalidateProfessorCaches,
+  isCacheValid,
+} from "@/lib/api-cache";
 import type {
   Professor, Projeto, Evento, Producao, Financiamento, AlertaLacuna, LogAudit, MainTab, EntityTab,
   Orientacao, FormacaoAcademica, ProfessorResumo,
@@ -165,12 +172,12 @@ export default function Dashboard() {
         }
         setApiConnected(true);
         try {
-          const linhasRes = await apiFetch("/linhas-pesquisa/");
-          if (linhasRes.ok) {
-            const data = await linhasRes.json();
-            if (data && data.length > 0) {
-              setLinhasPesquisa(data);
-            }
+          const data = await fetchJsonCached<{ id: string; nome: string }[]>(
+            "/linhas-pesquisa/",
+            { cacheKey: cacheKey("meta", "linhas-pesquisa") }
+          );
+          if (data && data.length > 0) {
+            setLinhasPesquisa(data);
           }
         } catch (err) {
           console.log("API online, falha ao carregar linhas:", err);
@@ -186,13 +193,19 @@ export default function Dashboard() {
       });
   }, [user]);
 
-  const loadProfessors = useCallback(async (preferId?: string) => {
+  const loadProfessors = useCallback(async (preferId?: string, force = false) => {
     if (!apiConnected) return;
 
     try {
-      const res = await apiFetch("/professores/");
-      if (!res.ok) throw new Error("Erro ao carregar docentes");
-      const data: any[] = await res.json();
+      const data: any[] = await cachedJson(
+        cacheKey("professores", "list"),
+        async () => {
+          const res = await apiFetch("/professores/");
+          if (!res.ok) throw new Error("Erro ao carregar docentes");
+          return res.json();
+        },
+        { force }
+      );
       const mapped = data.map((p) => ({
         id: p.id,
         nome_completo: p.nome_completo,
@@ -259,15 +272,34 @@ export default function Dashboard() {
     router.push(`/?${params.toString()}`, { scroll: false });
   };
 
-  const reloadProfessorData = (profId: string) => {
-    if (!apiConnected) return;
-    setLoading(true);
-    Promise.all([
-      apiFetch(`/validacao/pendentes?professor_id=${profId}`),
-    ])
-      .then(async ([pendentesRes]) => {
-        if (!pendentesRes.ok) throw new Error("Erro ao carregar dados do docente");
-        const data = sortEntityPayload(await pendentesRes.json());
+  const reloadProfessorData = useCallback(
+    async (profId: string, force = false) => {
+      if (!apiConnected) return;
+      const pendentesKey = cacheKey("validacao", "pendentes", profId);
+      const resumoKey = cacheKey("professor", "resumo", profId);
+      if (force || !isCacheValid(pendentesKey) || !isCacheValid(resumoKey)) {
+        setLoading(true);
+      }
+      try {
+        const [data, resumo] = await Promise.all([
+          cachedJson(
+            cacheKey("validacao", "pendentes", profId),
+            async () => {
+              const res = await apiFetch(`/validacao/pendentes?professor_id=${profId}`);
+              if (!res.ok) throw new Error("Erro ao carregar dados do docente");
+              return sortEntityPayload(await res.json());
+            },
+            { force }
+          ),
+          cachedJson(
+            cacheKey("professor", "resumo", profId),
+            async () => {
+              const res = await apiFetch(`/professores/${profId}/resumo-academico`);
+              return res.ok ? res.json() : null;
+            },
+            { force }
+          ),
+        ]);
         setProjetos(data.projetos || []);
         setEventos(data.eventos || []);
         setProducoes(data.producoes || []);
@@ -278,18 +310,15 @@ export default function Dashboard() {
         setPremios(data.premios || []);
         setGruposPesquisa(data.grupos_pesquisa || []);
         setLacunas(data.lacunas || []);
-
-        setLoading(false);
-      })
-      .catch((err) => {
+        setResumoAcademico(resumo);
+      } catch (err) {
         console.error("Falha ao buscar dados do docente:", err);
+      } finally {
         setLoading(false);
-      });
-    apiFetch(`/professores/${profId}/resumo-academico`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((r) => setResumoAcademico(r))
-      .catch(() => setResumoAcademico(null));
-  };
+      }
+    },
+    [apiConnected]
+  );
 
   // Load teacher specific data on select (API or Mock fallback)
   useEffect(() => {
@@ -462,7 +491,7 @@ export default function Dashboard() {
       setGruposPesquisa([]);
       setLacunas([]);
     }
-  }, [selectedProfId, apiConnected, apiUrl]);
+  }, [selectedProfId, apiConnected, reloadProfessorData, professors]);
 
   // Handle human-in-the-loop action: Confirmar
   const handleConfirm = (type: string, id: string) => {
@@ -800,28 +829,32 @@ export default function Dashboard() {
       return;
     }
 
-    setLoadingStats(true);
     let query = `?`;
     if (statsProfessorId !== "todos") query += `professor_id=${statsProfessorId}&`;
     if (statsLinhaPesquisaId !== "todas") query += `linha_pesquisa_id=${statsLinhaPesquisaId}&`;
     if (statsAnoInicio) query += `ano_inicio=${statsAnoInicio}&`;
     if (statsAnoFim) query += `ano_fim=${statsAnoFim}&`;
 
-    apiFetch(`/analises/estatisticas${query}`)
-      .then(res => {
+    const statsCacheKey = cacheKey("analytics", "stats", query);
+    if (!isCacheValid(statsCacheKey)) setLoadingStats(true);
+    cachedJson(
+      statsCacheKey,
+      async () => {
+        const res = await apiFetch(`/analises/estatisticas${query}`);
         if (!res.ok) throw new Error("Erro ao carregar estatísticas");
         return res.json();
-      })
-      .then(data => {
+      }
+    )
+      .then((data) => {
         setStatsData(data);
         setLoadingStats(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error("Erro ao buscar estatísticas da API:", err);
         setStatsData(generateSimulatedStats());
         setLoadingStats(false);
       });
-  }, [mainTab, statsProfessorId, statsLinhaPesquisaId, statsAnoInicio, statsAnoFim, apiConnected, apiUrl]);
+  }, [mainTab, statsProfessorId, statsLinhaPesquisaId, statsAnoInicio, statsAnoFim, apiConnected]);
 
   // AI Report Generation Trigger
   const handleGenerateReport = async () => {
@@ -994,7 +1027,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         "reprocessamento",
         `[Real DB] Currículo reimportado. Produções: ${imp.producoes_extraidas ?? 0}.`
       );
-      reloadProfessorData(selectedProfId);
+      invalidateProfessorCaches(selectedProfId);
+      await reloadProfessorData(selectedProfId, true);
     } catch (err: any) {
       const msg = String(err?.message || "");
       if (msg.toLowerCase().includes("failed to fetch")) {
@@ -1055,7 +1089,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           `[Real DB] Currículo importado (${lattesFonte.toUpperCase()}). ` +
             `Produções: ${imp.producoes_extraidas ?? 0}, projetos: ${imp.projetos_extraidos ?? 0}.`
         );
-        reloadProfessorData(selectedProfId);
+        invalidateProfessorCaches(selectedProfId);
+        await reloadProfessorData(selectedProfId, true);
       } catch (err: unknown) {
         console.error("Erro na importação Lattes:", err);
         setIsProcessing(false);
@@ -3084,7 +3119,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         onClose={() => setShowNovoDocenteModal(false)}
         linhasPesquisa={linhasPesquisa}
         onSuccess={(professorId, nome) => {
-          loadProfessors(professorId);
+          loadProfessors(professorId, true);
           addAuditLog("cadastro", `Novo docente: ${nome} (${professorId}).`);
         }}
       />

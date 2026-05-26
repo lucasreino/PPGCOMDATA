@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
+import { cacheKey, cachedJson, fetchJsonCached, isCacheValid } from "@/lib/api-cache";
 import {
   DossieFiltersBar,
   buildDossieQuery,
@@ -85,11 +86,15 @@ export default function DossieApcnPage() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      apiFetch("/professores").then((r) => (r.ok ? r.json() : [])),
-      apiFetch("/linhas-pesquisa").then((r) => (r.ok ? r.json() : [])),
+      fetchJsonCached<unknown[]>("/professores", {
+        cacheKey: cacheKey("meta", "professores"),
+      }).catch(() => []),
+      fetchJsonCached<unknown[]>("/linhas-pesquisa", {
+        cacheKey: cacheKey("meta", "linhas-pesquisa"),
+      }).catch(() => []),
     ]).then(([p, l]) => {
-      setProfessores(Array.isArray(p) ? p : []);
-      setLinhas(Array.isArray(l) ? l : []);
+      setProfessores(Array.isArray(p) ? (p as { id: string; nome_completo: string }[]) : []);
+      setLinhas(Array.isArray(l) ? (l as { id: string; nome: string }[]) : []);
     });
   }, [user]);
 
@@ -98,53 +103,68 @@ export default function DossieApcnPage() {
     return res.json();
   };
 
-  const loadTabData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    const q = buildDossieQuery(filters);
-    const pathsByTab: Record<TabId, string[]> = {
-      visao: ["visao-geral"],
-      corpo: ["corpo-docente"],
-      producao: ["producao"],
-      projetos: ["projetos"],
-      financiamento: ["financiamento"],
-      eventos: ["eventos"],
-      egressos: ["egressos"],
-      lacunas: ["lacunas"],
-      exportacoes: ["overview"],
-    };
-    const paths = pathsByTab[tab] ?? ["overview"];
-    try {
-      const responses = await Promise.all(
-        paths.map((p) => apiFetch(`/dossie-apcn/${p}${q}`))
-      );
-      for (let i = 0; i < paths.length; i++) {
-        const path = paths[i];
-        const data = await parseRes(responses[i], path);
-        if (path === "visao-geral") {
-          setOverview(data.overview ?? data);
-          setDemanda(data.demanda ?? null);
-          setNarrativas(data.narrativas ?? null);
-        } else if (path === "overview") setOverview(data);
-        else if (path === "corpo-docente") setCorpo(data);
-        else if (path === "producao") setProducao(data);
-        else if (path === "projetos") setProjetos(data);
-        else if (path === "financiamento") setFinanciamento(data);
-        else if (path === "eventos") setEventos(data);
-        else if (path === "lacunas") setLacunas(data);
-        else if (path === "egressos") setEgressos(data);
-        else if (path === "demanda") setDemanda(data);
-        else if (path === "narrativas") setNarrativas(data);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao carregar indicadores");
-    } finally {
-      setLoading(false);
-    }
-  }, [user, filters, tab]);
+  const applyDossiePathData = (path: string, data: Record<string, unknown>) => {
+    if (path === "visao-geral") {
+      setOverview((data.overview ?? data) as Record<string, unknown>);
+      setDemanda((data.demanda ?? null) as Record<string, unknown> | null);
+      setNarrativas((data.narrativas ?? null) as Record<string, string> | null);
+    } else if (path === "overview") setOverview(data);
+    else if (path === "corpo-docente") setCorpo(data);
+    else if (path === "producao") setProducao(data);
+    else if (path === "projetos") setProjetos(data);
+    else if (path === "financiamento") setFinanciamento(data);
+    else if (path === "eventos") setEventos(data);
+    else if (path === "lacunas") setLacunas(data);
+    else if (path === "egressos") setEgressos(data);
+    else if (path === "demanda") setDemanda(data);
+    else if (path === "narrativas") setNarrativas(data);
+  };
 
-  const loadData = loadTabData;
+  const loadTabData = useCallback(
+    async (force = false) => {
+      if (!user) return;
+      const q = buildDossieQuery(filters);
+      const pathsByTab: Record<TabId, string[]> = {
+        visao: ["visao-geral"],
+        corpo: ["corpo-docente"],
+        producao: ["producao"],
+        projetos: ["projetos"],
+        financiamento: ["financiamento"],
+        eventos: ["eventos"],
+        egressos: ["egressos"],
+        lacunas: ["lacunas"],
+        exportacoes: ["overview"],
+      };
+      const paths = pathsByTab[tab] ?? ["overview"];
+      const allCached =
+        !force && paths.every((p) => isCacheValid(cacheKey("dossie", p, q)));
+
+      if (!allCached) setLoading(true);
+      setError(null);
+      try {
+        const results = await Promise.all(
+          paths.map((path) =>
+            cachedJson(
+              cacheKey("dossie", path, q),
+              async () => {
+                const res = await apiFetch(`/dossie-apcn/${path}${q}`);
+                return parseRes(res, path);
+              },
+              { force }
+            )
+          )
+        );
+        paths.forEach((path, i) => applyDossiePathData(path, results[i]));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erro ao carregar indicadores");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, filters, tab]
+  );
+
+  const loadData = () => loadTabData(true);
 
   useEffect(() => {
     if (user) loadTabData();

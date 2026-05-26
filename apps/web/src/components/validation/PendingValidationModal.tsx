@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { X, RefreshCw, ArrowRight, AlertTriangle } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { cacheKey, cachedJson } from "@/lib/api-cache";
 import { sortByNewestFirst } from "@/lib/sort-entities";
 import type { EntityTab, Professor } from "@/lib/types";
 
@@ -115,12 +116,20 @@ export function PendingValidationModal({
 
     const qs = params.toString();
     const url = qs ? `/validacao/pendentes?${qs}` : "/validacao/pendentes";
+    const pendingKey = cacheKey(
+      "validacao",
+      "pendentes",
+      statsProfessorId !== "todos" ? statsProfessorId : "all"
+    );
 
-    apiFetch(url)
-      .then(async (res) => {
+    cachedJson(
+      pendingKey,
+      async () => {
+        const res = await apiFetch(url);
         if (!res.ok) throw new Error("Não foi possível carregar a fila de validação");
         return res.json() as Promise<PendingPayload>;
-      })
+      }
+    )
       .then((payload) => {
         if (cancelled) return;
         setData(payload);
