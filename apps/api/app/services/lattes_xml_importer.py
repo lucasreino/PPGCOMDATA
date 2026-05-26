@@ -87,6 +87,13 @@ def resolve_xml_path_for_upload(
     upload = session.get(CurriculoUpload, upload_id)
     if not upload:
         return None
+
+    from app.services.lattes_curriculo_import import resolve_xml_path_for_upload_record
+
+    stored = resolve_xml_path_for_upload_record(upload)
+    if stored and stored.is_file():
+        return stored
+
     prof = session.get(Professor, upload.professor_id)
     if not prof or not prof.id_lattes:
         return None

@@ -1,64 +1,52 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, status
 from sqlmodel import Session, select
-import os
-import shutil
-import uuid
-from typing import List, Optional
+from typing import Literal, Optional
+
 from app.database import get_session
-from app.config import settings
 from app.models.data import CurriculoUpload
 from app.models.enums import StatusProcessamento
-from app.services.upload_pipeline import run_full_pipeline, run_full_pipeline_background
+from app.services.lattes_curriculo_import import (
+    run_lattes_xml_import_pipeline,
+    resolve_xml_path_for_upload_record,
+    save_and_import_lattes_file,
+)
 from app.auth import require_staff
 
 router = APIRouter(prefix="/uploads", tags=["Uploads & Processing"])
 
-@router.post("/", response_model=CurriculoUpload, status_code=status.HTTP_201_CREATED)
-async def upload_curriculo(
+
+@router.post("/lattes")
+async def upload_lattes_curriculo(
     professor_id: str = Form(...),
+    fonte: Literal["html", "xml"] = Form(...),
     ano_inicio: Optional[int] = Form(None),
     ano_fim: Optional[int] = Form(None),
     file: UploadFile = File(...),
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Uploads a digital Currículo Lattes PDF and creates the upload record."""
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos PDF são permitidos."
-        )
-        
-    # Generate unique filename to avoid collision
-    file_ext = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    dest_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
-    
-    # Save the file locally
+    """
+    Importa currículo Lattes a partir de:
+    - **html**: página HTML salva do Lattes (convertida para XML via lattes-xml)
+    - **xml**: arquivo XML exportado diretamente
+    """
     try:
-        with open(dest_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
+        return save_and_import_lattes_file(
+            session,
+            professor_id,
+            file,
+            fonte,
+            ano_inicio=ano_inicio,
+            ano_fim=ano_fim,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo no servidor: {str(e)}"
-        )
-        
-    # Create database record
-    db_upload = CurriculoUpload(
-        professor_id=professor_id,
-        arquivo_url=dest_path, # Store absolute path for easy server parsing
-        arquivo_nome=file.filename,
-        ano_inicio=ano_inicio,
-        ano_fim=ano_fim,
-        status=StatusProcessamento.AGUARDANDO_PROCESSAMENTO
-    )
-    
-    session.add(db_upload)
-    session.commit()
-    session.refresh(db_upload)
-    
-    return db_upload
+            detail=f"Falha na importação do currículo: {exc}",
+        ) from exc
+
 
 @router.get("/{upload_id}", response_model=CurriculoUpload)
 async def obter_upload(
@@ -76,15 +64,20 @@ async def obter_upload(
 @router.post("/{upload_id}/processar")
 async def processar_upload(
     upload_id: str,
-    background_tasks: BackgroundTasks,
-    background: bool = True,
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Inicia extração + IA. Por padrão roda em background e retorna imediatamente."""
+    """Reimporta o XML do upload (HTML já convertido ou XML enviado)."""
     upload = session.get(CurriculoUpload, upload_id)
     if not upload:
         raise HTTPException(status_code=404, detail="Upload não encontrado.")
+
+    xml_path = resolve_xml_path_for_upload_record(upload)
+    if not xml_path:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não há XML disponível para este upload. Envie HTML ou XML novamente.",
+        )
 
     if upload.status == StatusProcessamento.PROCESSANDO:
         return {
@@ -93,25 +86,13 @@ async def processar_upload(
             "mensagem": "Processamento já em andamento.",
         }
 
-    if background:
-        upload.status = StatusProcessamento.PROCESSANDO
-        upload.mensagem_erro = None
-        session.add(upload)
-        session.commit()
-        background_tasks.add_task(run_full_pipeline_background, upload_id)
-        return {
-            "status": "processando",
-            "upload_id": upload_id,
-            "mensagem": "Processamento iniciado. Acompanhe o status pelo polling.",
-        }
-
     try:
-        return run_full_pipeline(session, upload_id)
-    except Exception as e:
+        return run_lattes_xml_import_pipeline(session, upload_id, xml_path)
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha no processamento: {str(e)}",
-        )
+            detail=f"Falha no processamento: {exc}",
+        ) from exc
 
 
 @router.get("/professor/{professor_id}/latest")
@@ -134,12 +115,10 @@ async def ultimo_upload_professor(
 @router.post("/professor/{professor_id}/reprocessar")
 async def reprocessar_ultimo_curriculo(
     professor_id: str,
-    background_tasks: BackgroundTasks,
-    background: bool = True,
     session: Session = Depends(get_session),
     _user=Depends(require_staff),
 ):
-    """Reprocessa o PDF Lattes mais recente do docente (background por padrão)."""
+    """Reimporta o último currículo Lattes (XML/HTML) do docente."""
     upload = session.exec(
         select(CurriculoUpload)
         .where(CurriculoUpload.professor_id == professor_id)
@@ -148,6 +127,13 @@ async def reprocessar_ultimo_curriculo(
     if not upload:
         raise HTTPException(status_code=404, detail="Nenhum currículo para reprocessar.")
 
+    xml_path = resolve_xml_path_for_upload_record(upload)
+    if not xml_path:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Último envio não possui XML reutilizável. Importe HTML ou XML novamente.",
+        )
+
     if upload.status == StatusProcessamento.PROCESSANDO:
         return {
             "status": "processando",
@@ -155,22 +141,10 @@ async def reprocessar_ultimo_curriculo(
             "mensagem": "Reprocessamento já em andamento.",
         }
 
-    if background:
-        upload.status = StatusProcessamento.PROCESSANDO
-        upload.mensagem_erro = None
-        session.add(upload)
-        session.commit()
-        background_tasks.add_task(run_full_pipeline_background, upload.id)
-        return {
-            "status": "processando",
-            "upload_id": upload.id,
-            "mensagem": "Reprocessamento iniciado em background.",
-        }
-
     try:
-        return run_full_pipeline(session, upload.id)
-    except Exception as e:
+        return run_lattes_xml_import_pipeline(session, str(upload.id), xml_path)
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha no reprocessamento: {str(e)}",
-        )
+            detail=f"Falha no reprocessamento: {exc}",
+        ) from exc

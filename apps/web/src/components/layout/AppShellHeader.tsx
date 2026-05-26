@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { APP_VERSION_LABEL } from "@/lib/app-version";
 import type { MainTab } from "@/lib/types";
+import { AppShellContainer } from "@/components/layout/AppShellContainer";
 
 export type AppNavSection = "operacao" | "docentes" | "dossie";
 
@@ -182,7 +183,7 @@ export function AppShellHeader({
 
   return (
     <header className="no-print border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-40 shadow-sm">
-      <div className="px-4 sm:px-6 py-3">
+      <AppShellContainer className="py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link href="/" className="flex items-center gap-3 min-w-0 group">
             <div className="bg-indigo-600 p-2 rounded-lg text-white shadow-md shadow-indigo-600/20 shrink-0">
@@ -256,7 +257,7 @@ export function AppShellHeader({
 
         {desktopNav}
         {mobileNav}
-      </div>
+      </AppShellContainer>
     </header>
   );
 }

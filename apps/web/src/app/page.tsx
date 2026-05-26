@@ -48,6 +48,7 @@ import { PendingValidationModal } from "@/components/validation/PendingValidatio
 import { ArtigosQualisModal } from "@/components/analytics/ArtigosQualisModal";
 import { OrientacoesModal } from "@/components/analytics/OrientacoesModal";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
+import { AppShellContainer } from "@/components/layout/AppShellContainer";
 import { NovoDocenteModal } from "@/components/admin/NovoDocenteModal";
 import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { groupProducoesByTipo } from "@/lib/producao-groups";
@@ -133,6 +134,7 @@ export default function Dashboard() {
   const [lacunas, setLacunas] = useState<AlertaLacuna[]>([]);
   const [auditLogs, setAuditLogs] = useState<LogAudit[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [lattesFonte, setLattesFonte] = useState<"html" | "xml">("html");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -966,11 +968,17 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
     }
   };
 
+  const handleLattesFonteChange = (fonte: "html" | "xml") => {
+    setLattesFonte(fonte);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleReprocessCurriculo = async () => {
     if (!apiConnected || !selectedProfId) return;
     setIsProcessing(true);
     setUploadProgress(20);
-    setProcessingStep("Reprocessando último PDF do docente...");
+    setProcessingStep("Reimportando último currículo Lattes...");
     try {
       const res = await apiFetch(`/uploads/professor/${selectedProfId}/reprocessar`, {
         method: "POST",
@@ -981,9 +989,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       }
       const data = await res.json();
       setUploadProgress(100);
+      const imp = data.importacao_xml || {};
       addAuditLog(
         "reprocessamento",
-        `[Real DB] Currículo reprocessado. Seções: ${data.secoes_detectadas || 0}.`
+        `[Real DB] Currículo reimportado. Produções: ${imp.producoes_extraidas ?? 0}.`
       );
       reloadProfessorData(selectedProfId);
     } catch (err: any) {
@@ -1005,93 +1014,67 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
   };
 
   const handleUploadAndProcess = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !selectedProfId) return;
 
     setIsProcessing(true);
-    setUploadProgress(10);
-    setProcessingStep("Enviando Currículo Lattes PDF...");
+    setUploadProgress(15);
+    setProcessingStep(
+      lattesFonte === "html"
+        ? "Convertendo HTML do Lattes para XML..."
+        : "Importando XML do Lattes..."
+    );
 
     if (apiConnected) {
       const formData = new FormData();
       formData.append("professor_id", selectedProfId);
+      formData.append("fonte", lattesFonte);
       formData.append("file", selectedFile);
 
       try {
-        const uploadRes = await apiFetch(`/uploads/`, {
+        setUploadProgress(40);
+        const uploadRes = await apiFetch(`/uploads/lattes`, {
           method: "POST",
-          body: formData
+          body: formData,
         });
-        if (!uploadRes.ok) throw new Error("Erro no upload do arquivo.");
-        const uploadData = await uploadRes.json();
-        
-        setUploadProgress(50);
-        setProcessingStep("Processamento iniciado (IA pode levar 5–15 min)...");
-
-        const processRes = await apiFetch(`/uploads/${uploadData.id}/processar`, {
-          method: "POST",
-        });
-        if (!processRes.ok) throw new Error("Erro ao iniciar processamento do arquivo.");
-        const startData = await processRes.json();
-
-        const pollUntilDone = async () => {
-          const maxAttempts = 200;
-          for (let i = 0; i < maxAttempts; i++) {
-            await new Promise((r) => setTimeout(r, 3000));
-            const statusRes = await apiFetch(`/uploads/${uploadData.id}`);
-            if (!statusRes.ok) continue;
-            const uploadStatus = await statusRes.json();
-            const st = uploadStatus.status as string;
-            setUploadProgress(Math.min(95, 50 + Math.floor((i / maxAttempts) * 45)));
-            setProcessingStep(
-              `Processando… status: ${st.replace(/_/g, " ")} (${Math.floor((i * 3) / 60)} min)`
-            );
-            if (st === "processando") continue;
-            if (st === "erro_no_processamento") {
-              throw new Error(uploadStatus.mensagem_erro || "Erro no processamento do PDF.");
-            }
-            return uploadStatus;
-          }
+        if (!uploadRes.ok) {
+          const errBody = await uploadRes.json().catch(() => ({}));
           throw new Error(
-            "Processamento demorou demais. Verifique os logs da API ou use Reprocessar depois."
+            (errBody as { detail?: string }).detail || "Erro na importação do currículo."
           );
-        };
-
-        await pollUntilDone();
-
+        }
+        const result = await uploadRes.json();
         setUploadProgress(100);
         setIsProcessing(false);
         setProcessingStep("");
         setSelectedFile(null);
-        addAuditLog(
-          "processamento",
-          `[Real DB] Lattes processado (${startData.status || "ok"}). Docente: ${selectedProfId}.`
-        );
+        if (fileInputRef.current) fileInputRef.current.value = "";
 
+        const imp = result.importacao_xml || {};
+        addAuditLog(
+          "importacao_lattes",
+          `[Real DB] Currículo importado (${lattesFonte.toUpperCase()}). ` +
+            `Produções: ${imp.producoes_extraidas ?? 0}, projetos: ${imp.projetos_extraidos ?? 0}.`
+        );
         reloadProfessorData(selectedProfId);
-      } catch (err: any) {
-        console.error("Erro no processamento real:", err);
+      } catch (err: unknown) {
+        console.error("Erro na importação Lattes:", err);
         setIsProcessing(false);
         setProcessingStep("");
-        alert(`Erro no processamento: ${err.message || "Erro desconhecido"}`);
+        alert(err instanceof Error ? err.message : "Erro desconhecido na importação.");
       }
       return;
     }
 
-    // Simulate pipeline beautifully (mock)
+    // Simulate pipeline (offline)
     setTimeout(() => {
-      setUploadProgress(40);
-      setProcessingStep("Extraindo texto do PDF (PyMuPDF)...");
-    }, 1500);
+      setUploadProgress(60);
+      setProcessingStep("Gerando XML estruturado...");
+    }, 1200);
 
     setTimeout(() => {
-      setUploadProgress(75);
-      setProcessingStep("Identificando seções estruturadas do Lattes...");
-    }, 3000);
-
-    setTimeout(() => {
-      setUploadProgress(95);
-      setProcessingStep(`IA (${aiModelLabel}) mapeando Projetos, Produções e Auxílios...`);
-    }, 4500);
+      setUploadProgress(90);
+      setProcessingStep("Importando dados no banco...");
+    }, 2400);
 
     setTimeout(() => {
       setUploadProgress(100);
@@ -1132,7 +1115,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen">
+    <div className="flex-1 flex flex-col min-h-screen bg-slate-50">
       <AppShellHeader
         section="operacao"
         operacaoView={mainTab}
@@ -1140,9 +1123,10 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
         apiConnected={apiConnected}
       />
 
+      <AppShellContainer className="flex-1 flex flex-col">
       {/* 📊 Dashboard Core */}
       {mainTab === "validacao" && (
-        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-50">
+        <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 py-6 animate-fadeIn">
         
         {/* Left Side: Professor Selection & Lattes Upload (3 Cols) */}
         <div className="lg:col-span-3 space-y-6">
@@ -1204,51 +1188,84 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
             </button>
           </div>
 
-          {/* Lattes Upload Card */}
+          {/* Lattes import (HTML → XML ou XML direto) */}
           <div className="glow-card rounded-xl p-5">
-            <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase mb-4">Upload do Lattes</h2>
-            
+            <h2 className="text-sm font-semibold tracking-wider text-slate-600 uppercase mb-4">
+              Importar Lattes
+            </h2>
+
             <div className="space-y-4">
-              <div 
+              <div className="flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
+                <button
+                  type="button"
+                  onClick={() => handleLattesFonteChange("html")}
+                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-md transition-colors ${
+                    lattesFonte === "html"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  HTML → XML
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLattesFonteChange("xml")}
+                  className={`flex-1 py-1.5 text-[10px] font-bold rounded-md transition-colors ${
+                    lattesFonte === "xml"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  XML direto
+                </button>
+              </div>
+
+              <div
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 rounded-xl p-6 text-center cursor-pointer transition-all duration-200"
               >
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept=".pdf" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept={lattesFonte === "html" ? ".html,.htm" : ".xml"}
+                  className="hidden"
                 />
-                <Upload className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-                <span className="text-xs font-semibold text-slate-300 block mb-1">
-                  {selectedFile ? selectedFile.name : "Clique para selecionar PDF"}
+                <Upload className="w-8 h-8 text-indigo-500 mx-auto mb-3" />
+                <span className="text-xs font-semibold text-slate-700 block mb-1">
+                  {selectedFile
+                    ? selectedFile.name
+                    : lattesFonte === "html"
+                      ? "Selecionar HTML salvo do Lattes"
+                      : "Selecionar arquivo XML"}
                 </span>
-                <span className="text-[10px] text-slate-500 block">
-                  Apenas PDFs digitais oficiais do Lattes
+                <span className="text-[10px] text-slate-500 block leading-relaxed">
+                  {lattesFonte === "html"
+                    ? "No Lattes: menu → Salvar currículo em HTML. O sistema converte para XML (lattes-xml)."
+                    : "Use o XML exportado do Lattes, se você já tiver o arquivo."}
                 </span>
               </div>
 
               {isProcessing && (
-                <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-800">
+                <div className="space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-indigo-400 font-semibold">{processingStep}</span>
-                    <span className="text-slate-400 font-bold">{uploadProgress}%</span>
+                    <span className="text-indigo-600 font-semibold">{processingStep}</span>
+                    <span className="text-slate-600 font-bold">{uploadProgress}%</span>
                   </div>
-                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
-                    <div 
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div
                       className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${uploadProgress}%` }}
-                    ></div>
+                    />
                   </div>
                 </div>
               )}
 
               <button
-                disabled={!selectedFile || isProcessing}
+                disabled={!selectedFile || isProcessing || !selectedProfId}
                 onClick={handleUploadAndProcess}
                 className={`w-full py-2.5 px-4 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 ${
-                  selectedFile && !isProcessing
+                  selectedFile && !isProcessing && selectedProfId
                     ? "bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 cursor-pointer"
                     : "bg-slate-100 text-slate-500 cursor-not-allowed"
                 }`}
@@ -1256,12 +1273,12 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 {isProcessing ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Processando...
+                    Importando...
                   </>
                 ) : (
                   <>
                     <FileText className="w-4 h-4" />
-                    Processar com IA
+                    Importar currículo
                   </>
                 )}
               </button>
@@ -1272,13 +1289,13 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
                 onClick={handleReprocessCurriculo}
                 className={`w-full py-2 px-4 rounded-lg font-semibold text-xs border transition-all flex items-center justify-center gap-2 ${
                   apiConnected && !isProcessing
-                    ? "border-slate-600 text-slate-300 hover:border-indigo-700 hover:bg-slate-900"
-                    : "border-slate-800 text-slate-600 cursor-not-allowed"
+                    ? "border-slate-300 text-slate-600 hover:border-indigo-400 hover:bg-indigo-50"
+                    : "border-slate-200 text-slate-400 cursor-not-allowed"
                 }`}
-                title="Reextrai dados do último PDF enviado deste docente (sem novo upload)"
+                title="Reimporta o último HTML/XML enviado deste docente"
               >
                 <RefreshCw className={`w-4 h-4 ${isProcessing ? "animate-spin" : ""}`} />
-                Reprocessar último Lattes
+                Reimportar último Lattes
               </button>
             </div>
           </div>
@@ -1950,7 +1967,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 📊 Aba Estatísticas */}
       {/* ========================================================================= */}
       {mainTab === "estatisticas" && (
-        <main className="flex-1 p-6 space-y-6 animate-fadeIn bg-slate-50">
+        <main className="flex-1 py-6 space-y-6 animate-fadeIn">
           {/* Barra de Filtros */}
           <div className="glow-card rounded-xl p-5 flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px] space-y-1.5">
@@ -2440,7 +2457,7 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
       {/* 🤖 Aba Gerador de Relatórios com IA */}
       {/* ========================================================================= */}
       {mainTab === "relatorios" && (
-        <main className="report-print-layout flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 animate-fadeIn bg-slate-50">
+        <main className="report-print-layout flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 py-6 animate-fadeIn">
           
           {/* Lado Esquerdo: Configuração da Geração (4 colunas) */}
           <div className="no-print lg:col-span-4 space-y-6">
@@ -3059,6 +3076,8 @@ A tabela a seguir consolida o desempenho quantitativo extraído dos currículos 
           </div>
         </div>
       )}
+
+      </AppShellContainer>
 
       <NovoDocenteModal
         open={showNovoDocenteModal}

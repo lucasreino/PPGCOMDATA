@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import uuid
-from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import UploadFile
@@ -14,17 +12,11 @@ from sqlmodel import Session
 
 from app.config import settings
 from app.models.core import Professor
-from app.models.data import CurriculoUpload
-from app.models.enums import StatusProcessamento, TipoDocente
-from app.services.lattes_xml_importer import (
-    import_lattes_xml,
-    mark_xml_covered_sections_extracted,
-)
+from app.models.enums import TipoDocente
+from app.services.lattes_curriculo_import import save_and_import_lattes_file
 from app.services.professor_foto import FOTO_EXTENSIONS, fotos_dir, slug_for_nome
 from app.services.professor_lookup import find_professor, normalize_lattes_id
 from app.services.professor_oficial import register_official_professor
-from app.services.upload_cleanup import mark_all_sections_extracted
-from app.services.upload_status import refresh_upload_validation_status
 
 FOTO_MIME = {
     "image/jpeg": ".jpg",
@@ -82,73 +74,18 @@ def save_professor_photo(
     return f"{api_prefix}/{dest.name}"
 
 
-def _persist_xml_copy(
-    prof: Professor,
-    xml_path: Path,
-) -> None:
-    """Copia XML para LATTES_XML_DIR ({id_lattes}.xml) quando configurado."""
-    lid = normalize_lattes_id(prof.id_lattes)
-    xml_dir = (settings.LATTES_XML_DIR or "").strip()
-    if not lid or not xml_dir:
-        return
-    target_dir = Path(xml_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / f"{lid}.xml"
-    shutil.copy2(xml_path, target)
-
-
 def import_xml_curriculo(
     session: Session,
     prof: Professor,
     file: UploadFile,
 ) -> dict[str, Any]:
-    """Cria registro de upload, importa XML e atualiza status."""
-    if not file.filename or not file.filename.lower().endswith(".xml"):
-        raise ValueError("O currículo deve ser um arquivo XML exportado do Lattes (.xml).")
-
-    xml_subdir = os.path.join(settings.UPLOAD_DIR, "xml")
-    os.makedirs(xml_subdir, exist_ok=True)
-    stored_name = f"{uuid.uuid4()}.xml"
-    dest_path = os.path.join(xml_subdir, stored_name)
-
-    try:
-        with open(dest_path, "wb") as out:
-            shutil.copyfileobj(file.file, out)
-    except OSError as exc:
-        raise ValueError(f"Erro ao salvar XML: {exc}") from exc
-
-    upload = CurriculoUpload(
-        professor_id=str(prof.id),
-        arquivo_url=dest_path,
-        arquivo_nome=file.filename or stored_name,
-        status=StatusProcessamento.PROCESSANDO,
+    """Importa XML Lattes no cadastro de docente."""
+    return save_and_import_lattes_file(
+        session,
+        str(prof.id),
+        file,
+        "xml",
     )
-    session.add(upload)
-    session.commit()
-    session.refresh(upload)
-
-    try:
-        metrics = import_lattes_xml(session, str(upload.id), dest_path)
-        _persist_xml_copy(prof, Path(dest_path))
-        mark_xml_covered_sections_extracted(session, str(upload.id))
-        mark_all_sections_extracted(session, str(upload.id))
-        upload.status = StatusProcessamento.PROCESSADO_COM_SUCESSO
-        session.add(upload)
-        session.commit()
-        refresh_upload_validation_status(session, str(upload.id))
-        session.refresh(upload)
-        return {
-            "upload_id": str(upload.id),
-            "xml_importado": True,
-            "metrics": metrics,
-            "upload_status": upload.status.value,
-        }
-    except Exception as exc:
-        upload.status = StatusProcessamento.ERRO_NO_PROCESSAMENTO
-        upload.mensagem_erro = str(exc)
-        session.add(upload)
-        session.commit()
-        raise ValueError(f"Falha ao importar XML Lattes: {exc}") from exc
 
 
 def cadastrar_professor(

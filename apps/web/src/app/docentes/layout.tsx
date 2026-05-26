@@ -30,8 +30,8 @@ export default function DocentesLayout({
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <DocentesHeader />
-      <main className="flex-1 px-6 py-8">
-        <div className="max-w-7xl mx-auto">{children}</div>
+      <main className="flex-1 py-8">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6">{children}</div>
       </main>
     </div>
   );

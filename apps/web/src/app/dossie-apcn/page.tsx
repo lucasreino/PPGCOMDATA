@@ -171,8 +171,8 @@ export default function DossieApcnPage() {
         <AppShellHeader section="dossie" />
       </Suspense>
 
-      <div className="border-b border-slate-200 bg-white px-4 sm:px-6 py-3">
-        <div className="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div className="border-b border-slate-200 bg-white">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs text-slate-600">
             Proposta de Doutorado — PPGCOM · visão institucional
           </p>
@@ -180,7 +180,7 @@ export default function DossieApcnPage() {
             Dados reais do banco
           </span>
         </div>
-        <div className="max-w-[1400px] mx-auto flex flex-wrap gap-1 mt-3 overflow-x-auto pb-1">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 flex flex-wrap gap-1 pb-3 overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -199,7 +199,7 @@ export default function DossieApcnPage() {
         </div>
       </div>
 
-      <main className="flex-1 p-6 space-y-6 max-w-[1400px] mx-auto w-full">
+      <main className="flex-1 py-6 space-y-6 max-w-[1400px] mx-auto w-full px-4 sm:px-6">
         <DossieFiltersBar
           filters={filters}
           onChange={setFilters}
