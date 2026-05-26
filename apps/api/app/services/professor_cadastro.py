@@ -15,6 +15,7 @@ from app.models.core import Professor
 from app.models.enums import TipoDocente
 from app.services.lattes_curriculo_import import save_and_import_lattes_file
 from app.services.professor_foto import FOTO_EXTENSIONS, fotos_dir, slug_for_nome
+from app.services.grupos_pesquisa_sync import sync_grupos_from_observacoes
 from app.services.professor_lookup import find_professor, normalize_lattes_id
 from app.services.professor_oficial import register_official_professor
 
@@ -130,6 +131,7 @@ def cadastrar_professor(
     session.add(prof)
     session.commit()
     session.refresh(prof)
+    sync_grupos_from_observacoes(session, professor_id=prof.id)
 
     official_entry = register_official_professor(
         session,

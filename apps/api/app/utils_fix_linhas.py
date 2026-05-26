@@ -17,6 +17,7 @@ from app.models.enums import TipoDocente
 from app.services.professor_lookup import find_professor
 from app.services.professor_dedupe import merge_duplicate_professors
 from app.services.professor_oficial import get_official_professor_data
+from app.services.grupos_pesquisa_sync import sync_grupos_from_observacoes
 
 LINE1_NAME = "Tecnologias, Audiovisual e Processos Regionais de Comunicação"
 LINE2_NAME = "Processos Comunicacionais, Cidadania e Identidades"
@@ -278,6 +279,13 @@ def run_precision_seeding():
             session.delete(old_l)
             session.commit()
             print("\nLinha antiga 'Comunicação e Cultura Digital' removida.")
+
+        grupo_stats = sync_grupos_from_observacoes(session)
+        print(
+            f"\n--- Grupos de pesquisa (cadastro oficial → tabela) ---\n"
+            f"  Criados: {grupo_stats['grupos_criados']}, "
+            f"já existentes: {grupo_stats['grupos_ignorados']}"
+        )
 
         print("\n--- Sincronização concluída! ---")
 
