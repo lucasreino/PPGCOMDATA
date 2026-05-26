@@ -175,6 +175,7 @@ class IndicatorService:
         financiamentos = self._fetch(Financiamento, "ano")
         lacunas = self._fetch_lacunas()
         orientacoes = self._fetch(Orientacao)
+        grupos = self._fetch(GrupoPesquisaDocente)
 
         fomento = {"solicitado": 0.0, "aprovado": 0.0, "executado": 0.0}
         for fin in financiamentos:
@@ -204,6 +205,7 @@ class IndicatorService:
             "total_docentes": len(profs),
             "total_producoes": len(producoes) + len(self._fetch(ProducaoTecnica)),
             "total_projetos": len(projetos),
+            "total_grupos_pesquisa": len(grupos),
             "total_eventos": len(eventos),
             "total_financiamentos": len(financiamentos),
             "total_lacunas": len(lacunas),
@@ -936,6 +938,9 @@ class IndicatorService:
     def _empty_grupos_pesquisa(self) -> Dict[str, Any]:
         return {
             "total_grupos": 0,
+            "total_grupos_unicos": 0,
+            "total_docentes_com_grupo": 0,
+            "grupos_com_dgp": 0,
             "grupos_por_papel": {},
             "tabela": [],
             "filtros": self.filters.query_params(),
@@ -968,8 +973,17 @@ class IndicatorService:
                 }
             )
 
+        nomes_unicos = {
+            (row["nome_grupo"] or "").strip().lower() for row in tabela if row.get("nome_grupo")
+        }
+        docentes = {row["docente"] for row in tabela if row.get("docente") and row["docente"] != "—"}
+        com_dgp = sum(1 for row in tabela if row.get("codigo_dgp"))
+
         return {
             "total_grupos": len(tabela),
+            "total_grupos_unicos": len(nomes_unicos),
+            "total_docentes_com_grupo": len(docentes),
+            "grupos_com_dgp": com_dgp,
             "grupos_por_papel": por_papel,
             "tabela": sorted(tabela, key=lambda x: (x["nome_grupo"], x["docente"])),
             "filtros": self.filters.query_params(),

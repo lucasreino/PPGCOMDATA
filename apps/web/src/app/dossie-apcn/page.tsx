@@ -15,8 +15,10 @@ import {
   FileText,
   GraduationCap,
   LayoutDashboard,
+  Network,
   Users,
 } from "lucide-react";
+import { PAPEL_GRUPO_LABEL } from "@/lib/dossie-kpi-detail";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { cacheKey, cachedJson, fetchJsonCached, isCacheValid } from "@/lib/api-cache";
@@ -49,6 +51,7 @@ const TABS = [
   { id: "corpo", label: "Corpo Docente", icon: Users },
   { id: "producao", label: "Produção Intelectual", icon: FileText },
   { id: "projetos", label: "Projetos e Extensão", icon: BookOpen },
+  { id: "grupos", label: "Grupos de Pesquisa", icon: Network },
   { id: "financiamento", label: "Financiamento", icon: DollarSign },
   { id: "eventos", label: "Eventos", icon: Calendar },
   { id: "egressos", label: "Egressos e Impacto", icon: GraduationCap },
@@ -84,6 +87,7 @@ export default function DossieApcnPage() {
   const [corpo, setCorpo] = useState<Record<string, unknown> | null>(null);
   const [producao, setProducao] = useState<Record<string, unknown> | null>(null);
   const [projetos, setProjetos] = useState<Record<string, unknown> | null>(null);
+  const [grupos, setGrupos] = useState<Record<string, unknown> | null>(null);
   const [financiamento, setFinanciamento] = useState<Record<string, unknown> | null>(null);
   const [eventos, setEventos] = useState<Record<string, unknown> | null>(null);
   const [lacunas, setLacunas] = useState<Record<string, unknown> | null>(null);
@@ -98,14 +102,14 @@ export default function DossieApcnPage() {
       corpo,
       producao,
       projetos,
-      grupos: null,
+      grupos,
       financiamento,
       eventos,
       lacunas,
       egressos,
       demanda,
     }),
-    [corpo, producao, projetos, financiamento, eventos, lacunas, egressos, demanda]
+    [corpo, producao, projetos, grupos, financiamento, eventos, lacunas, egressos, demanda]
   );
 
   const fetchDossiePath = useCallback(
@@ -177,6 +181,7 @@ export default function DossieApcnPage() {
     else if (path === "corpo-docente") setCorpo(data);
     else if (path === "producao") setProducao(data);
     else if (path === "projetos") setProjetos(data);
+    else if (path === "grupos-pesquisa") setGrupos(data);
     else if (path === "financiamento") setFinanciamento(data);
     else if (path === "eventos") setEventos(data);
     else if (path === "lacunas") setLacunas(data);
@@ -194,6 +199,7 @@ export default function DossieApcnPage() {
         corpo: ["corpo-docente"],
         producao: ["producao"],
         projetos: ["projetos"],
+        grupos: ["grupos-pesquisa"],
         financiamento: ["financiamento"],
         eventos: ["eventos"],
         egressos: ["egressos"],
@@ -341,6 +347,14 @@ export default function DossieApcnPage() {
                     label="Projetos"
                     value={ov.total_projetos ?? 0}
                     onClick={() => openKpi("visao.projetos")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Grupos CNPq"
+                    value={ov.total_grupos_pesquisa ?? 0}
+                    accent="rose"
+                    sub="vínculos em grupo (não são projetos)"
+                    onClick={() => openKpi("visao.grupos")}
                     interactive={kpiLoading}
                   />
                   <KpiCard
@@ -628,6 +642,143 @@ export default function DossieApcnPage() {
                     </table>
                   </div>
                 )}
+              </section>
+            )}
+
+            {tab === "grupos" && grupos && (
+              <section className="space-y-6 animate-fadeIn">
+                <p className="text-xs text-slate-500">
+                  Vínculos em grupos de pesquisa CNPq por docente — distinto de projetos de
+                  pesquisa e extensão (aba Projetos).
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <KpiCard
+                    label="Total de vínculos"
+                    value={(grupos.total_grupos as number) ?? 0}
+                    accent="indigo"
+                    onClick={() => openKpi("grupos.total")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Grupos distintos"
+                    value={(grupos.total_grupos_unicos as number) ?? 0}
+                    accent="purple"
+                    onClick={() => openKpi("grupos.unicos")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Docentes vinculados"
+                    value={(grupos.total_docentes_com_grupo as number) ?? 0}
+                    accent="emerald"
+                    onClick={() => openKpi("grupos.docentes")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Com código DGP"
+                    value={(grupos.grupos_com_dgp as number) ?? 0}
+                    accent="rose"
+                    onClick={() => openKpi("grupos.com_dgp")}
+                    interactive={kpiLoading}
+                  />
+                </div>
+                {grupos.grupos_por_papel &&
+                  Object.keys(grupos.grupos_por_papel as Record<string, number>).length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="glow-card rounded-xl p-5">
+                        <h3 className="text-sm font-semibold text-slate-900 mb-3">
+                          Vínculos por papel
+                        </h3>
+                        <SimpleBarChart
+                          data={Object.fromEntries(
+                            Object.entries(
+                              grupos.grupos_por_papel as Record<string, number>
+                            ).map(([k, v]) => [
+                              PAPEL_GRUPO_LABEL[k] ?? k,
+                              v,
+                            ])
+                          )}
+                          color="#e11d48"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {(grupos.grupos_por_papel as Record<string, number>).lider != null && (
+                          <KpiCard
+                            label="Líder"
+                            value={
+                              (grupos.grupos_por_papel as Record<string, number>).lider ?? 0
+                            }
+                            onClick={() => openKpi("grupos.lider")}
+                            interactive={kpiLoading}
+                          />
+                        )}
+                        {(grupos.grupos_por_papel as Record<string, number>).membro != null && (
+                          <KpiCard
+                            label="Membro"
+                            value={
+                              (grupos.grupos_por_papel as Record<string, number>).membro ?? 0
+                            }
+                            onClick={() => openKpi("grupos.membro")}
+                            interactive={kpiLoading}
+                          />
+                        )}
+                        {(grupos.grupos_por_papel as Record<string, number>).vice_lider !=
+                          null && (
+                          <KpiCard
+                            label="Vice-líder"
+                            value={
+                              (grupos.grupos_por_papel as Record<string, number>).vice_lider ?? 0
+                            }
+                            onClick={() => openKpi("grupos.vice_lider")}
+                            interactive={kpiLoading}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                <div className="glow-card rounded-xl overflow-x-auto">
+                  <h3 className="text-sm font-semibold text-slate-900 p-4 border-b border-slate-200">
+                    Vínculos em grupos de pesquisa
+                  </h3>
+                  <table className="w-full text-xs min-w-[720px]">
+                    <thead className="bg-slate-100 text-slate-600 text-[10px] uppercase">
+                      <tr>
+                        <th className="p-2 text-left">Grupo</th>
+                        <th className="p-2 text-center">DGP</th>
+                        <th className="p-2 text-center">Papel</th>
+                        <th className="p-2 text-left">Docente</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {((grupos.tabela as Array<Record<string, unknown>>) || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="p-8 text-center text-slate-500">
+                            Nenhum vínculo em grupo para os filtros aplicados. Execute o cadastro
+                            oficial dos docentes ou importe grupos via validação.
+                          </td>
+                        </tr>
+                      ) : (
+                        (grupos.tabela as Array<Record<string, unknown>>).map((row) => (
+                          <tr
+                            key={String(row.id ?? `${row.nome_grupo}-${row.docente}`)}
+                            className="border-t border-slate-200 hover:bg-slate-50"
+                          >
+                            <td className="p-2 text-slate-900 font-medium">
+                              {String(row.nome_grupo ?? "—")}
+                            </td>
+                            <td className="p-2 text-center font-mono text-slate-600">
+                              {row.codigo_dgp ? String(row.codigo_dgp) : "—"}
+                            </td>
+                            <td className="p-2 text-center text-slate-700">
+                              {PAPEL_GRUPO_LABEL[String(row.papel)] ??
+                                String(row.papel ?? "—")}
+                            </td>
+                            <td className="p-2 text-slate-900">{String(row.docente ?? "—")}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </section>
             )}
 

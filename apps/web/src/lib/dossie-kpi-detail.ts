@@ -68,12 +68,16 @@ const COL_PROJETO: KpiDetailColumn[] = [
   { key: "financiamento", label: "Financ.", align: "center" },
 ];
 
-const PAPEL_GRUPO_LABEL: Record<string, string> = {
+export const PAPEL_GRUPO_LABEL: Record<string, string> = {
   lider: "Líder",
   vice_lider: "Vice-líder",
   membro: "Membro",
   outro: "Outro",
 };
+
+function formatPapelGrupo(v: unknown): string {
+  return PAPEL_GRUPO_LABEL[String(v)] ?? str(v);
+}
 
 const COL_GRUPO: KpiDetailColumn[] = [
   { key: "nome_grupo", label: "Grupo", truncate: true },
@@ -82,10 +86,22 @@ const COL_GRUPO: KpiDetailColumn[] = [
     key: "papel",
     label: "Papel",
     align: "center",
-    format: (v) => PAPEL_GRUPO_LABEL[String(v)] ?? str(v),
+    format: formatPapelGrupo,
   },
   { key: "codigo_dgp", label: "DGP", align: "center", mono: true },
   { key: "linha_tematica", label: "Linha temática", truncate: true },
+];
+
+const COL_GRUPO_DOSSIE: KpiDetailColumn[] = [
+  { key: "nome_grupo", label: "Grupo", truncate: true },
+  { key: "codigo_dgp", label: "DGP", align: "center", mono: true },
+  {
+    key: "papel",
+    label: "Papel",
+    align: "center",
+    format: formatPapelGrupo,
+  },
+  { key: "docente", label: "Docente" },
 ];
 
 const COL_RELATORIO: KpiDetailColumn[] = [
@@ -312,13 +328,103 @@ export function resolveDossieKpiDetail(
 
   if (section === "grupos" && ctx.grupos) {
     const tabela = rows<Record<string, unknown>>(ctx.grupos.tabela);
+    const byPapel = (papel: string) =>
+      tabela.filter((r) => String(r.papel ?? "").toLowerCase() === papel);
+
     if (key === "total" || key === "todos") {
       return {
         title: "Grupos de pesquisa",
         subtitle: "Vínculos em grupos CNPq por docente (distinto de projetos)",
-        columns: COL_GRUPO,
+        columns: COL_GRUPO_DOSSIE,
         rows: tabela,
         emptyMessage: "Nenhum grupo cadastrado para os filtros aplicados.",
+      };
+    }
+    if (key === "lider") {
+      return {
+        title: "Vínculos como líder",
+        columns: COL_GRUPO_DOSSIE,
+        rows: byPapel("lider"),
+        emptyMessage: "Nenhum vínculo como líder.",
+      };
+    }
+    if (key === "vice_lider") {
+      return {
+        title: "Vínculos como vice-líder",
+        columns: COL_GRUPO_DOSSIE,
+        rows: byPapel("vice_lider"),
+        emptyMessage: "Nenhum vínculo como vice-líder.",
+      };
+    }
+    if (key === "membro") {
+      return {
+        title: "Vínculos como membro",
+        columns: COL_GRUPO_DOSSIE,
+        rows: byPapel("membro"),
+        emptyMessage: "Nenhum vínculo como membro.",
+      };
+    }
+    if (key === "com_dgp") {
+      const comDgp = tabela.filter((r) => r.codigo_dgp != null && r.codigo_dgp !== "");
+      return {
+        title: "Grupos com código DGP",
+        columns: COL_GRUPO_DOSSIE,
+        rows: comDgp,
+        emptyMessage: "Nenhum grupo com código DGP informado.",
+      };
+    }
+    if (key === "docentes") {
+      const seen = new Set<string>();
+      const rowsDoc: Record<string, unknown>[] = [];
+      for (const r of tabela) {
+        const nome = String(r.docente ?? "");
+        if (!nome || nome === "—" || seen.has(nome)) continue;
+        seen.add(nome);
+        const vinculos = tabela.filter((x) => x.docente === nome).length;
+        rowsDoc.push({ docente: nome, vinculos });
+      }
+      return {
+        title: "Docentes com vínculo em grupo",
+        subtitle: "Contagem de vínculos por docente",
+        columns: [
+          { key: "docente", label: "Docente" },
+          { key: "vinculos", label: "Vínculos", align: "right" },
+        ],
+        rows: rowsDoc.sort((a, b) =>
+          String(a.docente).localeCompare(String(b.docente), "pt-BR")
+        ),
+        emptyMessage: "Nenhum docente com grupo cadastrado.",
+      };
+    }
+    if (key === "unicos") {
+      const map = new Map<string, Record<string, unknown>>();
+      for (const r of tabela) {
+        const nome = String(r.nome_grupo ?? "").trim();
+        if (!nome) continue;
+        const k = nome.toLowerCase();
+        const prev = map.get(k);
+        if (!prev) {
+          map.set(k, {
+            nome_grupo: nome,
+            codigo_dgp: r.codigo_dgp,
+            docentes: 1,
+          });
+        } else {
+          prev.docentes = Number(prev.docentes ?? 0) + 1;
+          if (!prev.codigo_dgp && r.codigo_dgp) prev.codigo_dgp = r.codigo_dgp;
+        }
+      }
+      return {
+        title: "Grupos distintos (nome único)",
+        columns: [
+          { key: "nome_grupo", label: "Grupo", truncate: true },
+          { key: "codigo_dgp", label: "DGP", align: "center", mono: true },
+          { key: "docentes", label: "Docentes", align: "right" },
+        ],
+        rows: [...map.values()].sort((a, b) =>
+          String(a.nome_grupo).localeCompare(String(b.nome_grupo), "pt-BR")
+        ),
+        emptyMessage: "Nenhum grupo distinto.",
       };
     }
   }
@@ -481,6 +587,11 @@ export const VISAO_KPI_FETCH: Record<
   "visao.docentes": { path: "corpo-docente", tab: "corpo", detailKpiId: "corpo.total" },
   "visao.producoes": { path: "producao", tab: "producao", detailKpiId: "producao.total" },
   "visao.projetos": { path: "projetos", tab: "projetos", detailKpiId: "projetos.todos" },
+  "visao.grupos": {
+    path: "grupos-pesquisa",
+    tab: "grupos",
+    detailKpiId: "grupos.total",
+  },
   "visao.eventos": { path: "eventos", tab: "eventos", detailKpiId: "eventos.total" },
   "visao.fomento": { path: "financiamento", tab: "financiamento", detailKpiId: "fin.aprovado" },
   "visao.lacunas": { path: "lacunas", tab: "lacunas", detailKpiId: "lacunas.abertas" },
