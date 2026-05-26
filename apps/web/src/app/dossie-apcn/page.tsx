@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { AppShellHeader } from "@/components/layout/AppShellHeader";
 import {
@@ -45,6 +46,8 @@ import {
   type DossieDataContext,
   type KpiDetailState,
 } from "@/lib/dossie-kpi-detail";
+import { PendingValidationModal } from "@/components/validation/PendingValidationModal";
+import type { EntityTab, Professor } from "@/lib/types";
 
 const TABS = [
   { id: "visao", label: "Visão Geral", icon: LayoutDashboard },
@@ -74,14 +77,16 @@ function fmtBRL(n: number) {
 }
 
 export default function DossieApcnPage() {
+  const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<TabId>("visao");
   const [filters, setFilters] = useState<FilterState>(defaultFilters);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [professores, setProfessores] = useState<{ id: string; nome_completo: string }[]>([]);
+  const [professores, setProfessores] = useState<Professor[]>([]);
   const [linhas, setLinhas] = useState<{ id: string; nome: string }[]>([]);
+  const [showPendingValidationModal, setShowPendingValidationModal] = useState(false);
 
   const [overview, setOverview] = useState<Record<string, unknown> | null>(null);
   const [corpo, setCorpo] = useState<Record<string, unknown> | null>(null);
@@ -162,10 +167,48 @@ export default function DossieApcnPage() {
         cacheKey: cacheKey("meta", "linhas-pesquisa"),
       }).catch(() => []),
     ]).then(([p, l]) => {
-      setProfessores(Array.isArray(p) ? (p as { id: string; nome_completo: string }[]) : []);
-      setLinhas(Array.isArray(l) ? (l as { id: string; nome: string }[]) : []);
+      const linhaList = Array.isArray(l) ? (l as { id: string; nome: string }[]) : [];
+      setLinhas(linhaList);
+      const raw = Array.isArray(p) ? p : [];
+      setProfessores(
+        raw.map((row: Record<string, unknown>) => ({
+          id: String(row.id),
+          nome_completo: String(row.nome_completo ?? ""),
+          email: row.email as string | undefined,
+          id_lattes: row.id_lattes as string | undefined,
+          linha:
+            (row.linha_pesquisa as { nome?: string } | null | undefined)?.nome ??
+            linhaList.find((lp) => lp.id === row.linha_pesquisa_id)?.nome ??
+            "Não especificada",
+          tipo: row.tipo_docente
+            ? String(row.tipo_docente).charAt(0).toUpperCase() + String(row.tipo_docente).slice(1)
+            : "Permanente",
+          status: (row.status ? "validado" : "pendente") as Professor["status"],
+        }))
+      );
     });
   }, [user]);
+
+  const statsProfessorId = filters.professorId || "todos";
+  const statsLinhaPesquisaId = filters.linhaId || "todas";
+
+  const handleReviewPendingItem = (professorId: string, entityTab: EntityTab) => {
+    setShowPendingValidationModal(false);
+    const params = new URLSearchParams();
+    params.set("view", "validacao");
+    params.set("professor_id", professorId);
+    router.push(`/?${params.toString()}`);
+  };
+
+  const handleGoToValidationTab = () => {
+    setShowPendingValidationModal(false);
+    const params = new URLSearchParams();
+    params.set("view", "validacao");
+    if (statsProfessorId !== "todos") {
+      params.set("professor_id", statsProfessorId);
+    }
+    router.push(`/?${params.toString()}`);
+  };
 
   const parseRes = async (res: Response, name: string) => {
     if (!res.ok) throw new Error(`Falha ao carregar ${name}`);
@@ -369,6 +412,7 @@ export default function DossieApcnPage() {
                     value={ov.validacao_pendentes ?? 0}
                     sub="itens aguardando revisão"
                     accent="amber"
+                    onClick={() => setShowPendingValidationModal(true)}
                   />
                 </div>
                 {prod?.producao_por_ano && Object.keys(prod.producao_por_ano).length > 0 && (
@@ -1230,6 +1274,17 @@ export default function DossieApcnPage() {
       </main>
 
       <KpiDetailModal detail={kpiDetail} onClose={() => setKpiDetail(null)} />
+
+      <PendingValidationModal
+        open={showPendingValidationModal}
+        onClose={() => setShowPendingValidationModal(false)}
+        professors={professores}
+        linhasPesquisa={linhas}
+        statsProfessorId={statsProfessorId}
+        statsLinhaPesquisaId={statsLinhaPesquisaId}
+        onReview={handleReviewPendingItem}
+        onGoToValidation={handleGoToValidationTab}
+      />
     </div>
   );
 }
