@@ -191,11 +191,16 @@ export function KpiCard({
   value,
   sub,
   accent = "indigo",
+  onClick,
+  interactive,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   accent?: "indigo" | "emerald" | "purple" | "amber" | "rose";
+  onClick?: () => void;
+  /** Quando true, estilo de card clicável mesmo sem onClick (ex.: carregando detalhe). */
+  interactive?: boolean;
 }) {
   const colors: Record<string, string> = {
     indigo: "from-indigo-50 text-indigo-700 border-indigo-200",
@@ -204,11 +209,27 @@ export function KpiCard({
     amber: "from-amber-50 text-amber-700 border-amber-200",
     rose: "from-rose-50 text-rose-700 border-rose-200",
   };
+  const clickable = Boolean(onClick) || interactive;
+  const Tag = onClick ? "button" : "div";
   return (
-    <div className={`glow-card rounded-xl p-5 border bg-gradient-to-br to-white ${colors[accent]}`}>
-      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">{label}</span>
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`glow-card rounded-xl p-5 border bg-gradient-to-br to-white text-left w-full ${colors[accent]} ${
+        clickable
+          ? "cursor-pointer hover:shadow-md hover:border-indigo-300 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          : ""
+      }`}
+      title={clickable ? "Clique para ver a lista de itens" : undefined}
+    >
+      <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider flex items-center justify-between gap-2">
+        {label}
+        {clickable && (
+          <span className="text-[9px] font-normal normal-case text-indigo-500">ver lista</span>
+        )}
+      </span>
       <h3 className={`text-2xl font-bold mt-1 ${colors[accent].split(" ")[1]}`}>{value}</h3>
       {sub && <p className="text-[9px] text-slate-400 mt-1">{sub}</p>}
-    </div>
+    </Tag>
   );
 }

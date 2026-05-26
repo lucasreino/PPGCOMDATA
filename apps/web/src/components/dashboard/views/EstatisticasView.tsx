@@ -1,22 +1,110 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useState } from "react";
 import {
-  BarChart2,
   AlertTriangle,
   Award,
-  BookOpen,
   Calendar,
-  DollarSign,
   FileText,
-  GraduationCap,
   RefreshCw,
-  Users,
 } from "lucide-react";
 import { useDashboard } from "../DashboardProvider";
+import { KpiCard } from "@/components/dossie/charts";
+import { KpiDetailModal } from "@/components/dossie/KpiDetailModal";
+import { apiFetch } from "@/lib/api";
+import { cacheKey, cachedJson } from "@/lib/api-cache";
+import type { KpiDetailState } from "@/lib/dossie-kpi-detail";
+import {
+  STATS_KPI_FETCH,
+  buildStatsDossieQuery,
+  mergeStatsFetchIntoContext,
+  resolveStatsKpiFromAggregates,
+  resolveStatsKpiFromDossie,
+} from "@/lib/stats-kpi-detail";
+
+function fmtBRL(n: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
+}
 
 export function EstatisticasView() {
   const d = useDashboard();
+  const [kpiDetail, setKpiDetail] = useState<KpiDetailState | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+
+  const openStatsKpi = useCallback(
+    async (kpiId: string) => {
+      if (!d.statsData) return;
+      setKpiLoading(true);
+      try {
+        const aggregate = resolveStatsKpiFromAggregates(
+          kpiId,
+          d.statsData as Record<string, unknown>
+        );
+
+        if (!d.apiConnected) {
+          if (aggregate) setKpiDetail(aggregate);
+          return;
+        }
+
+        const spec = STATS_KPI_FETCH[kpiId];
+        if (!spec) return;
+
+        const q = buildStatsDossieQuery({
+          professorId: d.statsProfessorId,
+          linhaId: d.statsLinhaPesquisaId,
+          anoInicio: d.statsAnoInicio,
+          anoFim: d.statsAnoFim,
+        });
+
+        const data = (await cachedJson(
+          cacheKey("dossie", "stats-kpi", spec.path, q),
+          async () => {
+            const res = await apiFetch(`/dossie-apcn/${spec.path}${q}`);
+            if (!res.ok) throw new Error(`Falha ao carregar ${spec.path}`);
+            return res.json();
+          }
+        )) as Record<string, unknown>;
+
+        let ctx = mergeStatsFetchIntoContext(
+          {
+            corpo: null,
+            producao: null,
+            projetos: null,
+            financiamento: null,
+            eventos: null,
+            lacunas: null,
+            egressos: null,
+            demanda: null,
+          },
+          spec.path,
+          data
+        );
+        const detail = resolveStatsKpiFromDossie(kpiId, ctx);
+        if (detail) {
+          setKpiDetail(detail);
+        } else if (aggregate) {
+          setKpiDetail(aggregate);
+        }
+      } catch (err) {
+        console.error("Erro ao abrir detalhe do indicador:", err);
+        const fallback = resolveStatsKpiFromAggregates(
+          kpiId,
+          d.statsData as Record<string, unknown>
+        );
+        if (fallback) setKpiDetail(fallback);
+      } finally {
+        setKpiLoading(false);
+      }
+    },
+    [
+      d.apiConnected,
+      d.statsAnoFim,
+      d.statsAnoInicio,
+      d.statsData,
+      d.statsLinhaPesquisaId,
+      d.statsProfessorId,
+    ]
+  );
   return (
         <main className="flex-1 py-6 space-y-6 animate-fadeIn">
           {/* Barra de Filtros */}
@@ -92,55 +180,44 @@ export function EstatisticasView() {
             <div className="space-y-6">
               {/* KPIs Highlights */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-indigo-50 to-white">
-                  <div className="bg-indigo-100 border border-indigo-200 p-3 rounded-xl text-indigo-600">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total de Produções</span>
-                    <h3 className="text-2xl font-bold text-slate-900 mt-0.5">{d.statsData.total_producoes}</h3>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">Artigos, livros e capítulos</span>
-                  </div>
-                </div>
-
-                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-emerald-50 to-white">
-                  <div className="bg-emerald-100 border border-emerald-200 p-3 rounded-xl text-emerald-600">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Fomento Aprovado</span>
-                    <h3 className="text-2xl font-bold text-emerald-400 mt-0.5">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.statsData.fomento_total?.aprovado || 0)}
-                    </h3>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">
-                      Captado de FAPEMA, CNPq, etc.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-violet-50 to-white">
-                  <div className="bg-violet-100 border border-violet-200 p-3 rounded-xl text-violet-600">
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Projetos Ativos</span>
-                    <h3 className="text-2xl font-bold text-purple-400 mt-0.5">{d.statsData.total_projetos}</h3>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">Pesquisas institucionais</span>
-                  </div>
-                </div>
-
-                <div className="glow-card rounded-xl p-5 border border-slate-200 flex items-center space-x-4 bg-gradient-to-br from-amber-50 to-white">
-                  <div className="bg-amber-100 border border-amber-200 p-3 rounded-xl text-amber-600">
-                    <AlertTriangle className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Gaps Pendentes</span>
-                    <h3 className="text-2xl font-bold text-amber-400 mt-0.5">{d.statsData.d.lacunas?.pendentes || 0}</h3>
-                    <span className="text-[9px] text-slate-400 block mt-0.5">
-                      Taxa resolução: {d.statsData.d.lacunas?.total > 0 ? Math.round((d.statsData.d.lacunas.resolvidas / d.statsData.d.lacunas.total) * 100) : 100}%
-                    </span>
-                  </div>
-                </div>
+                <KpiCard
+                  label="Total de Produções"
+                  value={d.statsData.total_producoes}
+                  sub="Artigos, livros e capítulos · ranking por docente"
+                  accent="indigo"
+                  onClick={() => openStatsKpi("stats.producoes")}
+                  interactive={kpiLoading}
+                />
+                <KpiCard
+                  label="Fomento Aprovado"
+                  value={fmtBRL(d.statsData.fomento_total?.aprovado || 0)}
+                  sub="FAPEMA, CNPq, CAPES · linhas com valor aprovado"
+                  accent="emerald"
+                  onClick={() => openStatsKpi("stats.fomento")}
+                  interactive={kpiLoading}
+                />
+                <KpiCard
+                  label="Projetos Ativos"
+                  value={d.statsData.total_projetos}
+                  sub="Pesquisa e extensão no período filtrado"
+                  accent="purple"
+                  onClick={() => openStatsKpi("stats.projetos")}
+                  interactive={kpiLoading}
+                />
+                <KpiCard
+                  label="Gaps Pendentes"
+                  value={d.statsData.lacunas?.pendentes || 0}
+                  sub={`Taxa resolução: ${
+                    d.statsData.lacunas?.total > 0
+                      ? Math.round(
+                          (d.statsData.lacunas.resolvidas / d.statsData.lacunas.total) * 100
+                        )
+                      : 100
+                  }% · lacunas em aberto`}
+                  accent="amber"
+                  onClick={() => openStatsKpi("stats.lacunas")}
+                  interactive={kpiLoading}
+                />
               </div>
 
               {(d.statsData.total_orientacoes != null) && (
@@ -446,16 +523,16 @@ export function EstatisticasView() {
                     Gravidade de Lacunas Pendentes
                   </h3>
 
-                  {d.statsData.d.lacunas?.total === 0 ? (
+                  {d.statsData.lacunas?.total === 0 ? (
                     <div className="text-center py-10 text-slate-500 text-xs">Nenhuma lacuna registrada no sistema</div>
                   ) : (
                     <div className="space-y-4 pt-1">
                       {/* Visual summary of gaps */}
                       <div className="flex bg-slate-50 h-4.5 rounded-full overflow-hidden border border-slate-200 p-0.5">
                         {(() => {
-                          const high = d.statsData.d.lacunas?.por_gravidade?.alta || 0;
-                          const med = d.statsData.d.lacunas?.por_gravidade?.media || 0;
-                          const low = d.statsData.d.lacunas?.por_gravidade?.baixa || 0;
+                          const high = d.statsData.lacunas?.por_gravidade?.alta || 0;
+                          const med = d.statsData.lacunas?.por_gravidade?.media || 0;
+                          const low = d.statsData.lacunas?.por_gravidade?.baixa || 0;
                           const total = high + med + low || 1;
 
                           const pctH = (high / total) * 100;
@@ -476,19 +553,19 @@ export function EstatisticasView() {
                       <div className="grid grid-cols-3 gap-3">
                         <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-rose-400 font-bold uppercase tracking-wider block">Gravidade Alta</span>
-                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.d.lacunas?.por_gravidade?.alta || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.lacunas?.por_gravidade?.alta || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Exige ação imediata</span>
                         </div>
 
                         <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">Gravidade Média</span>
-                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.d.lacunas?.por_gravidade?.media || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.lacunas?.por_gravidade?.media || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Revisão recomendada</span>
                         </div>
 
                         <div className="bg-slate-50/60 p-3 rounded-lg border border-slate-200 text-center">
                           <span className="text-[10px] text-blue-400 font-bold uppercase tracking-wider block">Gravidade Baixa</span>
-                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.d.lacunas?.por_gravidade?.baixa || 0}</span>
+                          <span className="text-xl font-extrabold text-slate-900 block mt-1">{d.statsData.lacunas?.por_gravidade?.baixa || 0}</span>
                           <span className="text-[9px] text-slate-500 mt-0.5 block">Ajustes informacionais</span>
                         </div>
                       </div>
@@ -501,6 +578,8 @@ export function EstatisticasView() {
           ) : (
             <div className="text-center py-16 text-slate-500 text-xs">Nenhum dado analítico pôde ser computado</div>
           )}
+
+          <KpiDetailModal detail={kpiDetail} onClose={() => setKpiDetail(null)} />
         </main>
   );
 }

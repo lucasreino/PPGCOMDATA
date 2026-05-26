@@ -35,6 +35,14 @@ import {
 import { downloadChartPng } from "@/lib/chartExport";
 import { CatalogPanel, ExportButtons } from "@/components/dossie/CatalogPanel";
 import { RelatorioForm } from "@/components/dossie/RelatorioForm";
+import { KpiDetailModal } from "@/components/dossie/KpiDetailModal";
+import {
+  mergeDossiePathIntoContext,
+  resolveDossieKpiDetail,
+  VISAO_KPI_FETCH,
+  type DossieDataContext,
+  type KpiDetailState,
+} from "@/lib/dossie-kpi-detail";
 
 const TABS = [
   { id: "visao", label: "Visão Geral", icon: LayoutDashboard },
@@ -82,6 +90,62 @@ export default function DossieApcnPage() {
   const [egressos, setEgressos] = useState<Record<string, unknown> | null>(null);
   const [demanda, setDemanda] = useState<Record<string, unknown> | null>(null);
   const [narrativas, setNarrativas] = useState<Record<string, string> | null>(null);
+  const [kpiDetail, setKpiDetail] = useState<KpiDetailState | null>(null);
+  const [kpiLoading, setKpiLoading] = useState(false);
+
+  const dossieCtx = useCallback(
+    (): DossieDataContext => ({
+      corpo,
+      producao,
+      projetos,
+      financiamento,
+      eventos,
+      lacunas,
+      egressos,
+      demanda,
+    }),
+    [corpo, producao, projetos, financiamento, eventos, lacunas, egressos, demanda]
+  );
+
+  const fetchDossiePath = useCallback(
+    async (path: string): Promise<Record<string, unknown>> => {
+      const q = buildDossieQuery(filters);
+      const data = (await cachedJson(
+        cacheKey("dossie", path, q),
+        async () => {
+          const res = await apiFetch(`/dossie-apcn/${path}${q}`);
+          return parseRes(res, path);
+        }
+      )) as Record<string, unknown>;
+      applyDossiePathData(path, data);
+      return data;
+    },
+    [filters]
+  );
+
+  const openKpi = useCallback(
+    async (kpiId: string) => {
+      setKpiLoading(true);
+      try {
+        let ctx = dossieCtx();
+        const visao = VISAO_KPI_FETCH[kpiId];
+        if (visao) {
+          const data = await fetchDossiePath(visao.path);
+          ctx = mergeDossiePathIntoContext(ctx, visao.path, data);
+          const detail = resolveDossieKpiDetail(visao.detailKpiId, ctx);
+          if (detail) setKpiDetail(detail);
+          return;
+        }
+        const detail = resolveDossieKpiDetail(kpiId, ctx);
+        if (detail) setKpiDetail(detail);
+      } catch (e) {
+        console.error("Erro ao abrir detalhe KPI:", e);
+      } finally {
+        setKpiLoading(false);
+      }
+    },
+    [dossieCtx, fetchDossiePath]
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -242,18 +306,48 @@ export default function DossieApcnPage() {
             {tab === "visao" && ov && (
               <section className="space-y-6 animate-fadeIn">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Docentes" value={ov.total_docentes ?? 0} accent="indigo" />
-                  <KpiCard label="Produções" value={ov.total_producoes ?? 0} accent="purple" />
+                  <KpiCard
+                    label="Docentes"
+                    value={ov.total_docentes ?? 0}
+                    accent="indigo"
+                    onClick={() => openKpi("visao.docentes")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Produções"
+                    value={ov.total_producoes ?? 0}
+                    accent="purple"
+                    onClick={() => openKpi("visao.producoes")}
+                    interactive={kpiLoading}
+                  />
                   <KpiCard
                     label="Fomento aprovado"
                     value={fmtBRL(ov.fomento_total?.aprovado ?? 0)}
                     accent="emerald"
+                    onClick={() => openKpi("visao.fomento")}
+                    interactive={kpiLoading}
                   />
-                  <KpiCard label="Lacunas abertas" value={ov.lacunas_pendentes ?? 0} accent="amber" />
+                  <KpiCard
+                    label="Lacunas abertas"
+                    value={ov.lacunas_pendentes ?? 0}
+                    accent="amber"
+                    onClick={() => openKpi("visao.lacunas")}
+                    interactive={kpiLoading}
+                  />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Projetos" value={ov.total_projetos ?? 0} />
-                  <KpiCard label="Eventos" value={ov.total_eventos ?? 0} />
+                  <KpiCard
+                    label="Projetos"
+                    value={ov.total_projetos ?? 0}
+                    onClick={() => openKpi("visao.projetos")}
+                    interactive={kpiLoading}
+                  />
+                  <KpiCard
+                    label="Eventos"
+                    value={ov.total_eventos ?? 0}
+                    onClick={() => openKpi("visao.eventos")}
+                    interactive={kpiLoading}
+                  />
                   <KpiCard label="Orientações" value={ov.total_orientacoes ?? 0} />
                   <KpiCard
                     label="Validação pendente"
@@ -290,13 +384,27 @@ export default function DossieApcnPage() {
                 )}
                 {demanda && (demanda.total_processos as number) > 0 && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <KpiCard label="Inscritos (seleção)" value={demanda.total_inscritos as number} />
-                    <KpiCard label="Vagas" value={demanda.total_vagas as number} />
+                    <KpiCard
+                      label="Inscritos (seleção)"
+                      value={demanda.total_inscritos as number}
+                      onClick={() => openKpi("demanda.inscritos")}
+                    />
+                    <KpiCard
+                      label="Vagas"
+                      value={demanda.total_vagas as number}
+                      onClick={() => openKpi("demanda.vagas")}
+                    />
                     <KpiCard
                       label="Candidato/vaga"
                       value={demanda.relacao_media_candidato_vaga as number}
+                      onClick={() => openKpi("demanda.inscritos")}
                     />
-                    <KpiCard label="Matriculados" value={demanda.total_matriculados as number} accent="emerald" />
+                    <KpiCard
+                      label="Matriculados"
+                      value={demanda.total_matriculados as number}
+                      accent="emerald"
+                      onClick={() => openKpi("demanda.matriculados")}
+                    />
                   </div>
                 )}
                 {narrativas?.visao_geral && (
@@ -310,10 +418,15 @@ export default function DossieApcnPage() {
             {tab === "corpo" && corpo && (
               <section className="space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <KpiCard label="Total docentes" value={(corpo.total_docentes as number) ?? 0} />
+                  <KpiCard
+                    label="Total docentes"
+                    value={(corpo.total_docentes as number) ?? 0}
+                    onClick={() => openKpi("corpo.total")}
+                  />
                   <KpiCard
                     label="Linhas representadas"
                     value={Object.keys((corpo.docentes_por_linha as Record<string, number>) || {}).length}
+                    onClick={() => openKpi("corpo.linhas")}
                   />
                 </div>
                 <div className="glow-card rounded-xl overflow-hidden">
@@ -347,14 +460,19 @@ export default function DossieApcnPage() {
               <section className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   {[
-                    ["Artigos", prod.totais?.artigos],
-                    ["Livros", prod.totais?.livros],
-                    ["Capítulos", prod.totais?.capitulos],
-                    ["Anais", prod.totais?.anais],
-                    ["Prod. técnica", prod.totais?.producao_tecnica],
-                    ["Total", prod.totais?.total],
-                  ].map(([label, val]) => (
-                    <KpiCard key={String(label)} label={String(label)} value={val ?? 0} />
+                    ["Artigos", prod.totais?.artigos, "artigos"],
+                    ["Livros", prod.totais?.livros, "livros"],
+                    ["Capítulos", prod.totais?.capitulos, "capitulos"],
+                    ["Anais", prod.totais?.anais, "anais"],
+                    ["Prod. técnica", prod.totais?.producao_tecnica, "tecnica"],
+                    ["Total", prod.totais?.total, "total"],
+                  ].map(([label, val, kpiKey]) => (
+                    <KpiCard
+                      key={String(label)}
+                      label={String(label)}
+                      value={val ?? 0}
+                      onClick={() => openKpi(`producao.${kpiKey}`)}
+                    />
                   ))}
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -439,13 +557,27 @@ export default function DossieApcnPage() {
               <section className="space-y-6">
                 <RelatorioForm professores={professores} linhas={linhas} onSaved={loadData} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Pesquisa" value={(projetos.total_projetos_pesquisa as number) ?? 0} />
-                  <KpiCard label="Extensão" value={(projetos.total_projetos_extensao as number) ?? 0} accent="emerald" />
-                  <KpiCard label="Com financiamento" value={(projetos.projetos_com_financiamento as number) ?? 0} />
+                  <KpiCard
+                    label="Pesquisa"
+                    value={(projetos.total_projetos_pesquisa as number) ?? 0}
+                    onClick={() => openKpi("projetos.pesquisa")}
+                  />
+                  <KpiCard
+                    label="Extensão"
+                    value={(projetos.total_projetos_extensao as number) ?? 0}
+                    accent="emerald"
+                    onClick={() => openKpi("projetos.extensao")}
+                  />
+                  <KpiCard
+                    label="Com financiamento"
+                    value={(projetos.projetos_com_financiamento as number) ?? 0}
+                    onClick={() => openKpi("projetos.financiamento")}
+                  />
                   <KpiCard
                     label="Impacto regional"
                     value={(projetos.projetos_impacto_regional as number) ?? 0}
                     accent="emerald"
+                    onClick={() => openKpi("projetos.impacto")}
                   />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -501,10 +633,28 @@ export default function DossieApcnPage() {
             {tab === "financiamento" && fin && (
               <section className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Confirmados" value={fin.total_financiamentos_confirmados ?? 0} accent="emerald" />
-                  <KpiCard label="Mencionados (Lattes)" value={fin.total_financiamentos_mencionados ?? 0} />
-                  <KpiCard label="Valor aprovado" value={fmtBRL(fin.valor_total_aprovado ?? 0)} accent="emerald" />
-                  <KpiCard label="Valor executado" value={fmtBRL(fin.valor_total_executado ?? 0)} />
+                  <KpiCard
+                    label="Confirmados"
+                    value={fin.total_financiamentos_confirmados ?? 0}
+                    accent="emerald"
+                    onClick={() => openKpi("fin.confirmados")}
+                  />
+                  <KpiCard
+                    label="Mencionados (Lattes)"
+                    value={fin.total_financiamentos_mencionados ?? 0}
+                    onClick={() => openKpi("fin.mencionados")}
+                  />
+                  <KpiCard
+                    label="Valor aprovado"
+                    value={fmtBRL(fin.valor_total_aprovado ?? 0)}
+                    accent="emerald"
+                    onClick={() => openKpi("fin.aprovado")}
+                  />
+                  <KpiCard
+                    label="Valor executado"
+                    value={fmtBRL(fin.valor_total_executado ?? 0)}
+                    onClick={() => openKpi("fin.executado")}
+                  />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <ChartPanel
@@ -605,17 +755,27 @@ export default function DossieApcnPage() {
               <section className="space-y-6">
                 <CatalogPanel kind="eventos-institucionais" onImported={loadData} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Total eventos" value={(eventos.total_eventos as number) ?? 0} />
+                  <KpiCard
+                    label="Total eventos"
+                    value={(eventos.total_eventos as number) ?? 0}
+                    onClick={() => openKpi("eventos.total")}
+                  />
                   <KpiCard
                     label="Institucionais"
                     value={(eventos.eventos_institucionais_count as number) ?? 0}
                     accent="purple"
+                    onClick={() => openKpi("eventos.institucionais")}
                   />
                   <KpiCard
                     label="Inscritos (prog.)"
                     value={(eventos.total_inscritos_institucionais as number) ?? 0}
+                    onClick={() => openKpi("eventos.inscritos")}
                   />
-                  <KpiCard label="Trabalhos apresentados" value={(eventos.total_trabalhos_institucionais as number) ?? 0} />
+                  <KpiCard
+                    label="Trabalhos apresentados"
+                    value={(eventos.total_trabalhos_institucionais as number) ?? 0}
+                    onClick={() => openKpi("eventos.trabalhos")}
+                  />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
@@ -665,10 +825,27 @@ export default function DossieApcnPage() {
               <section className="space-y-6">
                 <CatalogPanel kind="egressos" onImported={loadData} />
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Total egressos" value={(egressos.total_egressos as number) ?? 0} />
-                  <KpiCard label="Em doutorado" value={(egressos.egressos_em_doutorado as number) ?? 0} accent="indigo" />
-                  <KpiCard label="Ensino superior" value={(egressos.egressos_ensino_superior as number) ?? 0} />
-                  <KpiCard label="Municípios" value={(egressos.municipios_alcancados as number) ?? 0} />
+                  <KpiCard
+                    label="Total egressos"
+                    value={(egressos.total_egressos as number) ?? 0}
+                    onClick={() => openKpi("egressos.total")}
+                  />
+                  <KpiCard
+                    label="Em doutorado"
+                    value={(egressos.egressos_em_doutorado as number) ?? 0}
+                    accent="indigo"
+                    onClick={() => openKpi("egressos.doutorado")}
+                  />
+                  <KpiCard
+                    label="Ensino superior"
+                    value={(egressos.egressos_ensino_superior as number) ?? 0}
+                    onClick={() => openKpi("egressos.ensino")}
+                  />
+                  <KpiCard
+                    label="Municípios"
+                    value={(egressos.municipios_alcancados as number) ?? 0}
+                    onClick={() => openKpi("egressos.municipios")}
+                  />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
@@ -710,11 +887,35 @@ export default function DossieApcnPage() {
             {tab === "lacunas" && lac && (
               <section className="space-y-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <KpiCard label="Abertas" value={lac.lacunas_abertas ?? 0} accent="amber" />
-                  <KpiCard label="Críticas" value={lac.lacunas_criticas ?? 0} accent="rose" />
-                  <KpiCard label="Resolvidas" value={lac.lacunas_resolvidas ?? 0} accent="emerald" />
-                  <KpiCard label="Total" value={(lac.total_lacunas as number) ?? 0} />
-                  <KpiCard label="Checklist APCN" value={(lac.lacunas_virtuais as number) ?? 0} accent="rose" />
+                  <KpiCard
+                    label="Abertas"
+                    value={lac.lacunas_abertas ?? 0}
+                    accent="amber"
+                    onClick={() => openKpi("lacunas.abertas")}
+                  />
+                  <KpiCard
+                    label="Críticas"
+                    value={lac.lacunas_criticas ?? 0}
+                    accent="rose"
+                    onClick={() => openKpi("lacunas.criticas")}
+                  />
+                  <KpiCard
+                    label="Resolvidas"
+                    value={lac.lacunas_resolvidas ?? 0}
+                    accent="emerald"
+                    onClick={() => openKpi("lacunas.resolvidas")}
+                  />
+                  <KpiCard
+                    label="Total"
+                    value={(lac.total_lacunas as number) ?? 0}
+                    onClick={() => openKpi("lacunas.total")}
+                  />
+                  <KpiCard
+                    label="Checklist APCN"
+                    value={(lac.lacunas_virtuais as number) ?? 0}
+                    accent="rose"
+                    onClick={() => openKpi("lacunas.virtuais")}
+                  />
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="glow-card rounded-xl p-5">
@@ -875,6 +1076,8 @@ export default function DossieApcnPage() {
           </>
         )}
       </main>
+
+      <KpiDetailModal detail={kpiDetail} onClose={() => setKpiDetail(null)} />
     </div>
   );
 }
