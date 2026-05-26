@@ -47,22 +47,39 @@ export async function cachedJson<T>(
   return data;
 }
 
-export async function fetchJsonCached<T>(
+export type ApiGetCachedOptions = {
+  cacheKey?: string;
+  ttlMs?: number;
+  force?: boolean;
+  errorLabel?: string;
+};
+
+/** GET JSON com cache; mensagem de erro padronizada. */
+export async function apiGetCached<T>(
   path: string,
-  options?: { cacheKey?: string; ttlMs?: number; force?: boolean }
+  options?: ApiGetCachedOptions
 ): Promise<T> {
-  const key = options?.cacheKey ?? path;
+  const label = options?.errorLabel ?? path;
+  const key = options?.cacheKey ?? cacheKey("api", path);
   return cachedJson(
     key,
     async () => {
       const res = await apiFetch(path);
       if (!res.ok) {
-        throw new Error(`Falha na requisição (${res.status})`);
+        throw new Error(`Falha ao carregar ${label} (${res.status})`);
       }
       return res.json() as Promise<T>;
     },
     options
   );
+}
+
+/** @deprecated Preferir apiGetCached — mantido por compatibilidade. */
+export async function fetchJsonCached<T>(
+  path: string,
+  options?: { cacheKey?: string; ttlMs?: number; force?: boolean }
+): Promise<T> {
+  return apiGetCached(path, options);
 }
 
 /** Após importação, reprocessamento ou edição que altera indicadores. */

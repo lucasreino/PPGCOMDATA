@@ -261,7 +261,7 @@ export function PendingValidationModal({
                         className="flex items-center justify-between gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50 hover:border-indigo-800/60 transition-colors"
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-slate-200 truncate">
+                          <p className="text-sm font-medium text-slate-900 truncate">
                             {itemTitle(key, item)}
                           </p>
                           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
