@@ -1,0 +1,15 @@
+[Unit]
+Description=PPGCOMDATA daily backup (Postgres + data + uploads)
+Wants=network-online.target
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /root/projects/ppgcomdata/scripts/backup-vps.sh
+
+# Defaults (override via systemd drop-in or env files if needed)
+Environment=BACKUP_ROOT=/root/backups/ppgcomdata
+Environment=RETENTION_DAYS=14
+Environment=PG_CONTAINER_NAME=ppgcomdata-db-prod
+Environment=UPLOADS_VOLUME_NAME=prod_uploads
+
