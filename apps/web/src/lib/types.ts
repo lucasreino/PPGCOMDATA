@@ -85,6 +85,9 @@ export interface Producao {
   doi: string | null;
   issn: string | null;
   qualis?: string | null;
+  scholar_h5_index?: number | null;
+  scholar_h5_median?: number | null;
+  scholar_metrics_year?: number | null;
   autores?: string | null;
   idioma?: string | null;
   volume?: string | null;

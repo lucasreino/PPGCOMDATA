@@ -37,6 +37,9 @@ export interface ArtigosQualisPayload {
     titulo: string;
     veiculo: string;
     qualis: string | null;
+    scholar_h5_index?: number | null;
+    scholar_h5_median?: number | null;
+    scholar_metrics_year?: number | null;
     ano: number | null;
     doi?: string | null;
     docentes_ppgcom?: string[];
@@ -355,6 +358,15 @@ export function ArtigosQualisModal({
                         ) : (
                           <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 text-[10px]">
                             Sem Qualis
+                          </span>
+                        )}
+                        {a.scholar_h5_index != null && (
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold text-[10px]"
+                            title="Google Scholar Metrics (h5-index)"
+                          >
+                            h5 {a.scholar_h5_index}
+                            {a.scholar_metrics_year != null ? ` · ${a.scholar_metrics_year}` : ""}
                           </span>
                         )}
                         {a.ano != null && (

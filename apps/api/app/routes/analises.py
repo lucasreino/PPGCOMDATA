@@ -260,9 +260,17 @@ async def gerar_relatorio_ia(
         context_lines.append(f"### Produções Acadêmicas ({len(producoes)}):")
         for p in producoes:
             qualis_str = f" | Qualis: {p.qualis}" if p.qualis else ""
+            scholar_parts = []
+            if p.scholar_h5_index is not None:
+                scholar_parts.append(f"h5={p.scholar_h5_index}")
+            if p.scholar_h5_median is not None:
+                scholar_parts.append(f"h5_mediana={p.scholar_h5_median}")
+            if p.scholar_metrics_year is not None:
+                scholar_parts.append(f"ano_metricas={p.scholar_metrics_year}")
+            scholar_str = f" | Scholar: {', '.join(scholar_parts)}" if scholar_parts else ""
             context_lines.append(
                 f"  * [{p.tipo.upper()}] \"{p.titulo}\" ({p.ano}) | "
-                f"Veículo: {p.veiculo or 'N/A'}{qualis_str}"
+                f"Veículo: {p.veiculo or 'N/A'}{qualis_str}{scholar_str}"
             )
 
         orientacoes = orientacoes_map.get(prof.id, [])

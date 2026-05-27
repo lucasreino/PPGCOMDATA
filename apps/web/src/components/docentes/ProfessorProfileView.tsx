@@ -174,7 +174,13 @@ export function ProfessorProfileView({
                   key={p.id}
                   badge={p.tipo}
                   title={p.titulo}
-                  meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}`}
+                  meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}${
+                    p.scholar_h5_index != null
+                      ? ` · Scholar h5=${p.scholar_h5_index}${
+                          p.scholar_metrics_year != null ? ` (${p.scholar_metrics_year})` : ""
+                        }`
+                      : ""
+                  }`}
                 />
               ))}
             </section>

@@ -21,6 +21,7 @@ from app.services.professor_lookup import normalize_lattes_id
 from app.services.upload_cleanup import clear_upload_extraction_data, mark_all_sections_extracted
 from app.services.upload_status import refresh_upload_validation_status
 from app.services.qualis_catalog import apply_qualis_to_producoes
+from app.services.scholar_metrics_catalog import apply_scholar_metrics_to_producoes
 from app.services.cache_invalidation import invalidate_indicator_caches
 
 # Pacote lattes-xml embutido em apps/api/vendor
@@ -118,6 +119,7 @@ def run_lattes_xml_import_pipeline(
             persist_xml_for_professor(prof, path)
 
         qualis_stats = apply_qualis_to_producoes(session)
+        scholar_stats = apply_scholar_metrics_to_producoes(session)
         refresh_upload_validation_status(session, upload_id)
 
         upload.status = StatusProcessamento.PROCESSADO_COM_SUCESSO
@@ -132,6 +134,7 @@ def run_lattes_xml_import_pipeline(
             "upload_status": upload.status.value,
             "importacao_xml": {**metrics, "xml_importado": True, "xml_arquivo": path.name},
             "qualis": qualis_stats,
+            "scholar_metrics": scholar_stats,
             "modo": "xml_lattes",
         }
     except Exception as exc:

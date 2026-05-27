@@ -26,6 +26,7 @@ from app.services.upload_status import refresh_upload_validation_status
 from app.services.xml_pdf_reconciler import reconcile_upload_xml_pdf
 from app.services.cache_invalidation import invalidate_indicator_caches
 from app.services.qualis_catalog import apply_qualis_to_producoes
+from app.services.scholar_metrics_catalog import apply_scholar_metrics_to_producoes
 
 logger = logging.getLogger("ppgcomdata.upload_pipeline")
 
@@ -138,6 +139,7 @@ def run_full_pipeline(
         reconcile_result = reconcile_upload_xml_pdf(session, upload_id).to_dict()
 
     qualis_stats = apply_qualis_to_producoes(session)
+    scholar_stats = apply_scholar_metrics_to_producoes(session)
 
     refresh_upload_validation_status(session, upload_id)
     session.refresh(upload)
@@ -154,6 +156,7 @@ def run_full_pipeline(
         "workers": workers,
         "reconciliacao": reconcile_result,
         "qualis": qualis_stats,
+        "scholar_metrics": scholar_stats,
     }
 
 

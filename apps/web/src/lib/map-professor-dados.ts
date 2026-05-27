@@ -73,6 +73,18 @@ export function mapProducao(r: Record<string, unknown>): Producao {
     doi: r.doi != null ? String(r.doi) : null,
     issn: r.issn != null ? String(r.issn) : null,
     qualis: r.qualis != null ? String(r.qualis) : null,
+    scholar_h5_index:
+      r.scholar_h5_index != null && r.scholar_h5_index !== ""
+        ? Number(r.scholar_h5_index)
+        : null,
+    scholar_h5_median:
+      r.scholar_h5_median != null && r.scholar_h5_median !== ""
+        ? Number(r.scholar_h5_median)
+        : null,
+    scholar_metrics_year:
+      r.scholar_metrics_year != null && r.scholar_metrics_year !== ""
+        ? Number(r.scholar_metrics_year)
+        : null,
     confianca_ia: conf(r.confianca_ia),
     trecho_original: String(r.trecho_original || ""),
     status_validacao: val(r.status_validacao),

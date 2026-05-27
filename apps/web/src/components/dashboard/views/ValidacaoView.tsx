@@ -444,6 +444,20 @@ export function ValidacaoView() {
                           <span className="font-bold text-indigo-300">{item.qualis}</span>
                         </div>
                       )}
+                      {item.scholar_h5_index != null && (
+                        <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-200">
+                          <span className="text-[9px] text-emerald-600 block font-bold">
+                            Scholar h5
+                          </span>
+                          <span className="font-bold text-emerald-800">
+                            {item.scholar_h5_index}
+                            {item.scholar_h5_median != null ? ` (mediana ${item.scholar_h5_median})` : ""}
+                            {item.scholar_metrics_year != null
+                              ? ` · ${item.scholar_metrics_year}`
+                              : ""}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <OriginalFragment text={item.trecho_original} />

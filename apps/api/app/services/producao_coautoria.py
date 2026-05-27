@@ -45,8 +45,9 @@ def group_artigos_by_work(
 def pick_representative_producao(items: List[Producao]) -> Producao:
     def score(p: Producao) -> tuple:
         has_qualis = 1 if (p.qualis or "").strip() else 0
+        has_scholar = 1 if p.scholar_h5_index is not None else 0
         autores_len = len((p.autores or "").strip())
-        return (has_qualis, autores_len)
+        return (has_qualis, has_scholar, autores_len)
 
     return max(items, key=score)
 
@@ -81,6 +82,9 @@ def build_artigo_work_insights(
                 "titulo": rep.titulo,
                 "veiculo": (rep.veiculo or "Revista não informada").strip(),
                 "qualis": rep.qualis,
+                "scholar_h5_index": rep.scholar_h5_index,
+                "scholar_h5_median": rep.scholar_h5_median,
+                "scholar_metrics_year": rep.scholar_metrics_year,
                 "ano": rep.ano,
                 "doi": rep.doi,
                 "autores_lattes": autores_lattes,

@@ -388,6 +388,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           veiculo: "Revista Brasileira de Ciências da Comunicação",
           doi: "10.1234/rbcc.2024.v47",
           issn: "1809-5844",
+          qualis: "A2",
+          scholar_h5_index: 18,
+          scholar_h5_median: 22,
+          scholar_metrics_year: 2024,
           confianca_ia: "alta",
           trecho_original: "REINO, L. As metamorfoses do jornalismo digital. Revista Brasileira de Ciências da Comunicação, v. 47, 2024.",
           status_validacao: "pendente"
