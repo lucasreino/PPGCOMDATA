@@ -30,17 +30,16 @@ def main() -> None:
     parser.add_argument("--min-citations-rows", type=int, default=1)
     args = parser.parse_args()
 
+    skip_lattes = (args.id_lattes or "").strip().lower() in ("", "none", "-")
     lid = normalize_lattes_id(args.id_lattes) or ""
     with Session(engine) as session:
-        prof = next(
-            (
-                p
-                for p in session.exec(select(Professor)).all()
-                if normalize_lattes_id(p.id_lattes) == lid
-                or p.scholar_user_id == args.scholar_user
-            ),
-            None,
-        )
+        profs = list(session.exec(select(Professor)).all())
+        prof = next((p for p in profs if p.scholar_user_id == args.scholar_user), None)
+        if not prof and not skip_lattes and lid:
+            prof = next(
+                (p for p in profs if normalize_lattes_id(p.id_lattes) == lid),
+                None,
+            )
         if not prof:
             print(
                 f"ERRO: docente não encontrado (id_lattes={args.id_lattes}, "

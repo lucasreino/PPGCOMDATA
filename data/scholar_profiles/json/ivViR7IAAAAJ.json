@@ -1,0 +1,722 @@
+{
+  "scholar_user_id": "ivViR7IAAAAJ",
+  "profile_url": "https://scholar.google.com.br/citations?user=ivViR7IAAAAJ",
+  "name": "Thaisa Bueno",
+  "affiliation": "professora UFMA",
+  "interests": [
+    "Comunicação"
+  ],
+  "metrics": {
+    "citations_all": 272,
+    "citations_since": 141,
+    "h_index_all": 8,
+    "h_index_since": 6,
+    "i10_index_all": 6,
+    "i10_index_since": 3,
+    "since_year": 2021
+  },
+  "publications": [
+    {
+      "title": "Entre a tabloidização e o teaser publicitário: uma análise dos títulos caça-cliques",
+      "authors": "L Reino",
+      "venue": "DOAJ (DOAJ: Directory of Open Access Journals) , 2018",
+      "year": 2018,
+      "citations": 31
+    },
+    {
+      "title": "Interacionismo Simbólico como ferramenta teórica e metodológica para o estudo no ciberespaço",
+      "authors": "T Bueno, M Alves, FV Ferreira",
+      "venue": "Razón y Palabra 21 (96), 456-475 , 2017",
+      "year": 2017,
+      "citations": 17
+    },
+    {
+      "title": "SEO no jornalismo: títulos testáveis e suas implicações",
+      "authors": "LSA Reino",
+      "venue": "Estudos em Jornalismo e Mídia 16 (2) , 2019",
+      "year": 2019,
+      "citations": 16
+    },
+    {
+      "title": "Mulheres jornalistas em pauta: Estado da Arte sobre assédio moral e sexual no Brasil:.",
+      "authors": "JL de Amorim, T Bueno",
+      "venue": "Pauta Geral-Estudos Em Jornalismo 6 (2), 153-170 , 2019",
+      "year": 2019,
+      "citations": 11
+    },
+    {
+      "title": "Triangulação Metodológica",
+      "authors": "T Bueno, M Alves",
+      "venue": "INTERIN 25 (2), 188-204 , 2020",
+      "year": 2020,
+      "citations": 10
+    },
+    {
+      "title": "Mapeamento como método de Interpretação",
+      "authors": "T BUENO",
+      "venue": "Mapeamento dos programas de treinamento em Comunicação em, 98-100 , 2012",
+      "year": 2012,
+      "citations": 10
+    },
+    {
+      "title": "Para que servem os comentários de leitores na internet",
+      "authors": "T BUENO, LSA REINO",
+      "venue": "Estudo sobre a utilidade da ferramenta nos sites de notícias a partir da … , 2015",
+      "year": 2015,
+      "citations": 9
+    },
+    {
+      "title": "Ciberjornalismo em dispositivos móveis: uma análise da conjuntura brasileira",
+      "authors": "LSA Reino",
+      "venue": "Anais de Resumos Expandidos do Seminário Internacional de Pesquisas em … , 2016",
+      "year": 2016,
+      "citations": 8
+    },
+    {
+      "title": "Cultura da convergência",
+      "authors": "T Bueno",
+      "venue": "Revista de Estudos da Comunicação 12 (28) , 2011",
+      "year": 2011,
+      "citations": 8
+    },
+    {
+      "title": "Curtir, comentar e compartilhar: como as seguidoras da Boca Rosa e Niina Secrets interagem nas redes",
+      "authors": "T Bueno, EGSE Silva, LSA Reino",
+      "venue": "Revista Observatório 5 (6), 132-151 , 2019",
+      "year": 2019,
+      "citations": 7
+    },
+    {
+      "title": "Títulos jornalísticos",
+      "authors": "T Bueno, LSA Reino",
+      "venue": "São Luís: EDUFMA , 2022",
+      "year": 2022,
+      "citations": 6
+    },
+    {
+      "title": "Textos Jornalísticos nas revistas de moda: um estudo das publicações usuais na Vogue e Harper´ s Bazaar",
+      "authors": "TC Bueno, YD Arraes",
+      "venue": "Cambiassu: Estudos em Comunicação, 64-84 , 2021",
+      "year": 2021,
+      "citations": 6
+    },
+    {
+      "title": "Genetic variability of silvicultural traits in opened-pollinated progenies of",
+      "authors": "TYK Kubota, MA Moraes, ECB Silva, S Pupin, AV Aguiar, MLT Moraes, ...",
+      "venue": "",
+      "year": 2015,
+      "citations": 6
+    },
+    {
+      "title": "Máquina de conversação: mapeamento das plataformas de comentário nos veículos nacionais",
+      "authors": "T BUENO, L REINO",
+      "venue": "4º SIMPÓSIO DE CIBERJORNALISMO , 2014",
+      "year": 2014,
+      "citations": 5
+    },
+    {
+      "title": "Onde está o gancho? A difícil tarefa de hierarquizar informações",
+      "authors": "T BUENO, LSA REINO",
+      "venue": "Intercom–Sociedade Brasileira de Estudos Interdisciplinares da Comunicação … , 2012",
+      "year": 2012,
+      "citations": 5
+    },
+    {
+      "title": "Panelada: um dos pratos típicos da cidade de Imperatriz",
+      "authors": "T BUENO",
+      "venue": "Imperatriz Notícias , 2010",
+      "year": 2010,
+      "citations": 5
+    },
+    {
+      "title": "Álbum de família: a criação de uma crônica particular",
+      "authors": "T Bueno",
+      "venue": "Estudos Lingüísticos , 2007",
+      "year": 2007,
+      "citations": 5
+    },
+    {
+      "title": "Rastros de navegação deixados pelos leitores do principal ciberjornal do Mato Grosso do Sul: análise de dez anos do Campo Grande News",
+      "authors": "LSA Reino, TC Bueno",
+      "venue": "Rizoma 6 (2), 136-155 , 2018",
+      "year": 2018,
+      "citations": 4
+    },
+    {
+      "title": "Elias Machado discute a formação do docente e do estudante de jornalismo na contemporaneidade",
+      "authors": "MA Gehlen, LSA Reino, TC Bueno",
+      "venue": "Revista Observatório 3 (3), 619-633 , 2017",
+      "year": 2017,
+      "citations": 4
+    },
+    {
+      "title": "Основоположні принципи зіставної лінгвокультурології",
+      "authors": "ОО Петров",
+      "venue": "Нова філологія, 155-160 , 2017",
+      "year": 2017,
+      "citations": 4
+    },
+    {
+      "title": "André Pase: Pesquisador discute o cenário atual das pesquisas sobre games no Brasil",
+      "authors": "T Bueno, M Gehlen, L Reino, EWF Araujo, AF Pase",
+      "venue": "LUMINA (JUIZ DE FORA) , 2017",
+      "year": 2017,
+      "citations": 4
+    },
+    {
+      "title": "Plugado na rede: levantamento apresenta os primórdios da mídia de Imperatriz na Internet",
+      "authors": "T Bueno, S Batalha",
+      "venue": "JORNALISMO, MÍDIA E SOCIEDADE: AS EXPERIÊNCIAS NA REGIÃO TOCANTINA, 207 , 2017",
+      "year": 2017,
+      "citations": 4
+    },
+    {
+      "title": "Jornalista e escritor, Leandro Marshall explica porque o jornalismo está cada vez mais parecido com a publicidade",
+      "authors": "T Bueno, J Torres",
+      "venue": "Revista Observatório 2 (5), 530-543 , 2016",
+      "year": 2016,
+      "citations": 4
+    },
+    {
+      "title": "Como pesquisadores e veículos têm tratado o tema comentário de leitores na internet",
+      "authors": "TC Bueno",
+      "venue": "Liinc em Revista 12 (1) , 2016",
+      "year": 2016,
+      "citations": 4
+    },
+    {
+      "title": "Em tempo (quase) real: análise semiótica do jornalismo na web",
+      "authors": "TC Bueno",
+      "venue": "",
+      "year": 2007,
+      "citations": 4
+    },
+    {
+      "title": "O impacto do digital sobre a escrita no jornalismo de moda contemporâneo: o que pensam os jornalistas brasileiros?",
+      "authors": "T Bueno, LC Cardoso",
+      "venue": "Animus. Revista Interamericana de Comunicação Midiática 22 (49) , 2023",
+      "year": 2023,
+      "citations": 3
+    },
+    {
+      "title": "WhatsApp Na Rotina Produtiva Do Interior: Um Estudo A Partir Das Perspectivas Dos Jornalistas De Imperatriz (MA) E Araguaína (TO)",
+      "authors": "LL Lima, MA da Silva, T Bueno",
+      "venue": "Revista Observatório 7 (2), a11pt-a11pt , 2021",
+      "year": 2021,
+      "citations": 3
+    },
+    {
+      "title": "Quem somos? O perfil educacional do formado em Jornalismo na UFMA de Imperatriz (MA)",
+      "authors": "MA Gehlen, T Bueno, VP SILVA",
+      "venue": "Paradoxo , 2018",
+      "year": 2018,
+      "citations": 3
+    },
+    {
+      "title": "O lead nos títulos jornalísticos: um estudo comparado entre os jornais Folha de S. Paulo e O Estado de S. Paulo",
+      "authors": "LSA Reino, TC Bueno",
+      "venue": "RuMoRes 11 (22), 320-340 , 2017",
+      "year": 2017,
+      "citations": 3
+    },
+    {
+      "title": "Blogando das barracas do rio Tocantins: uma proposta de mapeamento da blogosfera imperatrizense",
+      "authors": "TC BUENO, JF BARROS",
+      "venue": "Ferramentas para Análise de Qualidade no Ciberjornalismo: Aplicações. 1ed … , 2016",
+      "year": 2016,
+      "citations": 3
+    },
+    {
+      "title": "Disponibilidade de fósforo em função da aplicação de calcário e silicatos em solos oxídicos",
+      "authors": "AS Sandim",
+      "venue": "Universidade Estadual Paulista (Unesp) , 2012",
+      "year": 2012,
+      "citations": 3
+    },
+    {
+      "title": "Onde está o gancho",
+      "authors": "T Bueno, LSA REINO",
+      "venue": "XIV Congresso de Ciências da Comunicação da Região Nordeste. Recife , 2012",
+      "year": 2012,
+      "citations": 3
+    },
+    {
+      "title": "Entrevista pingue-pongue: tipos usuais no jornalismo brasileiro",
+      "authors": "TC Bueno",
+      "venue": "Tríade: Comunicação, Cultura e Mídia 8 (18), 266-291 , 2020",
+      "year": 2020,
+      "citations": 2
+    },
+    {
+      "title": "FORMAÇÃO INTERDISCIPLINAR NO JORNALISMO: uma experiência de articulação entre as disciplinas de Linguagem de Programação Visual e Oratória",
+      "authors": "LSA Reino, T Bueno, MGC Falcão",
+      "venue": "Revista Observatório 5 (6), 249-271 , 2019",
+      "year": 2019,
+      "citations": 2
+    },
+    {
+      "title": "QUAL O LUGAR DA TRANSMIDIAÇÃO NO TELEJORNALISMO LOCAL? Um panorama da atuação dos telejornais de afiliadas da Globo (JPB, SETV e PITV) nas redes sociais",
+      "authors": "T Bueno, L Cirne, A Rocha",
+      "venue": "Revista GEMInIS 10 (2), 160-178 , 2019",
+      "year": 2019,
+      "citations": 2
+    },
+    {
+      "title": "O QUE MUDA E O QUE PERMANECE NA ESTRUTURA DOS TÍTULOS DE JORNAIS NA",
+      "authors": "T Bueno, L Reino",
+      "venue": "Comunicologia , 2019",
+      "year": 2019,
+      "citations": 2
+    },
+    {
+      "title": "Jornal pelo WhatsApp: o papel do aplicativo na rotina produtiva do Correio Popular",
+      "authors": "LSA Reino, T Bueno, M Lopes, T Leite",
+      "venue": "Revista Brasileira de Ensino de Jornalismo 8 (23), 87-107 , 2018",
+      "year": 2018,
+      "citations": 2
+    },
+    {
+      "title": "Um olhar da Comunicação sobre o imaginário e a pós-modernidade: entrevista com Juremir Machado",
+      "authors": "LSA Reino, TC Bueno, MA Gehlen, EWF Araujo",
+      "venue": "Intexto, 4-13 , 2018",
+      "year": 2018,
+      "citations": 2
+    },
+    {
+      "title": "Interacionismo Simbólico como ferramenta teórica e metodológica para o estudo no ciberespaço",
+      "authors": "F Ferreira, T Bueno, M Alves",
+      "venue": "Razón y Palabra. 21 (1_96), 456-475 , 2017",
+      "year": 2017,
+      "citations": 2
+    },
+    {
+      "title": "Uma conversa com o leitor: Entendendo as preferências do público a partir dos rastros de navegação na Fanpage do Jornal Correio Popular de Imperatriz (MA)",
+      "authors": "MA da Silva, TC Bueno, W de Sousa Queiroz",
+      "venue": "Biblios: Revista electrónica de bibliotecología, archivología y museología, 6 , 2017",
+      "year": 2017,
+      "citations": 2
+    },
+    {
+      "title": "Ana Carolina Escosteguy: cenários dos estudos culturais",
+      "authors": "TC Bueno, LSA Reino, EW Araújo, MA Gehlen",
+      "venue": "Rizoma 3 (2), 137-143 , 2015",
+      "year": 2015,
+      "citations": 2
+    },
+    {
+      "title": "VC NO IMIRANTE: conteúdo colaborativo no portal mais antigo do Maranhão",
+      "authors": "T BUENO, J THEOTONIA",
+      "venue": "Brasília: UNB Editora , 2015",
+      "year": 2015,
+      "citations": 2
+    },
+    {
+      "title": "Comentários da internet",
+      "authors": "T BUENO, L REINO",
+      "venue": "Imperatriz, MA: EDUFMA 1, 109-120 , 2014",
+      "year": 2014,
+      "citations": 2
+    },
+    {
+      "title": "Utopia digital: Repensando o papel revolucionário das novas tecnologias em redações de jornais do interior",
+      "authors": "T BUENO",
+      "venue": "Cambiassu: Estudos em Comunicação, 128-137 , 2012",
+      "year": 2012,
+      "citations": 2
+    },
+    {
+      "title": "Comentários em notícias expõe o analfabetismo funcional da população brasileira",
+      "authors": "T Bueno, L Reino",
+      "venue": "Anais...: XIV Congresso de Ciências da Comunicação na Região Nordeste. Recife 14 , 2012",
+      "year": 2012,
+      "citations": 2
+    },
+    {
+      "title": "Dia a dia na redação do ciberjornal: linguagem semelhante, modo de produção particular",
+      "authors": "T Bueno",
+      "venue": "CONCEIÇÃO, Francisco Gonçalves da; ATAÍDE, Joanita Mota de; PINHEIRO … , 2011",
+      "year": 2011,
+      "citations": 2
+    },
+    {
+      "title": "Fazendeiro contrata segurança para se proteger de índios",
+      "authors": "T BUENO",
+      "venue": "",
+      "year": 2004,
+      "citations": 2
+    },
+    {
+      "title": "Análise de usabilidade do webjornal Imperatriz Notícias",
+      "authors": "T BUENO, LSA REINO",
+      "venue": "Anais Intercom–Sociedade Brasileira de Estudos Interdisciplinares da … , 0",
+      "year": null,
+      "citations": 2
+    },
+    {
+      "title": "Moda, diversidade e Instagram: um olhar para as seis principais revistas de moda no Brasil",
+      "authors": "T Bueno, LL de Sousa",
+      "venue": "Modapalavra e-periódico 17 (43), 77-144 , 2024",
+      "year": 2024,
+      "citations": 1
+    },
+    {
+      "title": "Violência de Gênero não escolhe cargo: as jornalistas chefes e o assédio no trabalho",
+      "authors": "JL de Amorim, T Bueno",
+      "venue": "Asas da Palavra 20 (1), 153-177 , 2023",
+      "year": 2023,
+      "citations": 1
+    },
+    {
+      "title": "Mapeamento e cartografia: um estudo sobre a aplicação dessas metodologias na Comunicação",
+      "authors": "TA Reis, TC Bueno, MA da Silva",
+      "venue": "Comunicação & Inovação 24, E20239346-E20239346 , 2023",
+      "year": 2023,
+      "citations": 1
+    },
+    {
+      "title": "O Progressinho (1986-1987): análise do suplemento infantil que circulou no interior do Maranhão",
+      "authors": "GA Silva, T Bueno",
+      "venue": "Lumina 16 (2), 130-149 , 2022",
+      "year": 2022,
+      "citations": 1
+    },
+    {
+      "title": "Mulheres na assessoria de imprensa: relatos de assédios em Imperatriz (MA)",
+      "authors": "T Bueno, MS de Carvalho, IS Lima",
+      "venue": "Cadernos de Comunicação 26 (1) , 2022",
+      "year": 2022,
+      "citations": 1
+    },
+    {
+      "title": "O papel das redes sociais nos casos de assédio sexual das jornalistas: estudo da realidade no interior do maranhão",
+      "authors": "JL De Amorim, MA Da Silva, TC Bueno",
+      "venue": "Rázon Y Palabra 113, 89-105 , 2022",
+      "year": 2022,
+      "citations": 1
+    },
+    {
+      "title": "WhatsApp na rotina de trabalho dos jornalistas maranhenses: Um estudo nas redações de Imperatriz",
+      "authors": "TC Bueno, TA Assunção, L Lacerda",
+      "venue": "Pauta Geral-Estudos em Jornalismo 8 (2), 1-21 , 2021",
+      "year": 2021,
+      "citations": 1
+    },
+    {
+      "title": "Título de revista: uma discussão sobre o formato a partir dos modos de escrita em nove anos da TPM",
+      "authors": "T BUENO, LSA REINO",
+      "venue": "INTERCOM–CONGRESSO BRASILEIRO DE CIÊNCIAS DA COMUNICAÇÃO 44, 1-16 , 2021",
+      "year": 2021,
+      "citations": 1
+    },
+    {
+      "title": "Profissão: como o telejornalista enxerga o impacto da participação da audiência por meio do vídeoamador na sua prática",
+      "authors": "M Alves da Silva, TC Bueno",
+      "venue": "Anuario Electrónico de Estudios en Comunicación Social\" Disertaciones\" 13 (2 … , 2020",
+      "year": 2020,
+      "citations": 1
+    },
+    {
+      "title": "ASSÉDIO NAS PLATAFORMAS DIGITAIS: ESTUDO DAS RELAÇÕES DE TRABALHO DAS JORNALISTAS NO MA.",
+      "authors": "T Bueno, M Carvalho, J Lopes Amorim",
+      "venue": "Esferas , 2020",
+      "year": 2020,
+      "citations": 1
+    },
+    {
+      "title": "É tarde demais para nos calar: o feminismo nas esferas públicas midiáticas",
+      "authors": "AVF Rocha, ACO Santos, PF Ferreira, MS Silva, KO Guimarães, ...",
+      "venue": "",
+      "year": 2018,
+      "citations": 1
+    },
+    {
+      "title": "Hábitos e identidade: quem são os jornalistas de Imperatriz",
+      "authors": "M Lopes, T Leite, T Bueno",
+      "venue": "Anais do XII Simpósio de Comunicação da Região Tocantina , 2018",
+      "year": 2018,
+      "citations": 1
+    },
+    {
+      "title": "Tempo de vida de uma postagem jornalística nas fanpages de jornais brasileiros",
+      "authors": "TC Bueno, LSA Reino, L Lacerda, R Santos, E Lima, DC Dos Santos",
+      "venue": "Pauta Geral 5 (2), 199-223 , 2018",
+      "year": 2018,
+      "citations": 1
+    },
+    {
+      "title": "Análise do uso dos comentários dos leitores de jornais por parte da imprensa–uma categorização",
+      "authors": "L Reino, T Bueno",
+      "venue": "Novos Olhares 6 (1), 75-89 , 2017",
+      "year": 2017,
+      "citations": 1
+    },
+    {
+      "title": "Teoria do Meio como alternativa para pesquisas em Comunicação:: uma abordagem introdutória",
+      "authors": "T Bueno, LSA Reino",
+      "venue": "Tríade: Comunicação, Cultura e Mídia 5 (9) , 2017",
+      "year": 2017,
+      "citations": 1
+    },
+    {
+      "title": "Mariana Godoy Entrevista: a hibridização de gêneros e as narrativas transmídias como estratégias de aproximação",
+      "authors": "L Cirne, T Bueno, V Belém",
+      "venue": "Culturas Midiáticas 10 (1) , 2017",
+      "year": 2017,
+      "citations": 1
+    },
+    {
+      "title": "Comentários na Internet: Como as Assessorias de Comunicação de Imperatriz Lidam com a Plataforma1",
+      "authors": "G ARAÚJO, T BUENO, L REINO",
+      "venue": "CONGRESSO DE CIÊNCIAS DA COMUNICAÇÃO NA REGIÃO NORDESTE 19 , 2017",
+      "year": 2017,
+      "citations": 1
+    },
+    {
+      "title": "Comentários de leitores na internet: um olhar sobre a opinião do internauta",
+      "authors": "T Bueno, L Reino, L Holanda, G Araújo, EG Escócio",
+      "venue": "Revista Comunicando 5 (2), 88-103 , 2016",
+      "year": 2016,
+      "citations": 1
+    },
+    {
+      "title": "Identidade, experiência e reflexão: a formação de professores no contexto do Parfor",
+      "authors": "T Bueno, K Moura, LS Reino",
+      "venue": "",
+      "year": 2016,
+      "citations": 1
+    },
+    {
+      "title": "Caru Schwingel defende incluir programação digital na formação do novo jornalista",
+      "authors": "T Bueno",
+      "venue": "Revista Observatório 1 (2), 258-264 , 2015",
+      "year": 2015,
+      "citations": 1
+    },
+    {
+      "title": "Para que servem os comentários de leitores na internet?: estudo sobre a utilidade da ferramenta nos sites de notícias a partir da estrutura do dispositivo e do modo de …",
+      "authors": "TC Bueno",
+      "venue": "Pontifícia Universidade Católica do Rio Grande do Sul , 2015",
+      "year": 2015,
+      "citations": 1
+    },
+    {
+      "title": "+ 25 Perspectivas do Ciberjornalismo",
+      "authors": "GL Martins, D Rivera",
+      "venue": "",
+      "year": null,
+      "citations": 1
+    },
+    {
+      "title": "O CONTRATO DA FALA: a representação de fontes jornalísticas negras no Jornal Nacional",
+      "authors": "AMC Nascimento, LL de Sousa, TC Bueno",
+      "venue": "Rhêtorikê-revista digital de retórica 1 (12) , 2026",
+      "year": 2026,
+      "citations": null
+    },
+    {
+      "title": "Avanços e lacunas na pesquisa em física no Maranhão: uma análise da produção acadêmica",
+      "authors": "T Bueno, LCS de Assunção",
+      "venue": "Revista Educação e Transformação Social 1 (1) , 2026",
+      "year": 2026,
+      "citations": null
+    },
+    {
+      "title": "Táticas de enfrentamento ao assédio por professoras de pós-graduação no Nordeste Brasileiro",
+      "authors": "LCM Cardoso, TC Bueno, MS de Carvalho, LL de Sousa, JL de Amorim",
+      "venue": "Intexto , 2025",
+      "year": 2025,
+      "citations": null
+    },
+    {
+      "title": "CHECAGENS DAS FAKE NEWS NO SITE “FATO OU BOATO” DURANTE O PERÍODO ELEITORAL DE 2022",
+      "authors": "MA Silva, TC Bueno, TA Reis",
+      "venue": "Movendo Ideias 30 , 2025",
+      "year": 2025,
+      "citations": null
+    },
+    {
+      "title": "CONTEÚDO JORNALÍSTICO NO INSTAGRAM: RECONFIGURAÇÕES ORIENTADAS PELAS NORMATIVAS DA PLATAFORMA E SEUS IMPACTOS",
+      "authors": "T Bueno, M Alves, VCR da Silva",
+      "venue": "Revista GEMInIS 16, 247-274 , 2025",
+      "year": 2025,
+      "citations": null
+    },
+    {
+      "title": "Campanhas eleitorais nas redes sociais: um estado da arte",
+      "authors": "MA da Silva, TC Bueno, WF Martins",
+      "venue": "Cambiassu: Estudos em Comunicação, 136-152 , 2025",
+      "year": 2025,
+      "citations": null
+    },
+    {
+      "title": "O cenário midiático maranhense nas mídias sociais: um mapeamento dos perfis em atuação em dez cidades do estado",
+      "authors": "GA Silva, T Bueno",
+      "venue": "Revista FAMECOS 32 (1), e46164-e46164 , 2025",
+      "year": 2025,
+      "citations": null
+    },
+    {
+      "title": "Fotojornalismo: desafios e rotinas dos profissionais no interior do Brasil",
+      "authors": "T Bueno, R Barros, J Teixeira",
+      "venue": "Revista Latinoamericana de Ciencias de la Comunicación 23 (46) , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "Qual o lugar das jornalistas negras no Maranhão?",
+      "authors": "LL de Sousa, TC Bueno, NN de Sousa",
+      "venue": "E-Compós 27 , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "A passos lentos: pesquisas sobre jornalistas negras e/ou jornalistas mulheres na mídia em teses e dissertações do Brasil (2015-2023)",
+      "authors": "M da Silva Alves, TC Bueno",
+      "venue": "Intexto , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "QUAL A COR DA DOCÊNCIA EM JORNALISMO?: UM MAPEAMENTO DO PERFIL DAS PROFESSORAS NA AMAZÔNIA BRASILEIRA.",
+      "authors": "J LOPES DE AMORIM, T BUENO, R BRITO",
+      "venue": "Revista Mediação 26 (37) , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "JORNALISMO DE MODA NO BRASIL: ESPECIFICIDADES E PREPARAÇÃO PARA ATUAR NA ÁREA",
+      "authors": "T Bueno, J Fonseca, C Castro",
+      "venue": "Revista Brasileira de Estudos da Mídia 2 (1) , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "A PRODUÇÃO JORNALÍSTICA REGIONAL: UMA ANÁLISE A PARTIR DA EXPERIÊNCIA DOS PROFISSIONAIS DE IMPERATRIZ-MA",
+      "authors": "RT ASSUNÇÃO, T BUENO, M ALVES",
+      "venue": "CONTEMPORÂNEA REVISTA DE COMUNICAÇÃO E CULTURA 22 (1) , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "QUEM FALA NO DIA DA CONSCIÊNCIA NEGRA?: UM ESTUDO DAS FONTES JORNALÍSTICAS NA MÍDIA HEGEMÔNICA NO MARANHÃO",
+      "authors": "A ROCHA, T BUENO, L SOUSA",
+      "venue": "OBSERVATÓRIO 10 (1) , 2024",
+      "year": 2024,
+      "citations": null
+    },
+    {
+      "title": "APROXIMAÇÕES E DISTANCIAMENTOS NAS ESCOLHAS DE EDITORIAS JORNALÍSTICAS REALIZADAS POR IDOSOS NÃO-SENIS EM PORTO ALEGRE/RS: UM ESTUDO DE CASO QUE REFLETE OS INTERESSES DOS GÊNEROS",
+      "authors": "KCK ABREU, JQAM ROCHA, K AMORIM, TC BUENO",
+      "venue": "ENVELHECIMENTO HUMANO E CONTEMPORANEIDADE: TÓPICOS ATUAIS EM PESQUISA-VOLUME … , 2023",
+      "year": 2023,
+      "citations": null
+    },
+    {
+      "title": "Entre jornalistas:: o relacionamento do produtor de televisão com o assessor de imprensa",
+      "authors": "T Bueno, M Alves, SR Menezes",
+      "venue": "Educação, Cultura e Comunicação 14 (28) , 2023",
+      "year": 2023,
+      "citations": null
+    },
+    {
+      "title": "Revista de moda: um estudo sobre os desafios e caminhos do jornalismo segmentado a partir da perspectiva dos editores",
+      "authors": "T Bueno, JF Barros, M Alves",
+      "venue": "dObra [s]: revista da Associação Brasileira de Estudos de Pesquisas em Moda … , 2023",
+      "year": 2023,
+      "citations": null
+    },
+    {
+      "title": "Perfil do jornalista na Região Tocantina: a construção da identidade profissional no sul do Maranhão",
+      "authors": "MA da Silva, TC Bueno, TLF Carneiro",
+      "venue": "Comunicação & Informação 25, 914-939 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "A construção do título em capas de revistas: uma discussão sobre o formato em nove anos da TPM",
+      "authors": "TC Bueno, LSA Reino",
+      "venue": "Intexto, 121279-121279 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "O papel das redes sociais nos casos de assédio sexual das jornalistas: estudo da realidade no interior do maranhão",
+      "authors": "MA da Silva, TC Bueno, JL de Amorim",
+      "venue": "Razón y Palabra. 26 (113) , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "ANTÔNIO HOHLFELDT:\" A gente está com uma febre muito grande nas tecnologias\"",
+      "authors": "EWF ARAUJO, TC BUENO, MA GEHLEN, AM da SILVA",
+      "venue": "Cambiassu: Estudos em Comunicação, 139-148 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "A COMUNICAÇÃO SOB A ÓTICA DAS TEORIAS SOCIAIS",
+      "authors": "T BUENO",
+      "venue": "Cambiassu: Estudos em Comunicação, 156-159 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "Um estudo comparado das coberturas do Jornal Nacional e Jornal da Record no primeiro mês da covid-19 no brasil",
+      "authors": "T Bueno, M Alves, JDS Oliveira",
+      "venue": "Cadernos de Comunicação 26 (3) , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "O jornalismo como campo de disputa de gênero: uma retrospectiva histórica da inserção da mulher na imprensa",
+      "authors": "JL de AMORIM, T Bueno",
+      "venue": "Cadernos de Campo: Revista de Ciências Sociais, 137-158 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "El papel de las redes sociales en los casos de acoso sexual de periodistas: un estudio de la realidad en el interior de maranhão",
+      "authors": "MA da Silva, TC Bueno, JL de Amorim",
+      "venue": "Razón y palabra 26 (113), 8 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "¿ Qué hace una red social? Estudio sobre el desempeño de los profesionales en una ciudad del interior de Brasil",
+      "authors": "TC Bueno, AC da Silva Alves",
+      "venue": "Razón y Palabra. 26 (115), 277-291 , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "Características dos títulos jornalísticos em países lusófonos",
+      "authors": "TC Bueno",
+      "venue": "Organizações e movimentos periféricos nas redes digitais ibero-americanas … , 2022",
+      "year": 2022,
+      "citations": null
+    },
+    {
+      "title": "Títulos jornalísticos para redes sociais: Os jornais brasileiros no Facebook",
+      "authors": "MG Massuchin, T Bueno, RF Borges, SG de Sousa",
+      "venue": "Sur le journalisme, About journalism, Sobre jornalismo 10 (1), 112-127 , 2021",
+      "year": 2021,
+      "citations": null
+    },
+    {
+      "title": "O corpo está no contrato? Estudo sobre as ocorrências de assédio sexual contra mulheres jornalistas nas redações de Imperatriz",
+      "authors": "T BUENO, CQ TAVARES, PM ROCHA",
+      "venue": "Universidade Federal do Maranhão , 2021",
+      "year": 2021,
+      "citations": null
+    },
+    {
+      "title": "WHATSAPP IN THE PRODUCTIVE ROUTINE OF THE INTERIOR: A Study From The Perspective A Of Journalists From Imperatriz (MA) And Araguaina (TO)",
+      "authors": "L Lacerda Lima, M Alves da Silva, T Bueno",
+      "venue": "",
+      "year": 2021,
+      "citations": null
+    }
+  ],
+  "source_html": "C:\\Users\\LUCAS\\Downloads\\FireShot\\_Thaisa Bueno_ - _Google Acadêmico_.html",
+  "parsed_at": "2026-05-27T17:14:19.585128+00:00"
+}

@@ -68,6 +68,9 @@ while (( elapsed < HEALTH_TIMEOUT )); do
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_profiles
     echo "==> Verifying Scholar profile sync (Lucas / Q61X3XUAAAAJ)..."
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.verify_scholar_apply
+    echo "==> Verifying Scholar profile sync (Thaisa / ivViR7IAAAAJ)..."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m app.verify_scholar_apply \
+      --scholar-user ivViR7IAAAAJ --id-lattes none --min-citations-rows 1 || true
     exit 0
   fi
 
