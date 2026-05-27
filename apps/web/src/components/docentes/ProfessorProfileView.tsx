@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ExternalLink, Settings } from "lucide-react";
 import type { ProfessorCatalog, ProfessorResumo, ProfileTab } from "@/lib/types";
@@ -9,6 +9,7 @@ import { groupOrientacoesByTipo } from "@/lib/orientacao-groups";
 import { groupProducoesByTipo } from "@/lib/producao-groups";
 import { ProfessorAvatar } from "./ProfessorAvatar";
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
+import { ProducaoIndicadores } from "@/components/academic/ProducaoIndicadores";
 
 const TABS: { id: ProfileTab; label: string }[] = [
   { id: "resumo", label: "Resumo" },
@@ -186,15 +187,16 @@ export function ProfessorProfileView({
                   key={p.id}
                   badge={p.tipo}
                   title={p.titulo}
-                  meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}${
-                    p.scholar_citations != null ? ` · ${p.scholar_citations} citações (Scholar)` : ""
-                  }${
-                    p.scholar_h5_index != null
-                      ? ` · h5=${p.scholar_h5_index}${
-                          p.scholar_metrics_year != null ? ` (${p.scholar_metrics_year})` : ""
-                        }`
-                      : ""
-                  }`}
+                  meta={`${p.ano} · ${p.veiculo}`}
+                  indicators={
+                    <ProducaoIndicadores
+                      qualis={p.qualis}
+                      journal_h_index={p.journal_h_index}
+                      scholar_citations={p.scholar_citations}
+                      scholar_h5_index={p.scholar_h5_index}
+                      scholar_metrics_year={p.scholar_metrics_year}
+                    />
+                  }
                 />
               ))}
             </section>
@@ -364,11 +366,13 @@ function RecordCard({
   badge,
   title,
   meta,
+  indicators,
   body,
 }: {
   badge: string;
   title: string;
   meta?: string;
+  indicators?: ReactNode;
   body?: string;
 }) {
   return (
@@ -377,6 +381,7 @@ function RecordCard({
         {badge}
       </span>
       <h3 className="text-sm font-bold text-slate-900 mt-2">{title}</h3>
+      {indicators}
       {meta && <p className="text-[11px] text-slate-600 mt-1">{meta}</p>}
       {body && (
         <p className="text-xs text-slate-600 mt-2 leading-relaxed">{body}</p>

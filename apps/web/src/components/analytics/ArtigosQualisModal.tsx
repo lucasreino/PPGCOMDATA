@@ -41,6 +41,7 @@ export interface ArtigosQualisPayload {
     scholar_h5_median?: number | null;
     scholar_citations?: number | null;
     scholar_metrics_year?: number | null;
+    journal_h_index?: number | null;
     ano: number | null;
     doi?: string | null;
     docentes_ppgcom?: string[];
@@ -376,6 +377,14 @@ export function ArtigosQualisModal({
                           >
                             h5 {a.scholar_h5_index}
                             {a.scholar_metrics_year != null ? ` · ${a.scholar_metrics_year}` : ""}
+                          </span>
+                        )}
+                        {a.journal_h_index != null && (
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-900 font-bold text-[10px]"
+                            title="H-index da revista (catálogo OpenAlex/coleta manual)"
+                          >
+                            h-index {a.journal_h_index}
                           </span>
                         )}
                         {a.ano != null && (

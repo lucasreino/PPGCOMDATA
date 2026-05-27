@@ -9,6 +9,7 @@ import {
   Users, GraduationCap, Wrench, Trophy, Network
 } from "lucide-react";
 import { ResumoAcademicoCard } from "@/components/academic/ResumoAcademicoCard";
+import { ProducaoIndicadores } from "@/components/academic/ProducaoIndicadores";
 import {
   ActionPanel, ConfidenceBadge, EmptyState, OriginalFragment,
 } from "@/components/ui/validation-ui";
@@ -416,6 +417,13 @@ export function ValidacaoView() {
                           {item.tipo}
                         </span>
                         <h3 className="text-sm font-bold text-slate-900 mt-1">{item.titulo}</h3>
+                        <ProducaoIndicadores
+                          qualis={item.qualis}
+                          journal_h_index={item.journal_h_index}
+                          scholar_citations={item.scholar_citations}
+                          scholar_h5_index={item.scholar_h5_index}
+                          scholar_metrics_year={item.scholar_metrics_year}
+                        />
                       </div>
 
                       <ConfidenceBadge level={item.confianca_ia} />
@@ -466,6 +474,14 @@ export function ValidacaoView() {
                               ? ` · ${item.scholar_metrics_year}`
                               : ""}
                           </span>
+                        </div>
+                      )}
+                      {item.journal_h_index != null && (
+                        <div className="bg-sky-50 p-2 rounded-lg border border-sky-200">
+                          <span className="text-[9px] text-sky-600 block font-bold">
+                            H-index revista
+                          </span>
+                          <span className="font-bold text-sky-800">{item.journal_h_index}</span>
                         </div>
                       )}
                     </div>
