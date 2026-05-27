@@ -77,3 +77,7 @@ data/*
 !data/scholar_profiles/
 !data/scholar_profiles/**
 
+# h-index de revistas (OpenAlex / CSV)
+!data/journal_hindex/
+!data/journal_hindex/**
+

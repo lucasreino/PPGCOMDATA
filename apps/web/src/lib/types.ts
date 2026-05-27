@@ -95,6 +95,7 @@ export interface Producao {
   scholar_h5_median?: number | null;
   scholar_metrics_year?: number | null;
   scholar_citations?: number | null;
+  journal_h_index?: number | null;
   autores?: string | null;
   idioma?: string | null;
   volume?: string | null;

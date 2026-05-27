@@ -269,6 +269,8 @@ async def gerar_relatorio_ia(
                 scholar_parts.append(f"h5_mediana={p.scholar_h5_median}")
             if p.scholar_metrics_year is not None:
                 scholar_parts.append(f"ano_metricas={p.scholar_metrics_year}")
+            if p.journal_h_index is not None:
+                scholar_parts.append(f"h_revista={p.journal_h_index}")
             scholar_str = f" | Scholar: {', '.join(scholar_parts)}" if scholar_parts else ""
             context_lines.append(
                 f"  * [{p.tipo.upper()}] \"{p.titulo}\" ({p.ano}) | "

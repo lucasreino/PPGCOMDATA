@@ -89,6 +89,10 @@ export function mapProducao(r: Record<string, unknown>): Producao {
       r.scholar_citations != null && r.scholar_citations !== ""
         ? Number(r.scholar_citations)
         : null,
+    journal_h_index:
+      r.journal_h_index != null && r.journal_h_index !== ""
+        ? Number(r.journal_h_index)
+        : null,
     confianca_ia: conf(r.confianca_ia),
     trecho_original: String(r.trecho_original || ""),
     status_validacao: val(r.status_validacao),

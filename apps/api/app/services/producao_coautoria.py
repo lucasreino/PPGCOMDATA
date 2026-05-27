@@ -46,9 +46,10 @@ def pick_representative_producao(items: List[Producao]) -> Producao:
     def score(p: Producao) -> tuple:
         has_qualis = 1 if (p.qualis or "").strip() else 0
         has_scholar = 1 if p.scholar_h5_index is not None else 0
+        has_journal_h = 1 if p.journal_h_index is not None else 0
         has_citations = 1 if p.scholar_citations is not None else 0
         autores_len = len((p.autores or "").strip())
-        return (has_qualis, has_citations, has_scholar, autores_len)
+        return (has_qualis, has_citations, has_scholar, has_journal_h, autores_len)
 
     return max(items, key=score)
 
@@ -87,6 +88,7 @@ def build_artigo_work_insights(
                 "scholar_h5_median": rep.scholar_h5_median,
                 "scholar_metrics_year": rep.scholar_metrics_year,
                 "scholar_citations": rep.scholar_citations,
+                "journal_h_index": rep.journal_h_index,
                 "ano": rep.ano,
                 "doi": rep.doi,
                 "autores_lattes": autores_lattes,
