@@ -105,6 +105,22 @@ def _name_labels(prof: Professor) -> List[str]:
     return labels
 
 
+def _name_tokens(key: str) -> List[str]:
+    return [t for t in key.split() if len(t) >= 2]
+
+
+def _token_subset_name_match(scholar_key: str, prof_key: str) -> bool:
+    """Ex.: scholar «lucas santiago arraes reino» ↔ lattes «lucas reino»."""
+    a, b = _name_tokens(scholar_key), _name_tokens(prof_key)
+    if len(a) < 2 or len(b) < 2:
+        return False
+    short, long = (a, b) if len(a) <= len(b) else (b, a)
+    if len(short) < 2:
+        return False
+    long_set = set(long)
+    return all(t in long_set for t in short)
+
+
 def resolve_professor_for_profile(
     session: Session,
     profile: ScholarProfileData,
@@ -142,6 +158,15 @@ def resolve_professor_for_profile(
     scholar_key = normalize_text(profile.name)
     if not scholar_key:
         return None, "sem_match"
+
+    subset_hits: List[Professor] = []
+    for prof in profs:
+        if any(_token_subset_name_match(scholar_key, label) for label in _name_labels(prof)):
+            subset_hits.append(prof)
+    if len(subset_hits) == 1:
+        return subset_hits[0], "nome_tokens"
+    if len(subset_hits) > 1:
+        return None, "nome_ambiguo"
 
     fuzzy_hits: Dict[str, Tuple[Professor, float]] = {}
     for prof in profs:

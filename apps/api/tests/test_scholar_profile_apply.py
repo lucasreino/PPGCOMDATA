@@ -85,6 +85,25 @@ def test_resolve_professor_por_nome_exato():
         assert mode == "nome_exato"
 
 
+def test_resolve_professor_nome_tokens_lattes_curto():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
+    SQLModel.metadata.create_all(engine)
+    profile = ScholarProfileData(
+        scholar_user_id="Q61X3XUAAAAJ",
+        profile_url=None,
+        name="Lucas Santiago Arraes Reino",
+        affiliation="UFMA",
+        metrics=ScholarProfileMetrics(197, 87, 7, 5, 3, 2, since_year=2021),
+        publications=[],
+    )
+    with Session(engine) as session:
+        session.add(Professor(nome_completo="Lucas Reino", id_lattes="5487269670962081"))
+        session.commit()
+        prof, mode = resolve_professor_for_profile(session, profile)
+        assert prof is not None
+        assert mode == "nome_tokens"
+
+
 def test_resolve_professor_nome_ambiguo():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False})
     SQLModel.metadata.create_all(engine)
