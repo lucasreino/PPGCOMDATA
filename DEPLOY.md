@@ -50,6 +50,19 @@ Do **not** commit keys or `.env` production values to the repository.
 1. SSH into the VPS.
 2. Run `scripts/deploy-vps.sh`: sync `main`, `docker compose build web api`, `up -d web api`.
 3. Wait until API responds on `http://127.0.0.1:8000/` and the web container is running (fails the job on timeout).
+4. Run `alembic upgrade head`, `apply_scholar_metrics`, and `apply_scholar_profiles` (perfis em `data/scholar_profiles/json/`).
+
+### Google Acadêmico (citações por artigo)
+
+1. Salve o HTML completo do perfil e gere o JSON: `python -m app.parse_scholar_profile --html ... --json --copy-html`
+2. Opcional: `data/scholar_profiles/linkage.json` com `id_lattes` ou `professor_id`
+3. No deploy, `apply_scholar_profiles` cruza títulos e grava `scholar_citations` nas produções
+
+Reaplicar só os perfis Scholar (sem rebuild completo):
+
+```bash
+ssh hermes-vps 'bash -s' < scripts/vps-scholar-profiles.sh
+```
 
 ## Manual deploy
 

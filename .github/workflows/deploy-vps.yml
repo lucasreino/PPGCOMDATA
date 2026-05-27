@@ -17,8 +17,10 @@ on:
     paths:
       - "apps/web/**"
       - "apps/api/**"
+      - "data/scholar_profiles/**"
       - "docker-compose.prod.yml"
       - "scripts/deploy-vps.sh"
+      - "scripts/vps-scholar-profiles.sh"
       - ".github/workflows/deploy-vps.yml"
   workflow_dispatch:
     inputs:
