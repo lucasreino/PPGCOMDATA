@@ -5,11 +5,13 @@ After=docker.service
 
 [Service]
 Type=oneshot
+EnvironmentFile=-/etc/ppgcomdata/backup.env
 ExecStart=/usr/bin/env bash /root/projects/ppgcomdata/scripts/backup-vps.sh
 
-# Defaults (override via systemd drop-in or env files if needed)
+# Defaults (override in /etc/ppgcomdata/backup.env)
 Environment=BACKUP_ROOT=/root/backups/ppgcomdata
 Environment=RETENTION_DAYS=14
+Environment=GDRIVE_RETENTION_DAYS=30
 Environment=PG_CONTAINER_NAME=ppgcomdata-db-prod
 Environment=UPLOADS_VOLUME_NAME=prod_uploads
 

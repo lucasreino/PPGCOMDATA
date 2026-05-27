@@ -80,37 +80,20 @@ NO_CACHE=1 bash scripts/deploy-vps.sh
 
 ## Backups diários (Postgres + uploads + `./data`)
 
-O sistema de backup diário é feito via `systemd` e utiliza o script:
-`/root/projects/ppgcomdata/scripts/backup-vps.sh`.
+Backup automático via `systemd` + script `scripts/backup-vps.sh`.
 
-Ele gera uma pasta em:
-`/root/backups/ppgcomdata/<YYYY-MM-DD_HH-mm-ss>/`
+**Documentação completa (Google Drive, restore, retenção):** [docs/BACKUP.md](docs/BACKUP.md)
 
-### O que é salvo
-
-- Banco PostgreSQL: `postgres.dump` (formato `pg_dump --format=custom`)
-- Volume Docker de uploads: `uploads.tar.gz` (volume `prod_uploads`)
-- Pasta do projeto `./data`: `data.tar.gz`
-
-### Retenção
-
-Por padrão, mantém **14 dias** (`RETENTION_DAYS`, configurável via systemd).
-
-### Timer systemd
-
-Arquivos de referência (no repositório):
-- `ops/ppgcomdata-backup.service`
-- `ops/ppgcomdata-backup.timer`
-
-Após atualizar o repositório na VPS, habilite com:
+Resumo rápido:
 
 ```bash
-sudo systemctl daemon-reload
 sudo cp ops/ppgcomdata-backup.service /etc/systemd/system/
 sudo cp ops/ppgcomdata-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl enable --now ppgcomdata-backup.timer
-sudo systemctl list-timers | rg ppgcomdata-backup
 ```
+
+Para enviar cópias ao **Google Drive**, configure rclone na VPS e crie `/etc/ppgcomdata/backup.env` (veja `ops/ppgcomdata-backup.env.example`).
 
 ## Local SSH config (optional)
 
