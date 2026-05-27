@@ -126,13 +126,17 @@ upload_backup() {
 
   local remote_path="${remote%/}/${timestamp}"
   log "Uploading backup to ${remote_path}..."
-  rclone copy "$backup_dir" "$remote_path" \
+  if ! rclone copy "$backup_dir" "$remote_path" \
     --config "$RCLONE_CONFIG" \
     --transfers 2 \
     --checkers 4 \
     --contimeout 60s \
     --timeout 300s \
-    --low-level-retries 3
+    --low-level-retries 3; then
+    log "WARNING: Remote upload failed. Local backup was kept."
+    log "For personal Gmail Drive, use OAuth (not service account). See docs/BACKUP.md"
+    return 0
+  fi
 
   log "Remote upload completed."
   cleanup_old_remote_backups

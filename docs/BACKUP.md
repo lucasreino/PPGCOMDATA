@@ -24,9 +24,57 @@ Cada execução cria uma pasta:
 
 ---
 
-## Google Drive (recomendado: Service Account)
+## Google Drive
 
-A forma mais estável para VPS **sem browser** é usar uma **Service Account** do Google Cloud e compartilhar uma pasta do Drive com ela.
+### Conta pessoal (Gmail) — use OAuth
+
+Desde 2024, **service accounts não conseguem gravar** em pastas do Drive pessoal (erro `storageQuotaExceeded`), mesmo com a pasta compartilhada. Para Gmail, use **OAuth com sua conta Google**.
+
+No seu PC (Windows), com rclone instalado:
+
+```powershell
+rclone config
+```
+
+1. `n` → novo remote → nome: `ppgcomdata-gdrive`
+2. Tipo: `drive` (Google Drive)
+3. `client_id` e `client_secret`: Enter (padrão)
+4. `scope`: `1` (Full access) ou `drive` conforme o menu
+5. `root_folder_id`: cole `1eH5IO8CuaPTT5-DW9FJSKs-ReX1aPYJi` (ID da pasta PPGCOMDATA-Backups)
+6. Demais opções: Enter (padrão)
+7. Autorize no browser quando abrir
+
+Envie o config para a VPS:
+
+```powershell
+scp -F C:\Users\LUCAS\.ssh\config $env:APPDATA\rclone\rclone.conf hermes-vps:/root/.config/rclone/rclone.conf
+```
+
+Na VPS, ative o upload:
+
+```bash
+sudo bash -c 'cat > /etc/ppgcomdata/backup.env <<EOF
+BACKUP_ROOT=/root/backups/ppgcomdata
+RETENTION_DAYS=14
+RCLONE_REMOTE=ppgcomdata-gdrive:backups
+RCLONE_CONFIG=/root/.config/rclone/rclone.conf
+GDRIVE_RETENTION_DAYS=30
+EOF'
+sudo chmod 600 /etc/ppgcomdata/backup.env
+sudo systemctl start ppgcomdata-backup.service
+```
+
+Teste:
+
+```bash
+rclone lsf ppgcomdata-gdrive:backups
+```
+
+---
+
+### Google Workspace (opcional: Service Account + Shared Drive)
+
+A forma estável **sem browser** exige **Google Workspace** com **Shared Drive** (unidade compartilhada), não Drive pessoal.
 
 ### 1. Google Cloud — criar Service Account
 
