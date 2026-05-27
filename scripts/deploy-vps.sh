@@ -60,8 +60,14 @@ while (( elapsed < HEALTH_TIMEOUT )); do
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_metrics --dry-run || true
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_metrics || true
 
+    echo "==> Applying journal h-index (revista) to existing productions..."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_journal_hindex --dry-run || true
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_journal_hindex || true
+
     echo "==> Applying Google Scholar author profiles (citations per article)..."
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_profiles
+    echo "==> Verifying Scholar profile sync (Lucas / Q61X3XUAAAAJ)..."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m app.verify_scholar_apply
     exit 0
   fi
 

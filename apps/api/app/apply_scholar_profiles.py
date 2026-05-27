@@ -87,6 +87,19 @@ def main() -> None:
 
     print(json.dumps(summary, ensure_ascii=False, indent=2))
 
+    if summary.get("erros"):
+        print(
+            f"\nERRO: {len(summary['erros'])} perfil(is) não aplicado(s).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if args.scholar_user and not summary.get("perfis"):
+        print(
+            f"\nERRO: nenhum perfil aplicado para scholar-user={args.scholar_user}.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

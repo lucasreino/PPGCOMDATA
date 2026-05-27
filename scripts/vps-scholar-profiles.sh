@@ -12,7 +12,7 @@ git reset --hard origin/main
 
 docker compose -f "$COMPOSE_FILE" exec -T api alembic upgrade head
 docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_profiles
-docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_profiles --scholar-user Q61X3XUAAAAJ
+docker compose -f "$COMPOSE_FILE" exec -T api python -m app.verify_scholar_apply
 
 echo "==> Rebuild web (exibir citações na UI)..."
 docker compose -f "$COMPOSE_FILE" build web
