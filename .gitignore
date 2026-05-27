@@ -67,5 +67,9 @@ desktop.ini
 # Storage uploads (local development uploads)
 apps/api/uploads/
 apps/api/data/
-data/
+data/*
+
+# Allow versioning of small Scholar Metrics snapshots used for UI enrichment
+!data/scholar_metrics/
+!data/scholar_metrics/**
 

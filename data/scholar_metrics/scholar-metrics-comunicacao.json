@@ -1,0 +1,18 @@
+{
+  "metrics_year": 2024,
+  "source_note": "Exemplo mínimo para desenvolvimento e testes. Substitua por dados reais do Google Scholar Metrics.",
+  "journals": [
+    {
+      "titulo": "Journal of Communication",
+      "issn": "00219915",
+      "h5_index": 89,
+      "h5_median": 124
+    },
+    {
+      "titulo": "Communication Research",
+      "issn": "00936502",
+      "h5_index": 76,
+      "h5_median": 98
+    }
+  ]
+}
