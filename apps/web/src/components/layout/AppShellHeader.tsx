@@ -87,16 +87,23 @@ export function AppShellHeader({
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [apiVersion, setApiVersion] = useState<string | null>(null);
+  const [headerApiConnected, setHeaderApiConnected] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     if (!user) return;
     apiFetch("/status")
       .then((res) => (res.ok ? res.json() : null))
       .then((data: { version?: string } | null) => {
+        setHeaderApiConnected(Boolean(data));
         if (data?.version) setApiVersion(`v${data.version}`);
       })
-      .catch(() => setApiVersion(null));
+      .catch(() => {
+        setApiVersion(null);
+        setHeaderApiConnected(false);
+      });
   }, [user]);
+
+  const effectiveApiConnected = apiConnected ?? headerApiConnected;
 
   const onOperacao = section === "operacao";
   const onDocentes = section === "docentes" || pathname.startsWith("/docentes");
@@ -216,13 +223,13 @@ export function AppShellHeader({
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {apiConnected !== undefined && (
+            {effectiveApiConnected !== undefined && (
               <div className="hidden sm:flex items-center gap-2 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-full text-[10px]">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${apiConnected ? "bg-emerald-500" : "bg-amber-500"}`}
+                  className={`w-1.5 h-1.5 rounded-full ${effectiveApiConnected ? "bg-emerald-500" : "bg-amber-500"}`}
                 />
                 <span className="text-slate-600">
-                  {apiConnected ? "API" : "Offline"}
+                  {effectiveApiConnected ? "API" : "Offline"}
                 </span>
               </div>
             )}
