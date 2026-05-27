@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, List, TYPE_CHECKING
 from sqlmodel import Field, Relationship
 from app.models.base import UUIDModel, TimestampModel
@@ -46,6 +46,12 @@ class Professor(UUIDModel, TimestampModel, table=True):
     titulacao_maxima: Optional[str] = Field(default=None, nullable=True, index=True)
     data_ultima_atualizacao_lattes: Optional[date] = Field(default=None, nullable=True)
     foto_url: Optional[str] = Field(default=None, nullable=True)
+    scholar_user_id: Optional[str] = Field(default=None, nullable=True, index=True)
+    scholar_citations_total: Optional[int] = Field(default=None, nullable=True)
+    scholar_h_index: Optional[int] = Field(default=None, nullable=True)
+    scholar_i10_index: Optional[int] = Field(default=None, nullable=True)
+    scholar_metrics_since_year: Optional[int] = Field(default=None, nullable=True)
+    scholar_profile_synced_at: Optional[datetime] = Field(default=None, nullable=True)
 
     # Foreign Keys
     linha_pesquisa_id: Optional[str] = Field(

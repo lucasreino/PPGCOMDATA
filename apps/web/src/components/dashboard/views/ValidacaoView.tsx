@@ -444,6 +444,16 @@ export function ValidacaoView() {
                           <span className="font-bold text-indigo-300">{item.qualis}</span>
                         </div>
                       )}
+                      {item.scholar_citations != null && (
+                        <div className="bg-amber-50 p-2 rounded-lg border border-amber-200">
+                          <span className="text-[9px] text-amber-700 block font-bold">
+                            Citações (Scholar)
+                          </span>
+                          <span className="font-bold text-amber-900">
+                            {item.scholar_citations}
+                          </span>
+                        </div>
+                      )}
                       {item.scholar_h5_index != null && (
                         <div className="bg-emerald-50 p-2 rounded-lg border border-emerald-200">
                           <span className="text-[9px] text-emerald-600 block font-bold">

@@ -86,6 +86,7 @@ def build_artigos_qualis_insights(
                 "scholar_h5_index": obra.get("scholar_h5_index"),
                 "scholar_h5_median": obra.get("scholar_h5_median"),
                 "scholar_metrics_year": obra.get("scholar_metrics_year"),
+                "scholar_citations": obra.get("scholar_citations"),
                 "ano": obra["ano"],
                 "doi": obra["doi"],
                 "docentes_ppgcom": obra["docentes_ppgcom"],

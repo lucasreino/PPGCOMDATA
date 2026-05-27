@@ -152,6 +152,7 @@ class Producao(UUIDModel, TimestampModel, table=True):
     scholar_h5_index: Optional[int] = Field(default=None, nullable=True, index=True)
     scholar_h5_median: Optional[int] = Field(default=None, nullable=True)
     scholar_metrics_year: Optional[int] = Field(default=None, nullable=True)
+    scholar_citations: Optional[int] = Field(default=None, nullable=True, index=True)
     idioma: Optional[str] = Field(default=None, nullable=True)
     indexadores: Optional[str] = Field(default=None, nullable=True)
     volume: Optional[str] = Field(default=None, nullable=True)

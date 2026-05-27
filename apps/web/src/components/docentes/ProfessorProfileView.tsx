@@ -76,6 +76,18 @@ export function ProfessorProfileView({
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-slate-900">{prof.nome_completo}</h1>
           <p className="text-sm text-slate-600 mt-1">{linha}</p>
+          {prof.scholar_citations_total != null && (
+            <div className="mt-3 flex flex-wrap gap-2 text-[10px]">
+              <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-semibold">
+                Google Acadêmico: {prof.scholar_citations_total} citações
+                {prof.scholar_h_index != null ? ` · h=${prof.scholar_h_index}` : ""}
+                {prof.scholar_i10_index != null ? ` · i10=${prof.scholar_i10_index}` : ""}
+                {prof.scholar_metrics_since_year != null
+                  ? ` (desde ${prof.scholar_metrics_since_year})`
+                  : ""}
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 mt-3 text-[10px]">
             <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 font-semibold uppercase">
               {tipo}
@@ -175,8 +187,10 @@ export function ProfessorProfileView({
                   badge={p.tipo}
                   title={p.titulo}
                   meta={`${p.ano} · ${p.veiculo}${p.qualis ? ` · Qualis ${p.qualis}` : ""}${
+                    p.scholar_citations != null ? ` · ${p.scholar_citations} citações (Scholar)` : ""
+                  }${
                     p.scholar_h5_index != null
-                      ? ` · Scholar h5=${p.scholar_h5_index}${
+                      ? ` · h5=${p.scholar_h5_index}${
                           p.scholar_metrics_year != null ? ` (${p.scholar_metrics_year})` : ""
                         }`
                       : ""

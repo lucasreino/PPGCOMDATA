@@ -27,6 +27,12 @@ export interface ProfessorCatalog {
   total_orientacoes: number;
   total_bancas: number;
   total_financiamentos: number;
+  scholar_user_id?: string | null;
+  scholar_citations_total?: number | null;
+  scholar_h_index?: number | null;
+  scholar_i10_index?: number | null;
+  scholar_metrics_since_year?: number | null;
+  scholar_profile_synced_at?: string | null;
 }
 
 export type ProfileTab =
@@ -88,6 +94,7 @@ export interface Producao {
   scholar_h5_index?: number | null;
   scholar_h5_median?: number | null;
   scholar_metrics_year?: number | null;
+  scholar_citations?: number | null;
   autores?: string | null;
   idioma?: string | null;
   volume?: string | null;

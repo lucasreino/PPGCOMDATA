@@ -22,6 +22,12 @@ class ProfessorListItem(BaseModel):
     status: bool
     linha_pesquisa_id: Optional[str] = None
     linha_pesquisa: Optional[LinhaPesquisaBrief] = None
+    scholar_user_id: Optional[str] = None
+    scholar_citations_total: Optional[int] = None
+    scholar_h_index: Optional[int] = None
+    scholar_i10_index: Optional[int] = None
+    scholar_metrics_since_year: Optional[int] = None
+    scholar_profile_synced_at: Optional[str] = None
 
     @classmethod
     def from_model(cls, professor) -> "ProfessorListItem":
@@ -51,4 +57,16 @@ class ProfessorListItem(BaseModel):
             if professor.linha_pesquisa_id
             else None,
             linha_pesquisa=linha,
+            scholar_user_id=getattr(professor, "scholar_user_id", None),
+            scholar_citations_total=getattr(professor, "scholar_citations_total", None),
+            scholar_h_index=getattr(professor, "scholar_h_index", None),
+            scholar_i10_index=getattr(professor, "scholar_i10_index", None),
+            scholar_metrics_since_year=getattr(
+                professor, "scholar_metrics_since_year", None
+            ),
+            scholar_profile_synced_at=(
+                professor.scholar_profile_synced_at.isoformat()
+                if getattr(professor, "scholar_profile_synced_at", None)
+                else None
+            ),
         )

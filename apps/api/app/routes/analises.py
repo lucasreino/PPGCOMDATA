@@ -261,6 +261,8 @@ async def gerar_relatorio_ia(
         for p in producoes:
             qualis_str = f" | Qualis: {p.qualis}" if p.qualis else ""
             scholar_parts = []
+            if p.scholar_citations is not None:
+                scholar_parts.append(f"cit={p.scholar_citations}")
             if p.scholar_h5_index is not None:
                 scholar_parts.append(f"h5={p.scholar_h5_index}")
             if p.scholar_h5_median is not None:

@@ -39,6 +39,7 @@ export interface ArtigosQualisPayload {
     qualis: string | null;
     scholar_h5_index?: number | null;
     scholar_h5_median?: number | null;
+    scholar_citations?: number | null;
     scholar_metrics_year?: number | null;
     ano: number | null;
     doi?: string | null;
@@ -358,6 +359,14 @@ export function ArtigosQualisModal({
                         ) : (
                           <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-100 text-[10px]">
                             Sem Qualis
+                          </span>
+                        )}
+                        {a.scholar_citations != null && (
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold text-[10px]"
+                            title="Citações do artigo no Google Acadêmico (perfil do autor)"
+                          >
+                            {a.scholar_citations} cit.
                           </span>
                         )}
                         {a.scholar_h5_index != null && (

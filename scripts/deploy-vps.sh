@@ -53,10 +53,15 @@ while (( elapsed < HEALTH_TIMEOUT )); do
   if (( api_ok == 1 && web_ok == 1 )); then
     echo "==> Health check passed."
     docker compose -f "$COMPOSE_FILE" ps
+    echo "==> Database migrations (alembic)..."
+    docker compose -f "$COMPOSE_FILE" exec -T api alembic upgrade head
+
     echo "==> Applying Google Scholar Metrics (h5) to existing productions..."
-    # Deploy should not fail if DB schema isn't ready yet or snapshot is missing.
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_metrics --dry-run || true
     docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_metrics || true
+
+    echo "==> Applying Google Scholar author profiles (citations per article)..."
+    docker compose -f "$COMPOSE_FILE" exec -T api python -m app.apply_scholar_profiles || true
     exit 0
   fi
 

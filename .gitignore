@@ -73,3 +73,7 @@ data/*
 !data/scholar_metrics/
 !data/scholar_metrics/**
 
+# Perfis Google Acadêmico (HTML + sidecars JSON/XML)
+!data/scholar_profiles/
+!data/scholar_profiles/**
+
