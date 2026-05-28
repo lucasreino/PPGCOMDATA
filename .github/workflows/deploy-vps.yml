@@ -18,6 +18,8 @@ on:
       - "apps/web/**"
       - "apps/api/**"
       - "data/scholar_profiles/**"
+      - "data/journal_hindex/**"
+      - "scripts/parse_compos_hindex.py"
       - "docker-compose.prod.yml"
       - "scripts/deploy-vps.sh"
       - "scripts/vps-scholar-profiles.sh"

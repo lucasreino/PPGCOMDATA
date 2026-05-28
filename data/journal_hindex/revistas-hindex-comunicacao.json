@@ -1,71 +1,102 @@
 {
-  "source_note": "Gerado a partir de revistas_openalex_hindex (1).csv",
-  "source_csv": "revistas_openalex_hindex (1).csv",
+  "source_note": "Catálogo unificado: OpenAlex (CSV legado) + COMPÓS Google Scholar 2021/2022",
+  "source_compos_url": "https://compos.org.br/publicacoes/revistas-da-area/",
   "journals": [
-    {
-      "titulo": "REVISTA OBSERVATÓRIO",
-      "issn": "24474266",
-      "h_index": 9.0
-    },
-    {
-      "titulo": "InTexto",
-      "issn": "18078583",
-      "h_index": 20.0
-    },
-    {
-      "titulo": "REVISTA LATINOAMERICANA DE CIENCIAS DE LA COMUNICACIÓN",
-      "issn": "18073026",
-      "h_index": 8.5
-    },
     {
       "titulo": "Ação Midiática - Estudos em Comunicação, Sociedade e Cultura",
       "issn": "22380701",
       "h_index": 3.0
     },
     {
-      "titulo": "E-COMPÓS (BRASÍLIA)",
-      "issn": "18082599",
-      "h_index": 12.0
+      "titulo": "Alceu(PUCRJ)",
+      "issn": "15188728",
+      "h_index": 3.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "Estudos de Jornalismo e Mídia",
-      "issn": "19846924",
-      "h_index": 8.0
+      "titulo": "Revista Alterjor",
+      "issn": "21761507",
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "REVISTA GEMINIS",
-      "issn": "21791465",
-      "h_index": 5.0
+      "titulo": "REVISTA ALTERJOR USP",
+      "issn": null,
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "REVISTA ECO-PÓS (ONLINE)",
-      "issn": "21758689",
-      "h_index": 8.5
+      "titulo": "ANIMUS (SANTA MARIA. ONLINE)",
+      "issn": "21754977",
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "REVISTA FAMECOS (ONLINE)",
-      "issn": "19803729",
-      "h_index": 11.0
+      "titulo": "ATURÁ – REVISTA PAN-AMAZÔNICA DE COMUNICAÇÃO",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "REVISTA FRONTEIRAS (ONLINE)",
-      "issn": "19848226",
-      "h_index": 8.0
+      "titulo": "REVISTA BRASILEIRA DE HISTÓRIA DA MÍDIA",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "INTERCOM (SÃO PAULO. ONLINE)",
-      "issn": "19803508",
-      "h_index": 12.0
+      "titulo": "BRAZILIAN JOURNALISM RESEARCH (ONLINE)",
+      "issn": "19819854",
+      "h_index": 8.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "REVISTA CONTRACAMPO",
-      "issn": "22382577",
-      "h_index": 11.0
+      "titulo": "CADERNOS DE COMUNICAÇÃO (UFSM)",
+      "issn": null,
+      "h_index": 3.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "CONTRACAMPO (UFF)",
-      "issn": "14147483",
-      "h_index": 11.0
+      "titulo": "REVISTA COMPOLITICA",
+      "issn": "22364781",
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "COMUNICACAO E EDUCACAO (USP)",
+      "issn": null,
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "COMUNICAÇÃO & INFORMAÇÃO (UFG)",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "COMUNICAÇÃO & INOVAÇÃO",
+      "issn": null,
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "COMUNICACAO, MIDIA E CONSUMO (ONLINE)",
+      "issn": "19837070",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
       "titulo": "Revista Comunicação Midiática (Online)",
@@ -73,14 +104,124 @@
       "h_index": 3.0
     },
     {
-      "titulo": "Intercom",
-      "issn": "2177790X",
+      "titulo": "COMUNICAÇÃO & SOCIEDADE",
+      "issn": null,
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "CONTEMPORANEA (UFBA. ONLINE)",
+      "issn": "18099386",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA CONTRACAMPO",
+      "issn": "22382577",
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "CONTRACAMPO (UFF)",
+      "issn": "14147483",
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "DOC ON-LINE",
+      "issn": null,
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "E-COMPÓS (BRASÍLIA)",
+      "issn": "18082599",
       "h_index": 12.0
     },
     {
-      "titulo": "OBSERVATORIO (OBS*)",
-      "issn": "16465954",
-      "h_index": 9.0
+      "titulo": "ECCOM – EDUCAÇÃO, CULTURA E COMUNICAÇÃO",
+      "issn": null,
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA ECO-PÓS (ONLINE)",
+      "issn": "21758689",
+      "h_index": 8.5
+    },
+    {
+      "titulo": "EPTIC (UFS)",
+      "issn": null,
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "ESFERAS",
+      "issn": "24466190",
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "ESFERAS - Revista Interprogramas de P├│s-gradua├º├úo em Comunica├º├úo do Centro Oeste",
+      "issn": "23167122",
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Estudos de Jornalismo e Mídia",
+      "issn": "19846924",
+      "h_index": 8.0
+    },
+    {
+      "titulo": "ESTUDOS EM JORNALISMO E MÍDIA",
+      "issn": null,
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA DE ESTUDOS UNIVERSITÁRIOS",
+      "issn": null,
+      "h_index": 3.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Revista Extraprensa",
+      "issn": "22363467",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Revista FAMECOS (Online)",
+      "issn": "19803729",
+      "h_index": 13.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA FRONTEIRAS (ONLINE)",
+      "issn": "19848226",
+      "h_index": 9.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "FRONTEIRAS – ESTUDOS MIDIÁTICOS",
+      "issn": null,
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
       "titulo": "GALÁXIA (SÃO PAULO. ONLINE)",
@@ -88,29 +229,79 @@
       "h_index": 12.0
     },
     {
-      "titulo": "BRAZILIAN JOURNALISM RESEARCH (ONLINE)",
-      "issn": "19819854",
-      "h_index": 11.0
+      "titulo": "REVISTA GEMINIS",
+      "issn": "21791465",
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "COMUNICACAO, MIDIA E CONSUMO (ONLINE)",
-      "issn": "19837070",
-      "h_index": 7.0
+      "titulo": "Iniciacom: revista brasileira de iniciacao cientifica em comunicacao social",
+      "issn": "19803494",
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "Revista Observatório",
-      "issn": "22474266",
-      "h_index": 9.0
+      "titulo": "INTERCOM (S├âO PAULO. ONLINE)",
+      "issn": "19803508",
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "INTERCOM (SÃO PAULO. IMPRESSO)",
+      "titulo": "Intercom",
+      "issn": "2177790X",
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "INTERCOM (S├âO PAULO. IMPRESSO)",
       "issn": "18095844",
-      "h_index": 12.0
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "INTERCOM (São Paulo)",
+      "titulo": "INTERCOM (S├úo Paulo)",
       "issn": "01026453",
-      "h_index": 12.0
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "INTERCOM: REVISTA BRASILEIRA DE CIENCIAS DA COMUNICACAO",
+      "issn": null,
+      "h_index": 11.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA INTERNACIONAL DE FOLKCOMUNICAÇÃO",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "InTexto",
+      "issn": "18078583",
+      "h_index": 10.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA LATINOAMERICANA DE CIENCIAS DE LA COMUNICACIÓN",
+      "issn": "18073026",
+      "h_index": 8.5
+    },
+    {
+      "titulo": "LÍBERO",
+      "issn": null,
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
       "titulo": "Liinc em Revista",
@@ -118,14 +309,161 @@
       "h_index": 14.0
     },
     {
-      "titulo": "MATRIZES (ONLINE)",
-      "issn": "19828160",
-      "h_index": 14.0
+      "titulo": "LOGOS: COMUNICAÇÃO E UNIVERSIDADE",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     },
     {
-      "titulo": "MATRIZES (USP. IMPRESSO)",
+      "titulo": "Lumina",
+      "issn": "19814070",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "LUMINA (JUIZ DE FORA)",
+      "issn": "15160785",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "MATRIZES (ONLINE)",
+      "issn": "19828160",
+      "h_index": 14.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Matrizes (USP. Impresso)",
       "issn": "19822073",
-      "h_index": 14.0
+      "h_index": 14.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "MIDIA E COTIDIANO",
+      "issn": "2172602X",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "NOVOS OLHARES (USP)",
+      "issn": "15165981",
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REVISTA OBSERVATÓRIO",
+      "issn": "24474266",
+      "h_index": 9.0
+    },
+    {
+      "titulo": "OBSERVATORIO (OBS*)",
+      "issn": "16465954",
+      "h_index": 19.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Revista Observatório",
+      "issn": "22474266",
+      "h_index": 9.0
+    },
+    {
+      "titulo": "ORGANICOM (USP)",
+      "issn": null,
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "PAULUS – REVISTA DE COMUNICAÇÃO DA FAPCOM",
+      "issn": null,
+      "h_index": 1.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "QUESTÕES TRANSVERSAIS – REVISTA DE EPISTEMOLOGIAS DA COMUNICAÇÃO",
+      "issn": null,
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REBECA – REVISTA BRASILEIRA DE ESTUDOS DE CINEMA E AUDIOVISUAL",
+      "issn": null,
+      "h_index": 3.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "REBEJ (BRAS├ìLIA)",
+      "issn": "19814542",
+      "h_index": 2.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "RECIIS",
+      "issn": null,
+      "h_index": 16.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Rizoma",
+      "issn": "2318406X",
+      "h_index": 6.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "RUMORES (USP)",
+      "issn": "1982677X",
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "SIGNIFICAÇÃO. REVISTA DE CULTURA AUDIOVISUAL",
+      "issn": null,
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "SIGNOS DO CONSUMO",
+      "issn": null,
+      "h_index": 5.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "Sur le journalisme, About journalism, Sobre jornalismo",
+      "issn": "22950729",
+      "h_index": 7.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "TRÍADE: COMUNICAÇÃO, CULTURA E MÍDIA",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
+    },
+    {
+      "titulo": "VOZES & DIÁLOGO",
+      "issn": null,
+      "h_index": 4.0,
+      "h_source": "compos_google_scholar",
+      "h_year_used": 2022
     }
   ]
 }
